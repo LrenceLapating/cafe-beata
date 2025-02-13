@@ -35,6 +35,27 @@
           />
         </div>
 
+        <!-- Secret Question -->
+        <div class="input-container">
+          <label for="secretQuestion">Choose a secret question:</label>
+          <select v-model="secretQuestion" required>
+            <option value="What is your favorite food?">What is your favorite food?</option>
+            <option value="What is the name of your pet?">What is the name of your pet?</option>
+            <option value="What is your mother’s maiden name?">What is your mother’s maiden name?</option>
+            <option value="What city were you born in?">What city were you born in?</option>
+          </select>
+        </div>
+
+        <!-- Secret Answer -->
+        <div class="input-container">
+          <input 
+            type="text" 
+            v-model="secretAnswer" 
+            placeholder="Answer to secret question" 
+            required 
+          />
+        </div>
+
         <!-- Error Message -->
         <p v-if="errorMessage" class="error">{{ errorMessage }}</p>
 
@@ -63,13 +84,14 @@ export default {
       name: "",
       email: "",
       password: "",
-      errorMessage: "", // To store any error messages
-      showSuccessPopup: false, // Control the visibility of the success popup
+      secretQuestion: "What is your favorite food?",  // Default question
+      secretAnswer: "",
+      errorMessage: "",
+      showSuccessPopup: false,
     };
   },
   methods: {
-    handleSignUp() {
-      // Validate email format (only allow @uic.edu.ph)
+    async handleSignUp() {
       const isValidEmail = this.email.endsWith("@uic.edu.ph");
 
       if (!isValidEmail) {
@@ -77,30 +99,49 @@ export default {
         return;
       }
 
-      // Proceed with sign up logic (e.g., save user info in the backend)
-      this.errorMessage = "";
+      // Automatically set username from the name field
+      const username = this.name.trim(); // Username will be the name the user enters
 
-      // Simulate a successful account creation
-      this.showSuccessPopup = true;
+      try {
+        const response = await fetch("http://127.0.0.1:8000/register", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            email: this.email,
+            password: this.password,
+            secret_answer: this.secretAnswer,  // Send the user's secret answer here
+            username: username,  // Send the username
+          }),
+        });
 
-      // Redirect to login page after showing success
-      setTimeout(() => {
-        this.$router.push({ name: "Login" });
-      }, 2000); // Wait 2 seconds before redirecting
+        const data = await response.json();
+
+        if (response.ok) {
+          this.showSuccessPopup = true;
+          // Store the name and email in localStorage or in a global state
+          localStorage.setItem('userName', this.name);
+          localStorage.setItem('userEmail', this.email);
+          setTimeout(() => {
+            this.$router.push({ name: "Login" });  // Redirect to Profile page
+          }, 2000);
+        } else {
+          this.errorMessage = data.detail;
+        }
+      } catch (error) {
+        console.error("Error during account creation:", error);
+        this.errorMessage = "An error occurred. Please try again.";
+      }
     },
 
-    // Handle Sign In link click
     goToLogin() {
       this.$router.push({ name: "Login" });
-    },
-
-    // Close the success popup
-    closePopup() {
-      this.showSuccessPopup = false;
     },
   },
 };
 </script>
+
 
 <style scoped>
 /* Styling for Create Account Page */
@@ -136,7 +177,7 @@ h1 {
   margin-bottom: 20px;
 }
 
-input {
+input, select {
   width: 100%;
   padding: 12px;
   font-size: 16px;
@@ -147,7 +188,7 @@ input {
   max-width: 320px; /* Adjust the max width for the inputs */
 }
 
-input:focus {
+input:focus, select:focus {
   outline: none;
   border-color: #d63384;
   box-shadow: 0 0 15px rgba(255, 20, 147, 0.8);

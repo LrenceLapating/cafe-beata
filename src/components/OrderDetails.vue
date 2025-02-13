@@ -1,13 +1,21 @@
 <template>
-  <div class="order-details">
-    <h1>Order Details</h1>
-    <div>
-      <h3>Order ID: {{ orderId }}</h3>
-      <h3>Order Date: {{ date }}</h3>
-      <h3>Bill Name: {{ billName }}</h3>
-      <h3>Total: ₱{{ total }}</h3>
+  <div class="order-container">
+    <div class="order-card">
+      <h1>Order Details</h1>
+      
+      <!-- Display item details -->
+      <div class="order-items">
+        <h2>Items:</h2>
+        <ul>
+          <li v-for="item in items" :key="item.name">
+            <img :src="getImagePath(item.image)" :alt="item.name" class="item-image"/>
+            <span>{{ item.name }} x {{ item.quantity }} - ₱{{ item.price * item.quantity }}</span>
+          </li>
+        </ul>
+      </div>
+
+      <button @click="goBackToHistory" class="back-button">Back to Order History</button>
     </div>
-    <button @click="goBackToHistory" class="back-button">Back to Order History</button>
   </div>
 </template>
 
@@ -15,104 +23,128 @@
 export default {
   data() {
     return {
-      orderId: this.$route.query.orderId,
-      date: this.$route.query.date,
-      billName: this.$route.query.billName,
-      total: this.$route.query.total,
+      // Parse the items from the query and set them to items
+      items: JSON.parse(this.$route.query.items || '[]'),  // Safely parse the items from the query
     };
   },
   methods: {
     goBackToHistory() {
       this.$router.push({ name: 'OrderHistory' });
     },
+
+    // Helper function to load images properly
+    getImagePath(image) {
+      return require(`@/assets/${image}`);
+    },
   },
 };
 </script>
 
+
+
+
+
 <style scoped>
-.order-details {
-  padding: 20px;
-  font-family: Arial, sans-serif;
+.order-container {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: 100vh;
+  background: linear-gradient(135deg, #1e1e2f, #3a3a52);
+  color: white;
+}
+
+.order-card {
+  background: rgba(255, 255, 255, 0.1);
+  padding: 30px;
+  border-radius: 15px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+  text-align: center;
+  width: 350px;
+  backdrop-filter: blur(10px);
 }
 
 h1 {
   font-size: 28px;
-  color: #333;
+  margin-bottom: 15px;
+  color:rgb(216, 144, 178);
 }
 
-h3 {
-  font-size: 20px;
-  color: #555;
+.order-info p {
+  font-size: 18px;
+  margin: 8px 0;
 }
 
-/* Glowing effect for the "Back to Order History" button */
+.order-info span {
+  font-weight: bold;
+  color:rgb(236, 155, 225);
+}
+
+.total {
+  font-size: 22px;
+  font-weight: bold;
+  color: #ff5722;
+}
+
+.order-items {
+  margin-top: 20px;
+  text-align: left;
+}
+
+.item-details {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 15px;
+}
+
+.item-details img {
+  width: 50px;
+  height: 50px;
+  object-fit: contain;
+  margin-right: 15px;
+}
+
+.item-details div {
+  flex: 1;
+  text-align: left;
+}
+
+
+
 .back-button {
-  padding: 8px 20px;  /* Smaller padding */
-  font-size: 12px;     /* Smaller font size */
-  background-color: transparent;
-  color: #FFF;
-  border: none;        /* Remove the border */
+  padding: 12px 25px;
+  font-size: 14px;
+  font-weight: bold;
+  background: transparent;
+  color: #fff;
+  border: 2px solidrgb(235, 172, 216);
   cursor: pointer;
   position: relative;
-  z-index: 0;
-  border-radius: 5px;
-  text-transform: uppercase;
+  overflow: hidden;
+  border-radius: 8px;
+  transition: 0.3s;
 }
 
-.back-button::after {
-  content: "";
-  z-index: -1;
-  position: absolute;
-  width: 100%;
-  height: 100%;
-  background-color: #333;
-  left: 0;
-  top: 0;
-  border-radius: 10px;
-}
+
 
 .back-button::before {
   content: "";
-  background: linear-gradient(
-    45deg,
-    #FF0000, #FF7300, #FFFB00, #48FF00,
-    #00FFD5, #002BFF, #FF00C8, #FF0000
-  );
   position: absolute;
-  top: -2px;
-  left: -2px;
-  background-size: 600%;
-  z-index: -1;
-  width: calc(100% + 4px);
-  height: calc(100% + 4px);
-  filter: blur(8px);
-  animation: glowing 20s linear infinite;
-  transition: opacity .3s ease-in-out;
-  border-radius: 10px;
-  opacity: 0;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, #ffeb3b, #ff9800, #ffeb3b);
+  transition: 0.3s;
 }
 
-/* Hover effect for glowing */
 .back-button:hover::before {
-  opacity: 1;
+  left: 0;
 }
 
-/* Active button state */
-.back-button:active:after {
-  background: transparent;
-}
-
-.back-button:active {
-  color: #000;
-  font-weight: bold;
-  background-color: #d12f7a; /* Active background color */
-  border-color: #d12f7a; /* Active border color (optional, can be removed too) */
-}
-
-/* Glow Animation */
-@keyframes glowing {
-  0% {background-position: 0 0;}
-  50% {background-position: 400% 0;}
-  100% {background-position: 0 0;}
+.back-button:hover {
+  background: rgba(255, 235, 59, 0.3);
+  border-color: #ff9800;
 }
 </style>

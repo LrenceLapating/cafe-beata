@@ -327,7 +327,7 @@ export default {
     background-color: transparent;
     border: 2px solid #d12f7a; /* Adjust border color */
     font-size: 14px;
-    text-transform: uppercase;
+   
   }
 
   /* Glowing effect */
@@ -563,7 +563,7 @@ export default {
   align-items: center;
   padding: 10px 20px;
   background-color: #fff;
-  box-shadow: 0 4px 8px rgba(41, 150, 86, 0.1);
+  box-shadow: 0 4px 8px rgba(59, 37, 119, 0.1);
 }
 
 .logo-container img {
@@ -610,6 +610,13 @@ export default {
   text-align: center;
   font-style: italic; /* Added this line */
 }
+
+ .dashboard-title:hover {
+    color: #fff; /* White text color on hover */
+    text-shadow: 0 0 10px rgba(209, 47, 122, 1), 0 0 20px rgba(209, 47, 122, 0.7); /* Glowing text effect */
+
+ }
+
 
 /* Categories Section */
 .categories {
@@ -663,6 +670,7 @@ export default {
   background-color: #f8d2e4;
   border-radius: 15px;
   padding: 15px;
+  cursor: pointer;
   transition: transform 0.3s ease;
   height: auto;
   display: flex;

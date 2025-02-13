@@ -1,31 +1,32 @@
 <template>
   <div class="profile-container">
-    <!-- User Profile Content -->
     <div class="profile-card">
-      <!-- Back to Dashboard Icon -->
+      <!-- Back Button -->
       <button @click="goToDashboard" class="back-to-dashboard-button">
-        <i class="fa fa-arrow-left"></i> <!-- FontAwesome arrow icon -->
+        <i class="fa fa-arrow-left"></i> Back
       </button>
-<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
 
       <h2>PROFILE</h2>
 
-      <!-- Avatar and Upload Picture -->
+      <!-- Avatar Selection -->
       <div class="avatar-container">
-        <img :src="user.avatar" alt="Avatar" class="avatar-img" />
-        <input type="file" ref="fileInput" @change="uploadAvatar" class="avatar-upload-input" />
-        <button @click="triggerFileInput" class="upload-button">Upload Picture</button>
+        <img :src="getAvatarUrl(user.avatar)" alt="Avatar" class="avatar-img" />
+        <div class="avatar-picker">
+          <label for="avatarSelect">Pick your Avatar:</label>
+          <input type="file" ref="fileInput" @change="uploadAvatar" style="display: none;" />
+          <button @click="triggerFileInput">Upload Avatar</button>
+        </div>
       </div>
 
       <!-- Profile Edit Section -->
       <div v-if="isEditing">
         <div class="form-group">
           <label>Username:</label>
-          <input v-model="user.username" type="text" />
+          <input v-model="user.username" type="text" disabled />
         </div>
         <div class="form-group">
           <label>E-mail:</label>
-          <input v-model="user.email" type="email" />
+          <input v-model="user.email" type="email" disabled />
         </div>
         <div class="form-group">
           <label>Course:</label>
@@ -39,10 +40,6 @@
             <option value="Other">Other</option>
           </select>
         </div>
-        <div class="form-group">
-          <label>About Me:</label>
-          <textarea v-model="user.aboutMe" rows="4"></textarea>
-        </div>
         <button @click="saveChanges" class="save-button">Update Information</button>
         <button @click="cancelEdit" class="cancel-button">Cancel</button>
       </div>
@@ -53,7 +50,6 @@
           <p><strong>E-mail:</strong> {{ user.email }}</p>
           <p><strong>Course:</strong> {{ user.course }}</p>
           <p><strong>Gender:</strong> {{ user.gender }}</p>
-          <p><strong>About Me:</strong> {{ user.aboutMe }}</p>
         </div>
         <button @click="toggleEdit" class="edit-button">Edit Profile</button>
       </div>
@@ -66,58 +62,106 @@ export default {
   data() {
     return {
       user: {
-        avatar: '/path/to/avatar.png',  // Default avatar path
-        username: 'Asenkrekmanov',
-        email: 'azkrekmanov@gmail.com',
-        course: 'UV/UX Design',
-        gender: 'Male',
-        aboutMe: 'I am Asen Krekmakov and I am dedicated UV/UX Designer from Sofia, Bulgaria.',
+        avatar: '/assets/default.png', // Default avatar
+        username: '',
+        email: '',
+        course: '',
+        gender: '',
       },
-      isEditing: false,  // Whether the user is editing the profile
+      isEditing: false,
     };
   },
   methods: {
-    // Toggle edit mode
+    // Method to return the avatar URL or fallback to default if not set
+    getAvatarUrl(avatar) {
+      return avatar ? avatar : require('@/assets/default.png'); // Fallback to default if no avatar
+    },
+
     toggleEdit() {
       this.isEditing = !this.isEditing;
     },
 
-    // Save the changes
-    saveChanges() {
-      // Handle saving updated profile info
-      console.log('Profile updated:', this.user);
-      this.isEditing = false;  // Exit edit mode after saving changes
+    // Save changes to user profile
+    async saveChanges() {
+      try {
+        const formData = new FormData();
+        formData.append('username', this.user.username);
+        formData.append('email', this.user.email);
+        formData.append('course', this.user.course);
+        formData.append('gender', this.user.gender);
+        formData.append('avatar', this.user.avatar); // Send avatar file path or URL
+
+        const response = await fetch(`http://127.0.0.1:8000/profile/${this.user.email}`, {
+          method: 'PUT',
+          body: formData,
+        });
+
+        const data = await response.json();
+        if (response.ok) {
+          this.isEditing = false;
+          alert('Profile updated successfully');
+        } else {
+          alert(data.detail);
+        }
+      } catch (error) {
+        console.error('Error:', error);
+        alert('An error occurred while saving your profile.');
+      }
     },
 
-    // Cancel editing and revert to previous values
     cancelEdit() {
       this.isEditing = false;
     },
 
-    // Handle Avatar Upload
-    uploadAvatar(event) {
-      const file = event.target.files[0];
-      if (file) {
-        const reader = new FileReader();
-        reader.onload = () => {
-          this.user.avatar = reader.result;  // Update avatar image
-        };
-        reader.readAsDataURL(file);  // Convert image to base64
+    async loadProfile() {
+  try {
+    const response = await fetch(`http://127.0.0.1:8000/profile/${this.user.email}`);
+    const data = await response.json();
+    if (response.ok) {
+      this.user = data;
+      // If the avatar URL is stored in the database, it will be used here
+      // Otherwise, fallback to default avatar
+      if (!this.user.avatar) {
+        this.user.avatar = '/assets/default.png'; // Default avatar if none exists
+      }
+    } else {
+      alert(data.detail);
+    }
+  } catch (error) {
+    console.error('Error:', error);
+    alert('Failed to load profile.');
       }
     },
 
-    // Trigger file input for avatar upload
-    triggerFileInput() {
-      this.$refs.fileInput.click();  // Trigger file input click event
+    // Handle avatar file upload
+    uploadAvatar(event) {
+      const file = event.target.files[0];
+      if (file) {
+        // Create a URL for the uploaded file
+        const fileUrl = URL.createObjectURL(file);
+        this.user.avatar = fileUrl; // Set the file URL as the avatar for display
+        this.saveChanges(); // Automatically save the profile with the new avatar
+      }
     },
 
-    // Navigate back to the Dashboard
-    goToDashboard() {
-      this.$router.push({ name: 'Dashboard' });  // Redirect to the Dashboard page
+    triggerFileInput() {
+      this.$refs.fileInput.click(); // Trigger the hidden file input on button click
     },
+
+    goToDashboard() {
+      this.$router.push({ name: 'Dashboard' });
+    },
+  },
+  created() {
+    const userEmail = localStorage.getItem('userEmail');
+    if (userEmail) {
+      this.user.email = userEmail;
+      this.loadProfile(); // Load the profile on component mount
+    }
   },
 };
 </script>
+
 
 <style scoped> 
 .profile-container {
@@ -132,7 +176,7 @@ h2 {
 }
 
 .profile-card {
-  position: relative;
+  position: relative;  /* Ensure the button is positioned relative to this container */
   background-color: white;
   border-radius: 8px;
   padding: 20px;
@@ -141,17 +185,18 @@ h2 {
   margin: 20px auto;
 }
 
+/* Back Button */
 .back-to-dashboard-button {
   background-color: transparent;
   color: #3498db;
-  padding: 2px;  /* Smaller padding */
-  font-size: 20px;  /* Smaller icon size */
+  padding: 2px;
+  font-size: 20px;
   border: none;
   cursor: pointer;
-  border-radius: 10%;
+  border-radius: 20%;
   position: absolute;
-  top: 10px;  /* Position the icon within the container */
-  right: 300px;  /* Position the icon within the container */
+  top: 10px;
+  left: 0;  /* Ensure it is aligned with the left edge */
   z-index: 1;
 }
 
@@ -170,18 +215,17 @@ h2 {
 .avatar-img {
   width: 100px;
   height: 100px;
-  border-radius: 50%; /* Circular Avatar */
+  border-radius: 50%; 
   border: 3px solid #ddd;
 }
 
-/* Glowing effect for the Upload Picture and Edit Profile buttons */
 .upload-button,
 .edit-button {
-  padding: 8px 20px;  /* Reduced padding */
-  font-size: 12px;     /* Reduced font size */
+  padding: 8px 20px;
+  font-size: 12px;
   background-color: transparent;
   color: #FFF;
-  border: 2px solid #d12f7a; /* Adjust border color */
+  border: 2px solid #d12f7a;
   cursor: pointer;
   position: relative;
   z-index: 0;
@@ -202,7 +246,6 @@ h2 {
   border-radius: 10px;
 }
 
-/* Animation for glowing */
 .upload-button::before,
 .edit-button::before {
   content: "";
@@ -225,35 +268,13 @@ h2 {
   opacity: 0;
 }
 
-/* Hover effect for glowing */
 .upload-button:hover::before,
 .edit-button:hover::before {
   opacity: 1;
 }
 
-/* Active button state */
-.upload-button:active:after,
-.edit-button:active:after {
-  background: transparent;
-}
-
-.upload-button:active,
-.edit-button:active {
-  color: #000;
-  font-weight: bold;
-  background-color: #d12f7a; /* Active background color */
-  border-color: #d12f7a; /* Border color */
-}
-
-/* Glow Animation */
-@keyframes glowing {
-  0% {background-position: 0 0;}
-  50% {background-position: 400% 0;}
-  100% {background-position: 0 0;}
-}
-
 .upload-button {
-   background-color: #007bff;
+  background-color: #007bff;
   color: white;
   padding: 10px;
   font-size: 14px;
@@ -263,7 +284,7 @@ h2 {
 }
 
 .upload-button:hover {
-   background-color: #0056b3;
+  background-color: #0056b3;
 }
 
 .avatar-upload-input {

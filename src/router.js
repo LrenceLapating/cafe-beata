@@ -7,12 +7,22 @@ import OrderHistory from './components/OrderHistory.vue'; // Import OrderHistory
 import OrderDetails from './components/OrderDetails.vue'; // Import OrderDetails component
 import UserProfileCafe from './components/UserProfileCafe.vue'; // Import the renamed UserProfileCafe component
 import CreateAccountPage from './components/CreateAccountPage.vue'; 
+import ForgotPassword from '@/components/ForgotPassword.vue'; // Make sure the path is correct
 
 const routes = [
   {
     path: '/',
+    redirect: '/login',  // Set this to redirect to login as default
+  },
+  {
+    path: '/login',  // Explicitly set to /login for login page
     name: 'Login',
     component: LoginPage,
+  },
+  {
+    path: '/forgot-password',
+    name: 'ForgotPassword',
+    component: ForgotPassword,
   },
   {
     path: '/dashboard',
@@ -42,14 +52,11 @@ const routes = [
     component: OrderIDPage,
     props: true,
   },
-
   {
     path: '/create-account',  // New route for creating an account
     name: 'CreateAccount',
     component: CreateAccountPage,
   },
-
-
   {
     path: '/order-history',
     name: 'OrderHistory',
@@ -69,7 +76,7 @@ const routes = [
 ];
 
 const router = createRouter({
-  history: createWebHistory(),
+  history: createWebHistory(process.env.BASE_URL),
   routes,
 });
 

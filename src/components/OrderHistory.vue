@@ -45,21 +45,21 @@ export default {
       ],
     };
   },
-  methods: {
-    // Redirect to the Dashboard when "Back To Menu" is clicked
-    goToOrderHistory() {
-      this.$router.push({ name: 'Dashboard' }); // Update this to match the name of your home/dashboard page
-    },
-
-    // View order details by passing order object to the details page
-    viewOrderDetails(order) {
-      this.$router.push({
-        name: 'OrderDetails', // Ensure this matches the name in the router
-        query: {
-          orderId: order.id,
-          date: order.date,
-          billName: order.billName,
-          total: order.total,
+ methods: {
+  goToOrderHistory() {
+    this.$router.push({ name: 'Dashboard' });
+  },
+  
+  // Send all order details including items to OrderDetails page
+  viewOrderDetails(order) {
+    this.$router.push({
+      name: 'OrderDetails',
+      query: {
+        orderId: order.id,
+        date: order.date,
+        billName: order.billName,
+        total: order.total,
+        items: JSON.stringify(order.items),  // Pa
         },
       });
     },

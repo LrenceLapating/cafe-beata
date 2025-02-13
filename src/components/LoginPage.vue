@@ -32,6 +32,9 @@
       <p class="create-account-link">
         Don't have an account? <router-link to="/create-account">Create one</router-link>
       </p>
+      <p class="forgot-password-link">
+         <router-link to="/forgot-password">Forgot Password?</router-link>
+      </p>
     </div>
   </div>
 </template>
@@ -47,40 +50,55 @@ export default {
     };
   },
   methods: {
-    handleLogin() {
-      // Check for valid email format
-      const isValidEmail = this.username.endsWith("@uic.edu.ph");
+    async handleLogin() {
+  try {
+    const response = await fetch("http://127.0.0.1:8000/login", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        email: this.username,   // Send only email and password for login
+        password: this.password,
+      }),
+    });
 
-      // Dummy password for now
-      const validPassword = "123"; // Replace this with your actual backend validation
+    const data = await response.json();
 
-      console.log(`Username: ${this.username}, Password: ${this.password}`);
-      console.log(`Is valid email: ${isValidEmail}`);
-
-      if (isValidEmail && this.password === validPassword) {
-        // Save login session to localStorage
-        localStorage.setItem("loggedIn", "true"); // Store user login status
-
-        // Debugging: Check if router.push() is triggered
-        console.log("Login successful, redirecting to dashboard");
-
-        // Redirect to dashboard page after successful login
-        this.$router.push({ name: 'Dashboard' });
-      } else {
-        // Show error message if login fails
-        if (!isValidEmail) {
-          this.errorMessage = "Invalid Uic Email";
-        } else {
-          this.errorMessage = "Invalid password. Please try again.";
-        }
+    if (response.ok) {
+      localStorage.setItem("loggedIn", "true");
+      localStorage.setItem('userEmail', this.username);
+      this.$router.push({ name: "Dashboard" });
+    } else {
+      this.errorMessage = data.detail || "An error occurred. Please try again.";
+    }
+  } catch (error) {
+    console.error("Error during login:", error);
+    this.errorMessage = "An unexpected error occurred. Please try again.";
       }
     },
   },
 };
 </script>
 
+
 <style scoped>
 /* Main background image for the login page */
+.forgot-password-link {
+  margin-top: 15px;
+  font-size: 14px;
+}
+
+.forgot-password-link a {
+  color: #ff1493;
+  text-decoration: none;
+  font-weight: bold;
+}
+
+.forgot-password-link a:hover {
+  text-decoration: underline;
+  text-shadow: 0 0 5px rgba(255, 20, 147, 0.8);
+}
 
 .login-page {
   background-image: url("@/assets/Uicbackround.png"); /* Background image path */
