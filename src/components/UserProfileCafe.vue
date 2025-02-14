@@ -10,11 +10,12 @@
 
       <!-- Avatar Selection -->
       <div class="avatar-container">
+        <!-- Dynamically load the avatar URL -->
         <img :src="getAvatarUrl(user.avatar)" alt="Avatar" class="avatar-img" />
         <div class="avatar-picker">
-          <label for="avatarSelect">Pick your Avatar:</label>
+        
           <input type="file" ref="fileInput" @change="uploadAvatar" style="display: none;" />
-          <button @click="triggerFileInput">Upload Avatar</button>
+          <button @click="triggerFileInput">Upload Profile</button>
         </div>
       </div>
 
@@ -74,7 +75,7 @@ export default {
   methods: {
     // Method to return the avatar URL or fallback to default if not set
     getAvatarUrl(avatar) {
-      return avatar ? avatar : require('@/assets/default.png'); // Fallback to default if no avatar
+      return avatar ? `http://127.0.0.1:8000${avatar}` : '/assets/default.png'; // Return the avatar URL dynamically
     },
 
     toggleEdit() {
@@ -114,22 +115,22 @@ export default {
     },
 
     async loadProfile() {
-  try {
-    const response = await fetch(`http://127.0.0.1:8000/profile/${this.user.email}`);
-    const data = await response.json();
-    if (response.ok) {
-      this.user = data;
-      // If the avatar URL is stored in the database, it will be used here
-      // Otherwise, fallback to default avatar
-      if (!this.user.avatar) {
-        this.user.avatar = '/assets/default.png'; // Default avatar if none exists
-      }
-    } else {
-      alert(data.detail);
-    }
-  } catch (error) {
-    console.error('Error:', error);
-    alert('Failed to load profile.');
+      try {
+        const response = await fetch(`http://127.0.0.1:8000/profile/${this.user.email}`);
+        const data = await response.json();
+        if (response.ok) {
+          this.user = data;
+          // If the avatar URL is stored in the database, it will be used here
+          // Otherwise, fallback to default avatar
+          if (!this.user.avatar) {
+            this.user.avatar = '/assets/default.png'; // Default avatar if none exists
+          }
+        } else {
+          alert(data.detail);
+        }
+      } catch (error) {
+        console.error('Error:', error);
+        alert('Failed to load profile.');
       }
     },
 
@@ -137,10 +138,28 @@ export default {
     uploadAvatar(event) {
       const file = event.target.files[0];
       if (file) {
-        // Create a URL for the uploaded file
-        const fileUrl = URL.createObjectURL(file);
-        this.user.avatar = fileUrl; // Set the file URL as the avatar for display
-        this.saveChanges(); // Automatically save the profile with the new avatar
+        const formData = new FormData();
+        formData.append("avatar", file); // Append the file to the formData
+
+        // Send the file to the backend
+        fetch(`http://127.0.0.1:8000/profile/upload-avatar/${this.user.email}`, {
+          method: "POST",
+          body: formData,
+        })
+          .then((response) => response.json())
+          .then((data) => {
+            if (data.message === "Avatar uploaded successfully") {
+              // The backend returns the avatar URL
+              this.user.avatar = data.avatar_url || "/assets/default.png";  // Update the avatar URL
+              this.saveChanges(); // Save the profile with the new avatar URL
+            } else {
+              alert(data.detail || "Failed to upload avatar.");
+            }
+          })
+          .catch((error) => {
+            console.error("Error uploading avatar:", error);
+            alert("An error occurred while uploading the avatar.");
+          });
       }
     },
 
@@ -319,12 +338,17 @@ button {
   margin-top: 1px;
   padding: 12px;
   font-size: 16px;
-  background-color: #d12f7a;
+  background-color:rgb(53, 42, 47);
   color: white;
   border: none;
   cursor: pointer;
   border-radius: 5px;
   width: 100%;
+}
+
+
+button:hover {
+  background-color:rgb(68, 63, 57);
 }
 
 .save-button,

@@ -51,35 +51,44 @@ export default {
   },
   methods: {
     async handleLogin() {
-  try {
-    const response = await fetch("http://127.0.0.1:8000/login", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        email: this.username,   // Send only email and password for login
-        password: this.password,
-      }),
-    });
+      // Updated regex: allows any characters before the 12 digits
+      const emailRegex = /^[a-zA-Z]+_\d{12}@uic\.edu\.ph$/;
 
-    const data = await response.json();
+      if (!emailRegex.test(this.username)) {
+        this.errorMessage = "Invalid UIC Email ";
+        return;
+      }
 
-    if (response.ok) {
-      localStorage.setItem("loggedIn", "true");
-      localStorage.setItem('userEmail', this.username);
-      this.$router.push({ name: "Dashboard" });
-    } else {
-      this.errorMessage = data.detail || "An error occurred. Please try again.";
-    }
-  } catch (error) {
-    console.error("Error during login:", error);
-    this.errorMessage = "An unexpected error occurred. Please try again.";
+      try {
+        const response = await fetch("http://127.0.0.1:8000/login", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            email: this.username,   // Send only email and password for login
+            password: this.password,
+          }),
+        });
+
+        const data = await response.json();
+
+        if (response.ok) {
+          localStorage.setItem("loggedIn", "true");
+          localStorage.setItem('userEmail', this.username);
+          this.$router.push({ name: "Dashboard" });
+        } else {
+          this.errorMessage = data.detail || "An error occurred. Please try again.";
+        }
+      } catch (error) {
+        console.error("Error during login:", error);
+        this.errorMessage = "An unexpected error occurred. Please try again.";
       }
     },
   },
 };
 </script>
+
 
 
 <style scoped>

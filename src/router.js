@@ -66,7 +66,14 @@ const routes = [
     path: '/order-details',
     name: 'OrderDetails',
     component: OrderDetails,
-    props: true,
+    props: route => ({
+      orderId: route.query.orderId,
+      date: route.query.date,
+      billName: route.query.billName,
+      total: route.query.total,
+      items: JSON.parse(route.query.items || '[]'), // Ensure items are parsed as an array
+    }),
+
   },
   {
     path: '/user-profile-cafe', // New path for the profile page

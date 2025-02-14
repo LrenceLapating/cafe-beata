@@ -92,10 +92,11 @@ export default {
   },
   methods: {
     async handleSignUp() {
-      const isValidEmail = this.email.endsWith("@uic.edu.ph");
+      // Updated regex: allows any characters before the 12 digits
+      const emailRegex = /^[a-zA-Z]+_\d{12}@uic\.edu\.ph$/;
 
-      if (!isValidEmail) {
-        this.errorMessage = "Email must be the UIC EMAIL address";
+      if (!emailRegex.test(this.email)) {
+        this.errorMessage = "Email must be the UIC Email";
         return;
       }
 
@@ -141,6 +142,7 @@ export default {
   },
 };
 </script>
+
 
 
 <style scoped>

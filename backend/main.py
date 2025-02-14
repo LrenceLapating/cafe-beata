@@ -12,7 +12,14 @@ from typing import Optional
 app = FastAPI()
 from fastapi import Form
 from fastapi import Form, File, UploadFile
+from fastapi.responses import FileResponse
 
+
+
+UPLOAD_DIR = "uploads/avatars"
+
+if not os.path.exists(UPLOAD_DIR):
+    os.makedirs(UPLOAD_DIR)
 # CORS Configuration
 app.add_middleware(
     CORSMiddleware,
@@ -39,6 +46,8 @@ def get_db_connection():
     except Error as e:
         print(f"Error: {e}")
         return None
+
+
 
 # Model for User registration and login (Only email and password for login)
 class User(BaseModel):
@@ -225,38 +234,29 @@ async def update_profile(
 
 @app.post("/profile/upload-avatar/{email}")
 async def upload_avatar(email: str, avatar: UploadFile = File(...)):
-    upload_dir = "uploads"
-    if not os.path.exists(upload_dir):
-        os.makedirs(upload_dir)
-
+    # Define the file path
     avatar_filename = f"{email}_{avatar.filename}"
-    avatar_path = f"{upload_dir}/{avatar_filename}"  # Save the file with a unique name
-
+    avatar_path = os.path.join(UPLOAD_DIR, avatar_filename)
+    
     try:
         with open(avatar_path, "wb") as file:
-            shutil.copyfileobj(avatar.file, file)
-
+            shutil.copyfileobj(avatar.file, file)  # Save the uploaded file to the server
     except Exception as e:
         raise HTTPException(status_code=500, detail="Error uploading avatar")
 
-    # Store the relative URL of the avatar in the database
-    connection = get_db_connection()
-    if connection is None:
-        raise HTTPException(status_code=500, detail="Database connection failed")
+    # Return the URL to access the uploaded avatar
+    avatar_url = f"/uploads/avatars/{avatar_filename}"
     
-    cursor = connection.cursor()
-    try:
-        avatar_url = f"/uploads/{avatar_filename}"  # Relative URL to the uploaded file
-        cursor.execute(
-            "UPDATE users SET avatar = %s WHERE email = %s",
-            (avatar_url, email)
-        )
-        connection.commit()
+    # You would save this URL in the database, assuming you have a `users` table with an `avatar` column.
+    # Here's a placeholder for saving the avatar URL in your DB (not implemented here)
+    
+    return {"message": "Avatar uploaded successfully", "avatar_url": avatar_url}
 
-    except Exception as e:
-        raise HTTPException(status_code=500, detail="Error updating avatar path in database")
-    finally:
-        cursor.close()
-        connection.close()
+@app.get("/uploads/avatars/{filename}")
+async def get_avatar(filename: str):
+    file_path = os.path.join(UPLOAD_DIR, filename)
+    if os.path.exists(file_path):
+        return FileResponse(file_path)
+    raise HTTPException(status_code=404, detail="Avatar not found")
 
-    return {"message": "Avatar uploaded successfully"}
+

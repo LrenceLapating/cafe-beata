@@ -35,7 +35,7 @@ export default {
   data() {
     return {
       orderID: this.generateOrderID(),
-      orderItems: [],
+      orderItems: [], // Items will be passed through query
       estimatedTime: 0,
     };
   },
