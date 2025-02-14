@@ -252,6 +252,7 @@ async def upload_avatar(email: str, avatar: UploadFile = File(...)):
     
     return {"message": "Avatar uploaded successfully", "avatar_url": avatar_url}
 
+
 @app.get("/uploads/avatars/{filename}")
 async def get_avatar(filename: str):
     file_path = os.path.join(UPLOAD_DIR, filename)
