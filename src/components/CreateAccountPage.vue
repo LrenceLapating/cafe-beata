@@ -147,12 +147,19 @@ export default {
 
 <style scoped>
 /* Styling for Create Account Page */
+
+
+
+
 .create-account-page {
+  background-image: url("@/assets/Uicbackroundblur.png"); /* Same as LoginPage.vue */
+  background-size: cover;
+  background-position: center;
+  height: 100vh;
   display: flex;
   justify-content: center;
   align-items: center;
-  height: 100vh;
-  background: linear-gradient(135deg, #ff9a9e, #fad0c4);
+  padding: 20px;
 }
 
 .form-container {

@@ -8,6 +8,7 @@ import OrderDetails from './components/OrderDetails.vue'; // Import OrderDetails
 import UserProfileCafe from './components/UserProfileCafe.vue'; // Import the renamed UserProfileCafe component
 import CreateAccountPage from './components/CreateAccountPage.vue'; 
 import ForgotPassword from '@/components/ForgotPassword.vue'; // Make sure the path is correct
+import PrivacyAndPolicy from './components/PrivacyAndPolicy.vue'; // Import PrivacyAndPolicy component
 
 const routes = [
   {
@@ -73,12 +74,16 @@ const routes = [
       total: route.query.total,
       items: JSON.parse(route.query.items || '[]'), // Ensure items are parsed as an array
     }),
-
   },
   {
     path: '/user-profile-cafe', // New path for the profile page
     name: 'UserProfileCafe',
     component: UserProfileCafe,  // Use the UserProfileCafe component
+  },
+  {
+    path: '/privacy-policy', // New path for Privacy and Policy
+    name: 'PrivacyPolicy',
+    component: PrivacyAndPolicy,
   },
 ];
 

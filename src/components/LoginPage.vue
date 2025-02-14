@@ -4,7 +4,7 @@
       <div class="logo-container">
         <img src="@/assets/uic-logo.png" alt="University Logo" class="logo" />
       </div>
-      <h1 class="title">University of the Immaculate Conception</h1>
+      <h1 class="title">UIC Cafe Beàta</h1>
       <form @submit.prevent="handleLogin" class="login-form">
         <div class="input-container">
           <label for="username"></label>
@@ -12,7 +12,7 @@
             type="text" 
             v-model="username" 
             id="username" 
-            placeholder="Uic Email" 
+            placeholder="UIC Email" 
             required 
           />
         </div>
@@ -29,11 +29,19 @@
         <button type="submit" class="login-button">Login</button>
         <p v-if="errorMessage" class="error">{{ errorMessage }}</p>
       </form>
+      
       <p class="create-account-link">
         Don't have an account? <router-link to="/create-account">Create one</router-link>
       </p>
       <p class="forgot-password-link">
-         <router-link to="/forgot-password">Forgot Password?</router-link>
+        <router-link to="/forgot-password">Forgot Password?</router-link>
+      </p>
+      
+      <!-- Terms and Conditions -->
+      <p class="terms-text">
+        By continuing, you agree to UIC Cafe Beàta's 
+   
+        Read our <router-link to="/privacy-policy" class="terms-link">Privacy Policy</router-link>.
       </p>
     </div>
   </div>
@@ -46,36 +54,26 @@ export default {
     return {
       username: "",
       password: "",
-      errorMessage: "", // To store error messages
+      errorMessage: "",
     };
   },
   methods: {
     async handleLogin() {
-      // Updated regex: allows any characters before the 12 digits
       const emailRegex = /^[a-zA-Z]+_\d{12}@uic\.edu\.ph$/;
-
       if (!emailRegex.test(this.username)) {
-        this.errorMessage = "Invalid UIC Email ";
+        this.errorMessage = "Invalid UIC Email";
         return;
       }
-
       try {
         const response = await fetch("http://127.0.0.1:8000/login", {
           method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            email: this.username,   // Send only email and password for login
-            password: this.password,
-          }),
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ email: this.username, password: this.password }),
         });
-
         const data = await response.json();
-
         if (response.ok) {
           localStorage.setItem("loggedIn", "true");
-          localStorage.setItem('userEmail', this.username);
+          localStorage.setItem("userEmail", this.username);
           this.$router.push({ name: "Dashboard" });
         } else {
           this.errorMessage = data.detail || "An error occurred. Please try again.";
@@ -90,9 +88,26 @@ export default {
 </script>
 
 
-
 <style scoped>
 /* Main background image for the login page */
+
+
+.terms-text {
+  margin-top: 20px;
+  font-size: 14px;
+  text-align: center;
+}
+
+.terms-link {
+  color:#ff1493;
+  text-decoration: none;
+  font-weight: bold;
+}
+
+.terms-link:hover {
+  text-decoration: underline;
+}
+
 .forgot-password-link {
   margin-top: 15px;
   font-size: 14px;

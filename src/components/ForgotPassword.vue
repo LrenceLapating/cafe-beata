@@ -132,11 +132,14 @@ export default {
 }
 
 .forgot-password-page {
+  background-image: url("@/assets/Uicbackroundblur.png"); /* Same as LoginPage.vue */
+  background-size: cover;
+  background-position: center;
   display: flex;
   justify-content: center;
   align-items: center;
   height: 100vh;
-  background: linear-gradient(135deg, #ff9a9e, #fad0c4);
+  
 }
 
 .form-container {

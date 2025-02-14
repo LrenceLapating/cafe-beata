@@ -118,7 +118,7 @@ export default {
     // Generate a sequential order ID and confirm the order
     confirmOrder() {
       // Show confirmation dialog
-      const isConfirmed = window.confirm("Are you sure this is all you want to order?");
+      const isConfirmed = window.confirm("Are you sure this is everything you want to order?");
 
       if (isConfirmed) {
         // Get the current order ID from localStorage, or set to 1 if it doesn't exist
@@ -156,6 +156,9 @@ export default {
   },
 };
 </script>
+
+
+
 
 <style scoped>
 /* Confirm Order Page */
