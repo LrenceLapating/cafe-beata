@@ -41,7 +41,8 @@
       
       <p>By continuing to use this service, you acknowledge that you have read, understood, and agreed to these terms. Failure to comply will result in strict enforcement of the stated guidelines.</p>
       
-      <router-link to="/login" class="back-link">Back to Login</router-link>
+     <router-link to="/create-account" class="back-link">⇦Back</router-link>
+
     </div>
   </div>
 </template>
