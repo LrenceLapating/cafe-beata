@@ -56,11 +56,20 @@
           />
         </div>
 
+        <!-- Terms and Conditions with Checkbox -->
+        <div class="terms-container">
+          <input type="checkbox" v-model="agreeToTerms" id="termsCheckbox" required />
+          <label for="termsCheckbox">
+            By continuing, you agree to UIC Cafe Beàta's 
+            <router-link to="/privacy-policy" class="terms-link">Privacy Policy</router-link>.
+          </label>
+        </div>
+
         <!-- Error Message -->
         <p v-if="errorMessage" class="error">{{ errorMessage }}</p>
 
-        <!-- Sign Up Button -->
-        <button type="submit" class="sign-up-button">Sign Up</button>
+        <!-- Sign Up Button (Disabled Until Checkbox is Checked) -->
+        <button type="submit" class="sign-up-button" :disabled="!agreeToTerms">Sign Up</button>
       </form>
 
       <!-- Sign In Link -->
@@ -84,15 +93,20 @@ export default {
       name: "",
       email: "",
       password: "",
-      secretQuestion: "What is your favorite food?",  // Default question
+      secretQuestion: "What is your favorite food?",
       secretAnswer: "",
       errorMessage: "",
       showSuccessPopup: false,
+      agreeToTerms: false, // Checkbox value
     };
   },
   methods: {
     async handleSignUp() {
-      // Updated regex: allows any characters before the 12 digits
+      if (!this.agreeToTerms) {
+        this.errorMessage = "You must agree to the Privacy Policy to continue.";
+        return;
+      }
+
       const emailRegex = /^[a-zA-Z]+_\d{12}@uic\.edu\.ph$/;
 
       if (!emailRegex.test(this.email)) {
@@ -100,8 +114,7 @@ export default {
         return;
       }
 
-      // Automatically set username from the name field
-      const username = this.name.trim(); // Username will be the name the user enters
+      const username = this.name.trim();
 
       try {
         const response = await fetch("http://127.0.0.1:8000/register", {
@@ -112,8 +125,8 @@ export default {
           body: JSON.stringify({
             email: this.email,
             password: this.password,
-            secret_answer: this.secretAnswer,  // Send the user's secret answer here
-            username: username,  // Send the username
+            secret_answer: this.secretAnswer,
+            username: username,
           }),
         });
 
@@ -121,11 +134,10 @@ export default {
 
         if (response.ok) {
           this.showSuccessPopup = true;
-          // Store the name and email in localStorage or in a global state
           localStorage.setItem('userName', this.name);
           localStorage.setItem('userEmail', this.email);
           setTimeout(() => {
-            this.$router.push({ name: "Login" });  // Redirect to Profile page
+            this.$router.push({ name: "Login" });
           }, 2000);
         } else {
           this.errorMessage = data.detail;
@@ -144,12 +156,42 @@ export default {
 </script>
 
 
-
 <style scoped>
 /* Styling for Create Account Page */
 
+.terms-container {
+  display: flex;
+  align-items: center;
+  font-size: 14px;
+  margin-top: -10px; /* Adjust position slightly higher */
+}
 
+.terms-container input {
+  margin-right: 4px;
+  width: 14px;
+  height: 14px;
+}
 
+.terms-link {
+  color: #ff1493;
+  text-decoration: none;
+  font-weight: bold;
+}
+
+.terms-link:hover {
+  text-decoration: underline;
+}
+
+/* Add more space below terms & conditions */
+.terms-container {
+  margin-bottom: 15px; /* Increase spacing between Terms and Sign In */
+}
+
+/* Disabled button style */
+button:disabled {
+  background: gray;
+  cursor: not-allowed;
+}
 
 .create-account-page {
   background-image: url("@/assets/Uicbackroundblur.png"); /* Same as LoginPage.vue */
@@ -187,7 +229,7 @@ h1 {
 }
 
 input, select {
-  width: 100%;
+  width: 85%;
   padding: 12px;
   font-size: 16px;
   border: 2px solid #ff69b4;

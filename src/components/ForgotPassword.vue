@@ -147,7 +147,7 @@ export default {
   padding: 30px;
   border-radius: 15px;
   box-shadow: 0 0 20px rgba(255, 105, 180, 0.8);
-  width: 100%;
+  width: 85%;
   max-width: 400px;
   text-align: center;
   backdrop-filter: blur(10px);
@@ -167,7 +167,7 @@ h1 {
 }
 
 input {
-  width: 100%;
+  width: 85%;
   padding: 12px;
   font-size: 16px;
   border: 2px solid #ff69b4;

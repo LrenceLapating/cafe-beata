@@ -36,13 +36,6 @@
       <p class="forgot-password-link">
         <router-link to="/forgot-password">Forgot Password?</router-link>
       </p>
-      
-      <!-- Terms and Conditions -->
-      <p class="terms-text">
-        By continuing, you agree to UIC Cafe Beàta's 
-   
-        Read our <router-link to="/privacy-policy" class="terms-link">Privacy Policy</router-link>.
-      </p>
     </div>
   </div>
 </template>
@@ -178,7 +171,7 @@ export default {
 }
 
 input {
-  width: 100%;
+  width: 120%;
   max-width: 320px;
   padding: 12px;
   margin-top: 5px;
