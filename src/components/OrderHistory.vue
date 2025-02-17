@@ -3,9 +3,11 @@
     <div class="header">
       <!-- Update the back button to go to the OrderHistory page -->
       <button @click="goToOrderHistory" class="back-button">← Back To Menu</button>
-      <h1>Order History</h1>
+     
     </div>
-
+<div :class="{ 'dark-mode': isDarkMode }">
+    <h1>Order History</h1> <!-- Example -->
+  </div>
     <table class="order-table">
       <thead>
         <tr>
@@ -36,38 +38,65 @@
 export default {
   data() {
     return {
-      // Sample data, you can fetch this from LocalStorage or an API
+      isDarkMode: localStorage.getItem('darkMode') === 'true', // Detects dark mode
+      // Sample order data (replace with real API/localStorage fetch)
       orders: [
         { id: '000173', date: '20/01/2025', billName: 'Leynard', total: 120 },
         { id: '000174', date: '21/01/2025', billName: 'Juan', total: 150 },
         { id: '000175', date: '22/01/2025', billName: 'Maria', total: 200 },
-        // Add more orders as needed
       ],
     };
   },
- methods: {
-  goToOrderHistory() {
-    this.$router.push({ name: 'Dashboard' });
-  },
-  
-  // Send all order details including items to OrderDetails page
-  viewOrderDetails(order) {
-    this.$router.push({
-      name: 'OrderDetails',
-      query: {
-        orderId: order.id,
-        date: order.date,
-        billName: order.billName,
-        total: order.total,
-        items: JSON.stringify(order.items),  // Pa
+  methods: {
+    goToOrderHistory() {
+      this.$router.push({ name: 'Dashboard' });
+    },
+    
+    // Navigate to Order Details with order data
+    viewOrderDetails(order) {
+      this.$router.push({
+        name: 'OrderDetails',
+        query: {
+          orderId: order.id,
+          date: order.date,
+          billName: order.billName,
+          total: order.total,
+          items: JSON.stringify(order.items),
         },
       });
     },
   },
+  watch: {
+    isDarkMode(newValue) {
+      document.body.classList.toggle('dark-mode', newValue);
+    }
+  }
 };
 </script>
 
 <style scoped>
+
+.dark-mode .order-table td {
+  color: white; /* Make text visible */
+  border-color: #666; /* Darker borders */
+}
+
+
+.dark-mode .order-table th {
+  background-color: #444; /* Dark gray for better visibility */
+  color: white; /* Make text visible */
+  border-color: #666; /* Darker borders */
+}
+
+.dark-mode .order-history {
+  color: white;
+}
+.dark-mode h1,
+.dark-mode .order-table th,
+.dark-mode .order-table td {
+  color: white;
+}
+
 
 /* Basic styling for the order history page */
 .order-history {

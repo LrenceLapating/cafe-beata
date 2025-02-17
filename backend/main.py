@@ -13,10 +13,26 @@ app = FastAPI()
 from fastapi import Form
 from fastapi import Form, File, UploadFile
 from fastapi.responses import FileResponse
-
-
+from fastapi.middleware.cors import CORSMiddleware
 
 UPLOAD_DIR = "uploads/avatars"
+
+
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],  # Allow all origins (change this for production)
+    allow_credentials=True,
+    allow_methods=["*"],  # Allow all HTTP methods
+    allow_headers=["*"],  # Allow all headers
+)
+
+
+@app.get("/")
+async def root():
+    return {"message": "FastAPI is running with CORS enabled!"}
+
+
 
 if not os.path.exists(UPLOAD_DIR):
     os.makedirs(UPLOAD_DIR)

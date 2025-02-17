@@ -70,19 +70,44 @@ export default {
         gender: '',
       },
       isEditing: false,
+      isDarkMode: localStorage.getItem('darkMode') === 'true', // Load Dark Mode preference
     };
   },
+  mounted() {
+    const userEmail = localStorage.getItem('userEmail');
+    if (userEmail) {
+      this.user.email = userEmail;
+      this.loadProfile(); // Load profile on mount
+    }
+
+    // ✅ Ensure dark mode is applied when page loads
+    if (localStorage.getItem('darkMode') === 'true') {
+      this.isDarkMode = true; 
+      document.body.classList.add('dark-mode');
+    }
+  },
   methods: {
-    // Method to return the avatar URL or fallback to default if not set
+    // 🌓 Toggle Dark Mode and save preference
+    toggleDarkMode() {
+      this.isDarkMode = !this.isDarkMode;
+      localStorage.setItem('darkMode', this.isDarkMode);
+
+      // Apply or remove dark mode class
+      if (this.isDarkMode) {
+        document.body.classList.add('dark-mode');
+      } else {
+        document.body.classList.remove('dark-mode');
+      }
+    },
+
     getAvatarUrl(avatar) {
-      return avatar ? `http://127.0.0.1:8000${avatar}` : '/assets/default.png'; // Return the avatar URL dynamically
+      return avatar ? `http://192.168.1.79:8000${avatar}` : '/assets/default.png';
     },
 
     toggleEdit() {
       this.isEditing = !this.isEditing;
     },
 
-    // Save changes to user profile
     async saveChanges() {
       try {
         const formData = new FormData();
@@ -90,9 +115,9 @@ export default {
         formData.append('email', this.user.email);
         formData.append('course', this.user.course);
         formData.append('gender', this.user.gender);
-        formData.append('avatar', this.user.avatar); // Send avatar file path or URL
+        formData.append('avatar', this.user.avatar);
 
-        const response = await fetch(`http://127.0.0.1:8000/profile/${this.user.email}`, {
+        const response = await fetch(`http://192.168.1.79:8000/profile/${this.user.email}`, {
           method: 'PUT',
           body: formData,
         });
@@ -116,14 +141,12 @@ export default {
 
     async loadProfile() {
       try {
-        const response = await fetch(`http://127.0.0.1:8000/profile/${this.user.email}`);
+        const response = await fetch(`http://192.168.1.79:8000/profile/${this.user.email}`);
         const data = await response.json();
         if (response.ok) {
           this.user = data;
-          // If the avatar URL is stored in the database, it will be used here
-          // Otherwise, fallback to default avatar
           if (!this.user.avatar) {
-            this.user.avatar = '/assets/default.png'; // Default avatar if none exists
+            this.user.avatar = '/assets/default.png';
           }
         } else {
           alert(data.detail);
@@ -134,24 +157,21 @@ export default {
       }
     },
 
-    // Handle avatar file upload
     uploadAvatar(event) {
       const file = event.target.files[0];
       if (file) {
         const formData = new FormData();
-        formData.append("avatar", file); // Append the file to the formData
+        formData.append("avatar", file);
 
-        // Send the file to the backend
-        fetch(`http://127.0.0.1:8000/profile/upload-avatar/${this.user.email}`, {
+        fetch(`http://192.168.1.79:8000/profile/upload-avatar/${this.user.email}`, {
           method: "POST",
           body: formData,
         })
           .then((response) => response.json())
           .then((data) => {
             if (data.message === "Avatar uploaded successfully") {
-              // The backend returns the avatar URL
-              this.user.avatar = data.avatar_url || "/assets/default.png";  // Update the avatar URL
-              this.saveChanges(); // Save the profile with the new avatar URL
+              this.user.avatar = data.avatar_url || "/assets/default.png";
+              this.saveChanges();
             } else {
               alert(data.detail || "Failed to upload avatar.");
             }
@@ -164,22 +184,63 @@ export default {
     },
 
     triggerFileInput() {
-      this.$refs.fileInput.click(); // Trigger the hidden file input on button click
+      this.$refs.fileInput.click();
     },
 
     goToDashboard() {
       this.$router.push({ name: 'Dashboard' });
     },
   },
-  created() {
-    const userEmail = localStorage.getItem('userEmail');
-    if (userEmail) {
-      this.user.email = userEmail;
-      this.loadProfile(); // Load the profile on component mount
-    }
-  },
 };
 </script>
+
+
+
+.dark-mode .profile-container {
+  background-color: #222 !important; /* Dark background */
+}
+
+.dark-mode .profile-card {
+  background-color: #333 !important; /* Dark profile card */
+  color: white !important; /* Light text */
+}
+
+/* 🌙 Dark Mode - Text Adjustments */
+.dark-mode h2,
+.dark-mode label,
+.dark-mode .profile-info p,
+.dark-mode .about-me p {
+  color: white !important; /* Ensure text is light */
+}
+
+/* 🌙 Dark Mode - Avatar Border */
+.dark-mode .avatar-img {
+  border: 3px solid white !important;
+}
+
+/* 🌙 Dark Mode - Input Fields */
+.dark-mode input,
+.dark-mode select,
+.dark-mode textarea {
+  background-color: #444 !important;
+  color: white !important;
+  border: 1px solid #666 !important;
+}
+
+/* 🌙 Dark Mode - Buttons */
+.dark-mode button {
+  background-color: #666 !important;
+  color: white !important;
+}
+
+.dark-mode button:hover {
+  background-color: #777 !important;
+}
+
+/* 🌙 Dark Mode - Profile Info Highlight */
+.dark-mode .profile-info strong {
+  color: #ffcc00 !important; /* Make the strong text more visible */
+}
 
 
 <style scoped> 

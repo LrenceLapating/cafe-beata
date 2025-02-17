@@ -24,6 +24,7 @@
       <h2>Total: ₱{{ totalPrice }}</h2>
     </div>
 
+
     <!-- No items in cart -->
     <p v-else>No items in cart. Add some from the dashboard.</p>
 
@@ -43,6 +44,7 @@
 export default {
   data() {
     return {
+      isDarkMode: localStorage.getItem('darkMode') === 'true', // Load Dark Mode preference
       cart: [], // Store multiple selected items
     };
   },
@@ -54,8 +56,27 @@ export default {
   mounted() {
     this.loadCart();
     this.addToCart();
+    
+    // ✅ Fix: Always check and apply dark mode on page load
+    if (localStorage.getItem('darkMode') === 'true') {
+      this.isDarkMode = true; // Ensure reactivity
+      document.body.classList.add('dark-mode');
+    }
   },
   methods: {
+    // 🌓 Toggle Dark Mode and save preference
+    toggleDarkMode() {
+      this.isDarkMode = !this.isDarkMode; // Toggle dark mode state
+      localStorage.setItem('darkMode', this.isDarkMode); // Save preference
+
+      // ✅ Apply or remove dark mode class dynamically
+      if (this.isDarkMode) {
+        document.body.classList.add('dark-mode');
+      } else {
+        document.body.classList.remove('dark-mode');
+      }
+    },
+
     // Load previous cart items (from localStorage)
     loadCart() {
       const storedCart = localStorage.getItem('cart');
@@ -159,8 +180,54 @@ export default {
 
 
 
-
 <style scoped>
+
+
+.dark-mode li {
+  background-color: #f8d2e4 !important; /* Keep pink background */
+  color: black !important; /* Make text dark for readability */
+}
+.dark-mode li h3,
+.dark-mode li span {
+  color: black !important;
+}
+
+
+/* 🕶 Dark Mode - Lighten Text */
+.dark-mode .confirm-order {
+  color: white;
+  background-color: #222; /* Dark background */
+}
+
+/* 🕶 Dark Mode - Cart Items */
+.dark-mode .cart-item {
+  background-color: #333; /* Darker container */
+    color: black !important; /* Ensure text is black */
+  border: 1px solid #555; /* Darker borders */
+}
+
+.dark-mode .cart-item span {
+  color: black !important;
+}
+
+/* 🕶 Dark Mode - Buttons */
+.dark-mode .cart-item button {
+  background-color: #444; /* Dark button */
+  color: white !important; /* Keep button text white */
+  border: 1px solid #666;
+}
+
+.dark-mode .cart-item button:hover {
+  background-color: #666;
+}
+
+/* 🕶 Dark Mode - Price Text */
+.dark-mode .total-price {
+  color: #ddd; /* Light gray for visibility */
+}
+
+
+
 /* Confirm Order Page */
 .confirm-order {
   text-align: center;

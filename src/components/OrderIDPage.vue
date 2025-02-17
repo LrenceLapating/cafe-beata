@@ -1,5 +1,5 @@
 <template>
-  <div class="order-id-page">
+  <div :class="['order-id-page', { 'dark-mode': isDarkMode }]">
     <h4>Please Screenshot Your OrderID Number!</h4>
     <h1>Order Confirmation</h1>
 
@@ -10,7 +10,7 @@
 
     <!-- Display Order Details -->
     <div class="order-details">
-      <h3>Order Details:</h3>
+      <h3></h3>
       <ul>
         <li v-for="(item, index) in orderItems" :key="index">
           <span>{{ item.name }} - ₱{{ item.price * item.quantity }}</span>
@@ -35,26 +35,27 @@ export default {
   data() {
     return {
       orderID: this.generateOrderID(),
-      orderItems: [], // Items will be passed through query
+      orderItems: [],
       estimatedTime: 0,
+      isDarkMode: localStorage.getItem("darkMode") === "true",
     };
   },
   created() {
     this.loadOrderItems();
   },
+  mounted() {
+    // ✅ Apply dark mode if stored in localStorage
+    if (this.isDarkMode) {
+      document.body.classList.add("dark-mode");
+    }
+  },
   methods: {
     generateOrderID() {
       let lastOrderID = parseInt(localStorage.getItem("lastOrderID")) || 100;
-
-      // Increment and reset at 999
       lastOrderID = lastOrderID >= 999 ? 101 : lastOrderID + 1;
-
-      // Save the new order ID
       localStorage.setItem("lastOrderID", lastOrderID);
-
       return lastOrderID;
     },
-
     loadOrderItems() {
       try {
         this.orderItems = JSON.parse(this.$route.query.items || "[]");
@@ -65,7 +66,6 @@ export default {
         this.orderItems = [];
       }
     },
-
     addCategoriesToItems() {
       this.orderItems.forEach((item) => {
         if (!item.category) {
@@ -77,7 +77,6 @@ export default {
         }
       });
     },
-
     calculateEstimatedTime() {
       let maxTime = 5;
       if (this.orderItems.length === 0) return maxTime;
@@ -96,7 +95,6 @@ export default {
 
       return maxTime;
     },
-
     goBackToDashboard() {
       this.$router.push({ name: "Dashboard" });
     },
@@ -105,7 +103,68 @@ export default {
 </script>
 
 
+
+
+
 <style scoped>
+
+/* 🌙 Dark Mode - Dark Outer Background */
+.dark-mode .order-id-page {
+  background-color: #222 !important; /* Dark background */
+  color: white !important; /* Light text for everything outside the boxes */
+}
+
+/* 🌙 Dark Mode - Keep Order ID Box Light */
+.dark-mode .order-id {
+  background: #f8d2e4 !important; /* Light pink background */
+  color: black !important; /* Make text inside the box dark */
+  border: 1px solid #ccc !important;
+}
+
+/* 🌙 Dark Mode - Keep Order Details Box Light */
+.dark-mode .order-details li {
+  background: #f8d2e4 !important; /* Light pink background */
+  color: black !important; /* Dark text inside */
+  border: 1px solid #ccc !important;
+}
+
+/* 🌙 Dark Mode - Keep Delivery Time Box Light */
+.dark-mode .delivery-time {
+  background: #ffebcd !important; /* Light yellow background */
+  color: black !important; /* Make text inside the box dark */
+  border: 1px solid #ccc !important;
+}
+
+.dark-mode h1,
+.dark-mode h3,
+.dark-mode h4,
+.dark-mode .order-details h3,
+.dark-mode .order-id-page h1,
+.dark-mode .order-id-page h3,
+.dark-mode .order-id-page h4 {
+  color: white !important; /* Ensure all main texts are visible in dark mode */
+}
+
+/* 🌙 Dark Mode - Buttons */
+.dark-mode .back-button {
+  background-color: #444 !important; /* Dark button */
+  color: white !important; /* Light text */
+  border: 1px solid #666 !important;
+}
+
+.dark-mode .back-button:hover {
+  background-color: #666 !important; /* Slightly lighter on hover */
+}
+
+/* 🌙 Dark Mode - Ensure Text Inside Boxes is Dark */
+.dark-mode .order-id h2,
+.dark-mode .order-details h3,
+.dark-mode .order-details span,
+.dark-mode .delivery-time h3 {
+  color: black !important; /* Dark text inside the boxes */
+}
+
+
 /* Order ID Page */
 .order-id-page {
   text-align: center;

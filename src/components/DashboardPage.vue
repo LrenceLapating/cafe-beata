@@ -1,13 +1,15 @@
 <template>
   <div class="dashboard">
     <!-- Sidebar Toggle Button (For Mobile) -->
-    <button class="menu-button" @click="toggleSidebar">☰ Menu</button>
-
+    <button class="menu-button" @click="toggleSidebar">☰</button>
+    
     <!-- Add this link to the head section of index.html -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
-
+<div v-if="isSidebarOpen" class="overlay" @click="closeSidebar"></div>
     <!-- Sidebar -->
-    <div class="sidebar" :class="{ open: isSidebarOpen }">
+    <div :class="['sidebar', { open: isSidebarOpen }]" @click.stop>
+   
+  <button class="close-sidebar" @click="toggleSidebar">✖</button>
       <div class="sidebar-category">
         <h3 @click="filterCategory('Drinks')">Drinks</h3>
         <ul>
@@ -50,7 +52,11 @@
           />
         </div>
         <div class="top-bar-buttons">
+        <button class="dark-mode-button" @click="toggleDarkMode">
+  <i class="fas fa-moon"></i> <!-- Moon icon -->
+</button>
           <button class="order-history-button" @click="handleOrderHistory">Order History</button>
+          
           <!-- Profile Button as Icon -->
           <button class="profile-button" @click="handleProfile">
             <i class="fas fa-user"></i> <!-- Profile icon -->
@@ -85,13 +91,12 @@
 </template>
 
 
-
-
 <script>
 export default {
   data() {
     return {
       searchQuery: '',
+       isDarkMode: localStorage.getItem("darkMode") === "enabled",
       currentCategory: 'Ice Coffee', // Default category
       currentTime: '', // For live time
       isSidebarOpen: false, // Sidebar starts closed
@@ -198,14 +203,38 @@ export default {
   mounted() {
     this.filterCategory('Drinks');
     this.updateTime(); // Call updateTime when the component is mounted
+    this.applyDarkMode();
   },
   methods: {
 
+ toggleDarkMode() {
+    this.isDarkMode = !this.isDarkMode;
+    localStorage.setItem("darkMode", this.isDarkMode ? "enabled" : "disabled");
+    this.applyDarkMode();
+  },
+  applyDarkMode() {
+    if (this.isDarkMode) {
+      document.body.classList.add("dark-mode");
+    } else {
+      document.body.classList.remove("dark-mode");
+    }
+  },
+
+
  updateTime() {
-      setInterval(() => {
-        const now = new Date();
-        this.currentTime = now.toLocaleTimeString(); // Format the time as HH:MM:SS
-      }, 1000); // Update time every second
+  setInterval(() => {
+    const now = new Date();
+    let hours = now.getHours();
+    let minutes = now.getMinutes();
+    let seconds = now.getSeconds();
+    let ampm = hours >= 12 ? 'PM' : 'AM';
+
+    hours = hours % 12 || 12; // Convert 24-hour time to 12-hour format
+    minutes = minutes < 10 ? '0' + minutes : minutes; // Ensure two digits for minutes
+    seconds = seconds < 10 ? '0' + seconds : seconds; // Ensure two digits for seconds
+
+    this.currentTime = `${hours}:${minutes}:${seconds} ${ampm}`; // Example: 2:03:11 PM
+  }, 1000); // Update every second
     },
 
     filterCategory(category) {
@@ -288,6 +317,41 @@ export default {
 
 <style scoped>
 
+.dark-mode {
+  background-color: #121212;
+  color: #ffffff;
+}
+
+/* Buttons and Sidebar in Dark Mode */
+.dark-mode .sidebar,
+.dark-mode .top-bar,
+.dark-mode .content {
+  background-color: #1e1e1e;
+  color: #ffffff;
+}
+
+/* Dark Mode Button Styling */
+.dark-mode-button {
+  background-color: rgb(48, 41, 44);
+  color: white;
+  padding: 8px 12px;
+  font-size: 14px;
+  border: none;
+  border-radius: 5px;
+  cursor: pointer;
+  transition: background 0.3s ease-in-out;
+}
+
+.dark-mode .sidebar,
+.dark-mode .sidebar-category h3,
+.dark-mode .sidebar-category ul li {
+  color: #ffffff !important;
+}
+
+/* Dark Mode for Live Time */
+.dark-mode .live-time {
+  color: #ffffff !important;
+}
 
 
    .item-details {
@@ -435,21 +499,42 @@ export default {
 
 /* Sidebar */
 .sidebar {
-  width: 250px;
-  background-color: #f6f6f6;
-  padding: 20px;
-  box-shadow: 2px 0 5px rgba(0, 0, 0, 0.1);
   position: fixed;
   top: 0;
-  bottom: 0;
-  left: 0; /* Sidebar always visible on large screens */
-  z-index: 200;
-  transition: transform 0.3s ease-in-out;
+  width: 250px;
+  height: 100vh;
+  background-color: #f6f6f6;
+  transition: left 0.3s ease-in-out;
+  z-index: 1000;
+  box-shadow: 2px 0 5px rgba(0, 0, 0, 0.1);
+  overflow-y: auto;
 }
 
 
+.close-sidebar {
+  background: none;
+  border: none;
+  font-size: 18px;
+  color: #333;
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  cursor: pointer;
+}
+
+
+.overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.5); /* Dark overlay */
+  z-index: 999; /* Below sidebar but above content */
+}
+
 .sidebar.open {
-  transform: translateX(0)
+    left: 0; /* Move sidebar into view */
 }
 
 /* Sidebar category styling */
@@ -463,11 +548,12 @@ export default {
   margin-bottom: 10px;
   color: #d12f7a;
   cursor: pointer;
+    padding-left: 15px;
 }
 
 .sidebar-category ul {
   list-style: none;
-  padding: 0;
+ padding-left: 20px
 }
 
 .sidebar-category ul li {
@@ -491,7 +577,7 @@ export default {
 
 /* Style for the live time text */
 .live-time {
-  font-size: 20px;
+  font-size: px;
   color: #333;
   margin-top: 0; /* Remove margin-top to align it with the logo */
 }
@@ -499,11 +585,15 @@ export default {
 /* Add other necessary styling if needed */
 .top-bar {
   display: flex;
+  flex-direction: column;
+  text-align: center;
   justify-content: space-between;
   align-items: center;
   padding: 10px 20px;
   background-color: #fff;
   box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+  flex-wrap: wrap; /* Allow wrapping */
+  gap: 10px;
 }
 
 .logo-container img {
@@ -516,15 +606,44 @@ export default {
   padding: 20px;
   overflow-y: auto;
 }
+@media (max-width: 768px) {
+  .top-bar {
+    flex-direction: column;
+    align-items: center;
+    gap: 10px;
+  }
+}
 
+
+@media (min-width: 769px) {
+  .menu-button {
+    display: none; /* Hide menu button on PC */
+  }
+}
+@media (min-width: 769px) {
+  .sidebar {
+    left: 0 !important; /* Always visible on PC */
+  }
+}
 
 @media (max-width: 768px) {
   .sidebar {
-    left: -250px; /* Sidebar is hidden by default */
+    position: fixed;
+    top: 0;
+    left: -250px; /* Start completely hidden */
+    width: 250px;
+    height: 100vh;
+    background-color: #f6f6f6;
+    transition: left 0.3s ease-in-out;
+    z-index: 1000;
+    box-shadow: 2px 0 5px rgba(0, 0, 0, 0.1);
+    overflow-y: auto; /* Prevent content overflow */
+
   }
 
   .sidebar.open {
-    left: 0; /* Show sidebar when toggled */
+   left: 0; /* Sidebar slides in */
+
   }
 
   .content {
@@ -539,7 +658,7 @@ export default {
   top: 15px;
   left: 15px;
   z-index: 300;
-  background: #d12f7a;
+  background:rgb(56, 49, 52);
   color: white;
   padding: 10px 15px;
   font-size: 18px;
@@ -556,15 +675,11 @@ export default {
   }
 }
 
-/* Top Bar */
-.top-bar {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 10px 20px;
-  background-color: #fff;
-  box-shadow: 0 4px 8px rgba(59, 37, 119, 0.1);
-}
+
+.dashboard-title {
+    font-size: 24px;
+  }
+
 
 .logo-container img {
   width: 80px;
@@ -574,21 +689,21 @@ export default {
   padding: 10px;
   border-radius: 20px;
   border: 1px solid #ccc;
-  width: 200%;
+  width: 100%;
   max-width: 300px;
 } 
 
 /* Top Bar Buttons */
 .top-bar-buttons {
   display: flex;
-  gap: 10px;
+  gap: 5px;
 }
 
 .order-history-button,
 .logout-button {
   background-color: rgb(77, 24, 48);
   color: white;
-  padding: 10px 15px;
+  padding: 8px 12px;
   font-size: 14px;
   border: none;
   border-radius: 5px;
@@ -602,13 +717,15 @@ export default {
 
 /* Dashboard Title */
 .dashboard-title {
-  font-size: 50px;
-  font-weight: Merriweather;
+   font-size: 28px;
+  font-weight: bold;
   color: #d12f7a;
   margin-top: 15px;
   margin-bottom: 15px;
   text-align: center;
-  font-style: italic; /* Added this line */
+  font-style: italic; /* Italic */
+  font-family: "Merriweather", serif; /* Optional: A more elegant font */
+  letter-spacing: 1px; /* Adds a bit more spacing for readability */
 }
 
  .dashboard-title:hover {
@@ -617,7 +734,11 @@ export default {
 
  }
 
-
+.order-history-button,
+  .logout-button {
+    font-size: 12px;
+    padding: 6px 10px;
+  }
 /* Categories Section */
 .categories {
   display: flex;
@@ -641,12 +762,20 @@ export default {
 /* Items Section */
 .items {
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: 12px;
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+   gap: 20px;
+  padding: 20px;
+  justify-content: center;
+  align-items: center;
+}
+@media (min-width: 1024px) {
+  .items {
+    grid-template-columns: repeat(4, 1fr);
+  }
 }
 
 /* Adjust for smaller screens */
-@media (max-width: 1024px) {
+@media (max-width: 1023px) {
   .items {
     grid-template-columns: repeat(3, 1fr);
   }
@@ -654,7 +783,10 @@ export default {
 
 @media (max-width: 768px) {
   .items {
+     display: flex;
     grid-template-columns: repeat(2, 1fr);
+       flex-direction: column;
+    align-items: center;
   }
 }
 
@@ -678,10 +810,11 @@ export default {
   justify-content: center;
   align-items: center;
   width: 100%;
-  max-width: 160px;
+  max-width: 200px;
   margin: 0 auto;
   position: relative;
   overflow: hidden;
+   box-shadow: 0px 4px 6px rgba(0, 0, 0, 0.1);
 }
 
 .item img {
@@ -691,7 +824,7 @@ export default {
 }
 
 .item:hover img {
-  transform: scale(1.1);
+  transform: scale(1.05);
 }
 
 .item span {
@@ -710,12 +843,13 @@ export default {
     font-size: 24px;
   }
 
-
+}
  .item-details {
     display: flex;
     justify-content: space-between;
-    align-items: center;
-    margin-top: 10px;
+   flex-direction: column;
+  align-items: center;
+  margin-top: 10px;
   }
 
   .item-price {
@@ -725,6 +859,7 @@ export default {
     background-color: #f8e1e6; /* Light pink background for the price */
     padding: 5px 10px;
     border-radius: 5px;
+    margin-top: 5px;
     box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
   }
 
@@ -741,12 +876,7 @@ export default {
     font-size: 14px;
   }
 
-  .order-history-button,
-  .logout-button {
-    font-size: 12px;
-    padding: 8px 12px;
-  }
-}
+ 
 
 @media (max-width: 480px) {
   .dashboard-title {
@@ -757,14 +887,11 @@ export default {
     font-size: 18px;
   }
 
-  .item span {
-    font-size: 12px;
-  }
 
   .order-history-button,
   .logout-button {
-    font-size: 10px;
-    padding: 6px 10px;
+     font-size: 10px;
+    padding: 5px 8px;
   }
 }
 
