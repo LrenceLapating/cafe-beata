@@ -117,7 +117,7 @@ export default {
         formData.append('gender', this.user.gender);
         formData.append('avatar', this.user.avatar);
 
-        const response = await fetch(`http://192.168.1.79:8000/profile/${this.user.email}`, {
+        const response = await fetch(`http://127.0.0.1:8000/profile/${this.user.email}`, {
           method: 'PUT',
           body: formData,
         });
@@ -141,7 +141,7 @@ export default {
 
     async loadProfile() {
       try {
-        const response = await fetch(`http://192.168.1.79:8000/profile/${this.user.email}`);
+        const response = await fetch(`http://127.0.0.1:8000/profile/${this.user.email}`);
         const data = await response.json();
         if (response.ok) {
           this.user = data;
@@ -163,7 +163,7 @@ export default {
         const formData = new FormData();
         formData.append("avatar", file);
 
-        fetch(`http://192.168.1.79:8000/profile/upload-avatar/${this.user.email}`, {
+        fetch(`http://127.0.0.1:8000/profile/upload-avatar/${this.user.email}`, {
           method: "POST",
           body: formData,
         })
