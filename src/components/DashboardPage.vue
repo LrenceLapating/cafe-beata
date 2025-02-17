@@ -1,7 +1,7 @@
 <template>
   <div class="dashboard">
     <!-- Sidebar Toggle Button (For Mobile) -->
-    <button class="menu-button" @click="toggleSidebar">☰</button>
+    <button class="menu-button" @click="toggleSidebar">≣</button>
     
     <!-- Add this link to the head section of index.html -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
@@ -572,14 +572,29 @@ export default {
 .logo-time-container {
   display: flex;
   align-items: center;
-  gap: 10px; /* Add some space between the logo and the time */
+  gap: 0px; /* Add some space between the logo and the time */
+}
+
+.search-container { 
+
+  display: flex;
+  justify-content: center; /* Center the search bar */
+  padding: 10px;
+  border-radius: 15px;
+  width: 80%;
+  max-width: 300px;
 }
 
 /* Style for the live time text */
 .live-time {
-  font-size: px;
+  font-weight: bold;
+  font-size: 15px;
   color: #333;
   margin-top: 0; /* Remove margin-top to align it with the logo */
+  font-style: italic; /* Makes the text italic */
+  background: transparent; /* Remove background */
+  padding: 0;
+  margin:  20px 0 0 0;
 }
 
 /* Add other necessary styling if needed */
@@ -592,7 +607,7 @@ export default {
   padding: 10px 20px;
   background-color: #fff;
   box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
-  flex-wrap: wrap; /* Allow wrapping */
+  flex-wrap: nowrap; /* Allow wrapping */
   gap: 10px;
 }
 
@@ -677,7 +692,7 @@ export default {
 
 
 .dashboard-title {
-    font-size: 24px;
+    font-size: 30px;
   }
 
 
@@ -717,15 +732,16 @@ export default {
 
 /* Dashboard Title */
 .dashboard-title {
-   font-size: 28px;
+   font-size: 40px;
   font-weight: bold;
-  color: #d12f7a;
+   color: #d12f7a;
   margin-top: 15px;
   margin-bottom: 15px;
   text-align: center;
   font-style: italic; /* Italic */
   font-family: "Merriweather", serif; /* Optional: A more elegant font */
   letter-spacing: 1px; /* Adds a bit more spacing for readability */
+ 
 }
 
  .dashboard-title:hover {
@@ -733,6 +749,32 @@ export default {
     text-shadow: 0 0 10px rgba(209, 47, 122, 1), 0 0 20px rgba(209, 47, 122, 0.7); /* Glowing text effect */
 
  }
+ 
+ .logo-container {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-right: 10px;
+}
+
+/* Live Time container */
+.live-time-container {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  color: #fff;
+  font-weight: bold;
+  font-size: 20px;
+}
+
+/* Style the search bar */
+.search-container input {
+  padding: 12px;
+  border-radius: 20px;
+  border: 1px solid #ccc;
+  width: 100%;
+  max-width: 300px;
+}
 
 .order-history-button,
   .logout-button {
@@ -840,7 +882,7 @@ export default {
 /* Responsive Text Adjustments */
 @media (max-width: 768px) {
   .dashboard-title {
-    font-size: 24px;
+    font-size: 35px;
   }
 
 }
@@ -880,7 +922,7 @@ export default {
 
 @media (max-width: 480px) {
   .dashboard-title {
-    font-size: 20px;
+    font-size: 30px;
   }
 
   .category h2 {

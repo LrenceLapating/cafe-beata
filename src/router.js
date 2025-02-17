@@ -90,6 +90,19 @@ const routes = [
 const router = createRouter({
   history: createWebHistory(process.env.BASE_URL),
   routes,
+
+
+});
+  router.beforeEach((to, from, next) => {
+    const publicPages = ["Login", "CreateAccount", "ForgotPassword", "PrivacyPolicy"];
+  
+    if (publicPages.includes(to.name)) {
+      document.body.classList.remove("dark-mode"); // Ensure dark mode is removed on public pages
+    }
+  
+    next();
+
+
 });
 
 export default router;

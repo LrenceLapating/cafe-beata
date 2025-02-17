@@ -49,7 +49,7 @@ app.add_middleware(
 db_config = {
     "host": "127.0.0.1",  # Your MySQL host
     "user": "root",        # Your MySQL user (default in XAMPP is root)
-    "password": "",        # Your MySQL password (default in XAMPP is empty)
+    "password": "Warweapons19",        # Your MySQL password (default in XAMPP is empty)
     "database": "cafe_preorder",  # Your database name
 }
 

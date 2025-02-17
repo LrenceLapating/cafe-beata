@@ -101,7 +101,7 @@ export default {
     },
 
     getAvatarUrl(avatar) {
-      return avatar ? `http://192.168.1.79:8000${avatar}` : '/assets/default.png';
+      return avatar ? `http://127.0.0.1:8000${avatar}` : '/assets/default.png';
     },
 
     toggleEdit() {
