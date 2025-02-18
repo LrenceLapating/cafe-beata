@@ -101,55 +101,57 @@ export default {
     };
   },
   methods: {
-    async handleSignUp() {
-      if (!this.agreeToTerms) {
-        this.errorMessage = "You must agree to the Privacy Policy to continue.";
-        return;
+  async handleSignUp() {
+    if (!this.agreeToTerms) {
+      this.errorMessage = "You must agree to the Privacy Policy to continue.";
+      return;
+    }
+
+    // Updated email regex
+    const emailRegex = /^[a-zA-Z0-9]+(_\d{12})?@uic\.edu\.ph$/;
+
+
+    if (!emailRegex.test(this.email)) {
+      this.errorMessage = "Email must be a valid UIC Email.";
+      return;
+    }
+
+    const username = this.name.trim();
+
+    try {
+      const response = await fetch("http://127.0.0.1:8000/register", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          email: this.email,
+          password: this.password,
+          secret_answer: this.secretAnswer,
+          username: username,
+        }),
+      });
+
+      const data = await response.json();
+
+      if (response.ok) {
+        this.showSuccessPopup = true;
+        localStorage.setItem('userName', this.name);
+        localStorage.setItem('userEmail', this.email);
+        setTimeout(() => {
+          this.$router.push({ name: "Login" });
+        }, 2000);
+      } else {
+        this.errorMessage = data.detail;
       }
+    } catch (error) {
+      console.error("Error during account creation:", error);
+      this.errorMessage = "An error occurred. Please try again.";
+    }
+  },
 
-      const emailRegex = /^[a-zA-Z]+_\d{12}@uic\.edu\.ph$/;
-
-      if (!emailRegex.test(this.email)) {
-        this.errorMessage = "Email must be the UIC Email";
-        return;
-      }
-
-      const username = this.name.trim();
-
-      try {
-        const response = await fetch("http://127.0.0.1:8000/register", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            email: this.email,
-            password: this.password,
-            secret_answer: this.secretAnswer,
-            username: username,
-          }),
-        });
-
-        const data = await response.json();
-
-        if (response.ok) {
-          this.showSuccessPopup = true;
-          localStorage.setItem('userName', this.name);
-          localStorage.setItem('userEmail', this.email);
-          setTimeout(() => {
-            this.$router.push({ name: "Login" });
-          }, 2000);
-        } else {
-          this.errorMessage = data.detail;
-        }
-      } catch (error) {
-        console.error("Error during account creation:", error);
-        this.errorMessage = "An error occurred. Please try again.";
-      }
-    },
-
-    goToLogin() {
-      this.$router.push({ name: "Login" });
+  goToLogin() {
+    this.$router.push({ name: "Login" });
     },
   },
 };

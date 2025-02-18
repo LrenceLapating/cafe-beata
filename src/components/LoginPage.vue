@@ -51,30 +51,33 @@ export default {
     };
   },
   methods: {
-   async handleLogin() {
-  const emailRegex = /^[a-zA-Z]+_\d{12}@uic\.edu\.ph$/;
-  if (!emailRegex.test(this.username)) {
-    this.errorMessage = "Invalid UIC Email";
-    return;
-  }
-  try {
-    const response = await fetch("http://127.0.0.1:8000/login", {  // Replace with actual IP
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ email: this.username, password: this.password }),
-    });
-    const data = await response.json();
-    if (response.ok) {
-      localStorage.setItem("loggedIn", "true");
-      localStorage.setItem("userEmail", this.username);
-      this.$router.push({ name: "Dashboard" });
-    } else {
-      this.errorMessage = data.detail || "An error occurred. Please try again.";
+  async handleLogin() {
+    // Updated email regex
+    const emailRegex = /^[a-zA-Z0-9]+(_\d{12})?@uic\.edu\.ph$/;
+
+    if (!emailRegex.test(this.username)) {
+      this.errorMessage = "Invalid UIC Email";
+      return;
     }
-  } catch (error) {
-    console.error("Error during login:", error);
-    this.errorMessage = "An unexpected error occurred. Please try again.";
+
+    try {
+      const response = await fetch("http://127.0.0.1:8000/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: this.username, password: this.password }),
+      });
+      const data = await response.json();
+      if (response.ok) {
+        localStorage.setItem("loggedIn", "true");
+        localStorage.setItem("userEmail", this.username);
+        this.$router.push({ name: "Dashboard" });
+      } else {
+        this.errorMessage = data.detail || "An error occurred. Please try again.";
       }
+    } catch (error) {
+      console.error("Error during login:", error);
+      this.errorMessage = "An unexpected error occurred. Please try again.";
+    }
     },
   },
 };
