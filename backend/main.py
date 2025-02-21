@@ -27,7 +27,7 @@ import jwt
 from datetime import datetime, timedelta
 from fastapi.responses import RedirectResponse
 from fastapi import FastAPI, HTTPException, Path
-
+import uuid
 
 
 load_dotenv()
@@ -233,6 +233,25 @@ async def register(user: User):
     connection.close()
 
     return {"message": "Account created successfully"}
+
+
+
+@app.post("/check-username")
+async def check_username(request: dict):
+    username = request.get("username")
+    
+    # Connect to the database and check if the username already exists
+    connection = get_db_connection()
+    cursor = connection.cursor()
+    cursor.execute("SELECT * FROM users WHERE username = %s", (username,))
+    existing_user = cursor.fetchone()
+    cursor.close()
+    connection.close()
+
+    if existing_user:
+        return {"exists": True}  # Username already taken
+    else:
+        return {"exists": False}  # Username is available
 
 
 @app.post("/login")

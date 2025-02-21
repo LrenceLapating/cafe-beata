@@ -24,10 +24,23 @@
           </div>
         </div>
 
-        <!-- Mark as Completed button -->
-        <button @click="markAsCompleted(order.id, order.customer_name)" class="mark-completed-btn">
+        <!-- Mark as Completed button (small version) -->
+        <button @click="markAsCompleted(order.id, order.customer_name)" class="mark-completed-btn small-btn">
           Mark as Completed
         </button>
+
+        <!-- Decline button -->
+        <button @click="openDeclineDialog(order)" class="decline-btn">
+          Decline
+        </button>
+
+        <!-- Custom message input for decline -->
+        <div v-if="order.id === activeDeclineOrderId">
+          <textarea v-model="customDeclineMessage" placeholder="Customize your message here..." rows="3"></textarea>
+          <button @click="declineOrder(order.id, order.customer_name)" class="decline-submit-btn">
+            Submit Decline
+          </button>
+        </div>
       </div>
     </div>
 
@@ -44,6 +57,8 @@ export default {
       orders: [], // Store pending orders
       isLoading: false, // For loading state
       refreshInterval: null, // Interval reference for auto-refresh
+      activeDeclineOrderId: null, // Track the order for which decline message is being customized
+      customDeclineMessage: "", // Store the custom decline message
     };
   },
   methods: {
@@ -88,7 +103,7 @@ export default {
           const notification = {
             orderId,
             customerName,
-            message: "Your order is now completed! Proceed to the cashier for payment and pickup.",
+            message: "Your order is now ready! Proceed to the cashier for payment and pickup.",
             timestamp: new Date().toISOString(),
           };
 
@@ -106,16 +121,70 @@ export default {
         .catch(error => console.error("Error marking order as completed:", error));
     },
 
-    // Navigate to the order record page
-    goToOrderRecord() {
-      this.$router.push({ name: 'OrderRecord' });
+    // Open the custom decline message input for a specific order
+    openDeclineDialog(order) {
+      this.activeDeclineOrderId = order.id;
+      this.customDeclineMessage = localStorage.getItem(`customDeclineMessage_${order.id}`) || ""; // Get saved message from localStorage
     },
 
-    // Start auto-refresh for pending orders every second
+    // Decline an order and send notification with custom message
+    declineOrder(orderId, customerName) {
+      const message = this.customDeclineMessage || "Unfortunately, this item is temporarily out of stock. We apologize for the inconvenience and appreciate your patience.";
+
+      fetch(`http://127.0.0.1:8000/orders/${orderId}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ status: "declined" }) // Properly formatted JSON
+      })
+        .then(response => {
+          if (!response.ok) {
+            throw new Error(`HTTP error! Status: ${response.status}`);
+          }
+          return response.json();
+        })
+        .then(() => {
+          // Immediately remove from pending orders
+          this.orders = this.orders.filter(order => order.id !== orderId);
+
+          // Prepare the notification with the custom message
+          const notification = {
+            orderId,
+            customerName,
+            message,
+            timestamp: new Date().toISOString(),
+          };
+
+          // Save the notification in localStorage for the specific user
+          const userNotificationsKey = `user_notifications_${customerName}`;
+          let notifications = JSON.parse(localStorage.getItem(userNotificationsKey)) || [];
+          notifications.push(notification);
+          localStorage.setItem(userNotificationsKey, JSON.stringify(notifications));
+
+          // Emit an event to notify other components (optional)
+          window.dispatchEvent(new Event("orderDeclined"));
+
+          alert("Order has been declined!");
+        })
+        .catch(error => console.error("Error declining order:", error));
+      
+      // Reset after submission
+      this.activeDeclineOrderId = null;
+      this.customDeclineMessage = "";
+      localStorage.removeItem(`customDeclineMessage_${orderId}`); // Clear message from localStorage after submission
+    },
+
+    // Save the decline message to localStorage whenever it's updated
+    updateDeclineMessage() {
+      if (this.activeDeclineOrderId !== null) {
+        localStorage.setItem(`customDeclineMessage_${this.activeDeclineOrderId}`, this.customDeclineMessage);
+      }
+    },
+
+    // Start auto-refresh for pending orders every 10 seconds (instead of 1 second)
     startAutoRefresh() {
       this.refreshInterval = setInterval(() => {
         this.fetchOrders();
-      }, 1000); // Set to 1000ms (1 second)
+      }, 10000); // Set to 10000ms (10 seconds)
     },
 
     // Stop auto-refresh
@@ -129,7 +198,7 @@ export default {
 
   mounted() {
     this.fetchOrders();
-    this.startAutoRefresh(); // Start auto-fetching every 1 second
+    this.startAutoRefresh(); // Start auto-fetching every 10 seconds
   },
 
   beforeUnmount() {
@@ -137,7 +206,6 @@ export default {
   }
 };
 </script>
-
 
 
 <style scoped>
@@ -208,7 +276,7 @@ button.mark-completed-btn {
   background-color: #d12f7a;
   color: white;
   border: none;
-  padding: 8px 15px;
+  padding: 5px 10px; /* Smaller size */
   border-radius: 5px;
   cursor: pointer;
   margin-top: auto;
@@ -217,6 +285,44 @@ button.mark-completed-btn {
 button.mark-completed-btn:hover {
   background-color: #b82d67;
 }
+
+
+button.decline-btn {
+  background-color: #f5a5a5;
+  color: white;
+  border: none;
+  padding: 5px 10px; /* Smaller size */
+  border-radius: 5px;
+  cursor: pointer;
+  margin-top: 10px;
+}
+
+button.decline-btn:hover {
+  background-color: #f17b7b;
+}
+
+
+.decline-submit-btn {
+  background-color: #f17b7b;
+  color: white;
+  border: none;
+  padding: 5px 10px;
+  border-radius: 5px;
+  cursor: pointer;
+  margin-top: 10px;
+}
+.decline-submit-btn:hover {
+  background-color: #d05e5e;
+}
+
+textarea {
+  width: 100%;
+  padding: 8px;
+  margin-top: 5px;
+  border-radius: 5px;
+  border: 1px solid #ccc;
+}
+
 
 .loading {
   text-align: center;

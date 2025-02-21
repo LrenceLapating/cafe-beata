@@ -94,6 +94,24 @@ export default {
   const username = this.name.trim();
 
   try {
+    // First, check if the username already exists in the backend
+    const usernameCheckResponse = await fetch("http://127.0.0.1:8000/check-username", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        username: username,
+      }),
+    });
+
+    const usernameCheckData = await usernameCheckResponse.json();
+    if (usernameCheckResponse.ok && usernameCheckData.exists) {
+      this.errorMessage = "Username already exists. Please choose a different one.";
+      return;
+    }
+
+    // If the username doesn't exist, proceed with account creation
     const response = await fetch("http://127.0.0.1:8000/register", {
       method: "POST",
       headers: {
