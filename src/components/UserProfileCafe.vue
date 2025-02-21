@@ -100,8 +100,10 @@ export default {
       }
     },
 
-    getAvatarUrl(avatar) {
-      return avatar ? `http://127.0.0.1:8000${avatar}` : '/assets/default.png';
+   getAvatarUrl(avatar) {
+  return avatar ? `http://127.0.0.1:8000${avatar}` : '/assets/default.png';
+
+
     },
 
     toggleEdit() {
@@ -109,29 +111,29 @@ export default {
     },
 
     async saveChanges() {
-      try {
-        const formData = new FormData();
-        formData.append('username', this.user.username);
-        formData.append('email', this.user.email);
-        formData.append('course', this.user.course);
-        formData.append('gender', this.user.gender);
-        formData.append('avatar', this.user.avatar);
+  try {
+    const formData = new FormData();
+    formData.append('username', this.user.username);
+    formData.append('email', this.user.email);
+    formData.append('course', this.user.course);
+    formData.append('gender', this.user.gender);
+    formData.append('avatar', this.user.avatar);
 
-        const response = await fetch(`http://127.0.0.1:8000/profile/${this.user.email}`, {
-          method: 'PUT',
-          body: formData,
-        });
+    const response = await fetch(`http://127.0.0.1:8000/profile/${this.user.email}`, {
+      method: 'PUT',
+      body: formData,
+    });
 
-        const data = await response.json();
-        if (response.ok) {
-          this.isEditing = false;
-          alert('Profile updated successfully');
-        } else {
-          alert(data.detail);
-        }
-      } catch (error) {
-        console.error('Error:', error);
-        alert('An error occurred while saving your profile.');
+    const data = await response.json();
+    if (response.ok) {
+      this.isEditing = false;
+      alert('Profile updated successfully');
+    } else {
+      alert(data.detail);
+    }
+  } catch (error) {
+    console.error('Error:', error);
+    alert('An error occurred while saving your profile.');
       }
     },
 
@@ -140,45 +142,46 @@ export default {
     },
 
     async loadProfile() {
-      try {
-        const response = await fetch(`http://127.0.0.1:8000/profile/${this.user.email}`);
-        const data = await response.json();
-        if (response.ok) {
-          this.user = data;
-          if (!this.user.avatar) {
-            this.user.avatar = '/assets/default.png';
-          }
-        } else {
-          alert(data.detail);
-        }
-      } catch (error) {
-        console.error('Error:', error);
-        alert('Failed to load profile.');
+  try {
+    const response = await fetch(`http://127.0.0.1:8000/profile/${this.user.email}`);
+    const data = await response.json();
+    if (response.ok) {
+      this.user = data;
+      if (!this.user.avatar) {
+        this.user.avatar = '/assets/default.png';
+      }
+    } else {
+      alert(data.detail);
+    }
+  } catch (error) {
+    console.error('Error:', error);
+    alert('Failed to load profile.');
+
       }
     },
 
     uploadAvatar(event) {
-      const file = event.target.files[0];
-      if (file) {
-        const formData = new FormData();
-        formData.append("avatar", file);
+  const file = event.target.files[0];
+  if (file) {
+    const formData = new FormData();
+    formData.append("avatar", file);
 
-        fetch(`http://127.0.0.1:8000/profile/upload-avatar/${this.user.email}`, {
-          method: "POST",
-          body: formData,
-        })
-          .then((response) => response.json())
-          .then((data) => {
-            if (data.message === "Avatar uploaded successfully") {
-              this.user.avatar = data.avatar_url || "/assets/default.png";
-              this.saveChanges();
-            } else {
-              alert(data.detail || "Failed to upload avatar.");
-            }
-          })
-          .catch((error) => {
-            console.error("Error uploading avatar:", error);
-            alert("An error occurred while uploading the avatar.");
+    fetch(`http://127.0.0.1:8000/profile/upload-avatar/${this.user.email}`, {
+      method: "POST",
+      body: formData,
+    })
+      .then((response) => response.json())
+      .then((data) => {
+        if (data.message === "Avatar uploaded successfully") {
+          this.user.avatar = data.avatar_url || "/assets/default.png";
+          this.saveChanges();
+        } else {
+          alert(data.detail || "Failed to upload avatar.");
+        }
+      })
+      .catch((error) => {
+        console.error("Error uploading avatar:", error);
+        alert("An error occurred while uploading the avatar.");
           });
       }
     },

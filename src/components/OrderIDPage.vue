@@ -1,5 +1,11 @@
 <template>
   <div :class="['order-id-page', { 'dark-mode': isDarkMode }]">
+    <!-- Order Completion Notification -->
+    <div v-if="orderCompletedMessage" class="order-notification">
+      <p>{{ orderCompletedMessage }}</p>
+      <button @click="clearNotification">OK</button>
+    </div>
+
     <h4>Please Screenshot Your OrderID Number!</h4>
     <h1>Order Confirmation</h1>
 
@@ -8,9 +14,14 @@
       <h2>Order ID: {{ orderID }}</h2>
     </div>
 
+    <!-- Display Customer Name -->
+    <div class="customer-name">
+      <h3>Customer: {{ customerName }}</h3>
+    </div>
+
     <!-- Display Order Details -->
     <div class="order-details">
-      <h3></h3>
+      <h3>Items:</h3>
       <ul>
         <li v-for="(item, index) in orderItems" :key="index">
           <span>{{ item.name }} - ₱{{ item.price * item.quantity }}</span>
@@ -19,9 +30,9 @@
       </ul>
     </div>
 
-    <!-- Estimated Delivery Time -->
-    <div class="delivery-time">
-      <h3>Estimated Pickup Time: {{ estimatedTime }} minutes</h3>
+    <!-- New message instead of Estimated Pickup Time -->
+    <div class="message">
+      <h3>You can watch your order in notifications in the dashboard</h3>
     </div>
 
     <div class="buttons">
@@ -34,104 +45,110 @@
 export default {
   data() {
     return {
-      orderID: this.generateOrderID(),
+      orderID: this.$route.query.orderID || "Unknown",
       orderItems: [],
-      estimatedTime: 0,
+      customerName: this.$route.query.customerName || localStorage.getItem('userName') || "Guest", // Ensure it's from localStorage
+      orderCompletedMessage: "", // Store the order completion message
       isDarkMode: localStorage.getItem("darkMode") === "true",
+      orderCompleted: false // Add a flag to track if the order is completed
     };
   },
   created() {
     this.loadOrderItems();
   },
-  mounted() {
-    // ✅ Apply dark mode if stored in localStorage
-    if (this.isDarkMode) {
-      document.body.classList.add("dark-mode");
-    }
-  },
   methods: {
-    generateOrderID() {
-      let lastOrderID = parseInt(localStorage.getItem("lastOrderID")) || 100;
-      lastOrderID = lastOrderID >= 999 ? 101 : lastOrderID + 1;
-      localStorage.setItem("lastOrderID", lastOrderID);
-      return lastOrderID;
-    },
     loadOrderItems() {
       try {
         this.orderItems = JSON.parse(this.$route.query.items || "[]");
-        this.addCategoriesToItems();
-        this.estimatedTime = this.calculateEstimatedTime();
       } catch (error) {
         console.error("Error parsing order items:", error);
         this.orderItems = [];
       }
     },
-    addCategoriesToItems() {
-      this.orderItems.forEach((item) => {
-        if (!item.category) {
-          if (item.name.includes("Coffee")) item.category = "Hot Coffee";
-          else if (item.name.includes("Juice")) item.category = "Juice Drinks";
-          else if (item.name.includes("Milktea")) item.category = "Milktea";
-          else if (item.name.includes("Frappe")) item.category = "Blended Frappes";
-          else item.category = "Food";
-        }
-      });
-    },
-    calculateEstimatedTime() {
-      let maxTime = 5;
-      if (this.orderItems.length === 0) return maxTime;
 
-      this.orderItems.forEach((item) => {
-        if (item.category === "Hot Coffee" || item.category === "Juice Drinks") {
-          maxTime = Math.max(maxTime, 7);
-        } else if (item.category === "Ice Coffee" || item.category === "Chocolate Drinks") {
-          maxTime = Math.max(maxTime, 8);
-        } else if (item.category === "Milktea" || item.category === "Blended Frappes") {
-          maxTime = Math.max(maxTime, 10);
-        } else if (item.category === "Food") {
-          maxTime = Math.max(maxTime, 10);
-        }
-      });
+    // This method sends the notification to a specific user
+    markOrderAsDone() {
+      if (!this.orderCompleted) {
+        this.orderCompleted = true;  // Set order to completed
+        this.orderCompletedMessage = "Your Order Has Completed Ready To Pickup!";
+        const notification = {
+          orderId: this.orderID,
+          customerName: this.customerName, // Attach the customer name
+          message: "Your Order Has Completed Ready To Pickup!",
+          timestamp: new Date().toISOString(),
+        };
 
-      return maxTime;
+        // Add the notification to localStorage under the specific user's notifications
+        this.addNotificationToUserNotifications(notification);
+      }
     },
+
+    // Add the notification to localStorage, ensuring it's saved per user
+    addNotificationToUserNotifications(notification) {
+      const userNotificationsKey = `user_notifications_${this.customerName}`; // Use the customerName
+      let notifications = JSON.parse(localStorage.getItem(userNotificationsKey)) || [];
+      notifications.push(notification);
+      localStorage.setItem(userNotificationsKey, JSON.stringify(notifications));
+    },
+
     goBackToDashboard() {
       this.$router.push({ name: "Dashboard" });
     },
-  },
+
+    clearNotification() {
+      this.orderCompletedMessage = ""; // Clear the message
+    }
+  }
 };
 </script>
 
-
-
-
-
 <style scoped>
+/* Order Completion Notification */
+.order-notification {
+  position: fixed;
+  top: 20px;
+  left: 50%;
+  transform: translateX(-50%);
+  background-color: #4CAF50;
+  color: white;
+  padding: 15px 20px;
+  border-radius: 5px;
+  box-shadow: 0px 4px 10px rgba(0, 0, 0, 0.2);
+  font-weight: bold;
+  z-index: 1000;
+}
+
+.order-notification button {
+  margin-left: 10px;
+  background-color: white;
+  color: #4CAF50;
+  border: none;
+  padding: 5px 10px;
+  cursor: pointer;
+  border-radius: 3px;
+}
+
+.order-notification button:hover {
+  background-color: #f8f8f8;
+}
 
 /* 🌙 Dark Mode - Dark Outer Background */
 .dark-mode .order-id-page {
-  background-color: #222 !important; /* Dark background */
-  color: white !important; /* Light text for everything outside the boxes */
+  background-color: #222 !important;
+  color: white !important;
 }
 
 /* 🌙 Dark Mode - Keep Order ID Box Light */
 .dark-mode .order-id {
-  background: #f8d2e4 !important; /* Light pink background */
-  color: black !important; /* Make text inside the box dark */
+  background: #f8d2e4 !important;
+  color: black !important;
   border: 1px solid #ccc !important;
 }
 
 /* 🌙 Dark Mode - Keep Order Details Box Light */
 .dark-mode .order-details li {
-  background: #f8d2e4 !important; /* Light pink background */
-  color: black !important; /* Dark text inside */
-  border: 1px solid #ccc !important;
-}
-
-/* 🌙 Dark Mode - Keep Delivery Time Box Light */
-.dark-mode .delivery-time {
-  background: #ffebcd !important; /* Light yellow background */
-  color: black !important; /* Make text inside the box dark */
+  background: #f8d2e4 !important;
+  color: black !important;
   border: 1px solid #ccc !important;
 }
 
@@ -142,28 +159,26 @@ export default {
 .dark-mode .order-id-page h1,
 .dark-mode .order-id-page h3,
 .dark-mode .order-id-page h4 {
-  color: white !important; /* Ensure all main texts are visible in dark mode */
+  color: white !important;
 }
 
 /* 🌙 Dark Mode - Buttons */
 .dark-mode .back-button {
-  background-color: #444 !important; /* Dark button */
-  color: white !important; /* Light text */
+  background-color: #444 !important;
+  color: white !important;
   border: 1px solid #666 !important;
 }
 
 .dark-mode .back-button:hover {
-  background-color: #666 !important; /* Slightly lighter on hover */
+  background-color: #666 !important;
 }
 
 /* 🌙 Dark Mode - Ensure Text Inside Boxes is Dark */
 .dark-mode .order-id h2,
 .dark-mode .order-details h3,
-.dark-mode .order-details span,
-.dark-mode .delivery-time h3 {
-  color: black !important; /* Dark text inside the boxes */
+.dark-mode .order-details span {
+  color: black !important;
 }
-
 
 /* Order ID Page */
 .order-id-page {
@@ -173,7 +188,7 @@ export default {
   border-radius: 15px;
   box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
   max-width: 700px;
-  margin: 0 auto; /* Centers the content */
+  margin: 0 auto;
 }
 
 /* Order ID Display */
@@ -211,9 +226,9 @@ export default {
   box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
 }
 
-/* Delivery Time */
-.delivery-time {
-  font-size: 24px;
+/* New message */
+.message {
+  font-size: 20px;
   font-weight: bold;
   background: #ffebcd;
   padding: 12px;
@@ -224,11 +239,11 @@ export default {
 
 /* Glowing effect for the "Back to Dashboard" button */
 .back-button {
-  padding: 12px 25px; /* Increased padding to fit the glowing effect */
-  font-size: 16px; /* Adjusted font size */
+  padding: 12px 25px;
+  font-size: 16px;
   background-color: transparent;
   color: #FFF;
-  border: none; /* Remove the border */
+  border: none;
   cursor: pointer;
   position: relative;
   z-index: 0;
@@ -269,12 +284,10 @@ export default {
   opacity: 0;
 }
 
-/* Hover effect for glowing */
 .back-button:hover::before {
   opacity: 1;
 }
 
-/* Active button state */
 .back-button:active:after {
   background: transparent;
 }
@@ -282,8 +295,8 @@ export default {
 .back-button:active {
   color: #000;
   font-weight: bold;
-  background-color: #d12f7a; /* Active background color */
-  border-color: #d12f7a; /* Active border color (optional, can be removed too) */
+  background-color: #d12f7a;
+  border-color: #d12f7a;
 }
 
 /* Glow Animation */
@@ -307,8 +320,8 @@ export default {
     text-align: center;
   }
 
-  .delivery-time {
-    font-size: 20px;
+  .message {
+    font-size: 18px;
     padding: 10px;
   }
 
@@ -330,8 +343,8 @@ export default {
     padding: 10px;
   }
 
-  .delivery-time {
-    font-size: 18px;
+  .message {
+    font-size: 16px;
   }
 
   button {

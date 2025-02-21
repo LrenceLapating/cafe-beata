@@ -9,12 +9,39 @@ import UserProfileCafe from './components/UserProfileCafe.vue'; // Import the re
 import CreateAccountPage from './components/CreateAccountPage.vue'; 
 import ForgotPassword from '@/components/ForgotPassword.vue'; // Make sure the path is correct
 import PrivacyAndPolicy from './components/PrivacyAndPolicy.vue'; // Import PrivacyAndPolicy component
+import AdminPage from './components/AdminPage.vue'; 
+import NotificationsPage from './components/NotificationsPage.vue';
+import ChangePassword from './components/ChangePassword.vue';
+import OrderRecord from './components/OrderRecord.vue';
+import UserNotifications from './components/UserNotifications.vue';
 
-const routes = [
+
+const routes = [  
+
+  {
+    path: '/user-notifications',
+    name: 'UserNotifications',
+    component: UserNotifications,// Adjust path accordingly
+  },
+
+  
   {
     path: '/',
     redirect: '/login',  // Set this to redirect to login as default
   },
+
+  {
+    path: '/order-record',
+    name: 'OrderRecord',
+    component: OrderRecord,
+  },
+  
+
+{
+  path: '/reset-password/:token',
+  name: 'reset-password',
+  component: ChangePassword,
+},
   {
     path: '/login',  // Explicitly set to /login for login page
     name: 'Login',
@@ -25,6 +52,19 @@ const routes = [
     name: 'ForgotPassword',
     component: ForgotPassword,
   },
+
+  {
+    path: '/notifications', // Route for Notifications Page
+    name: 'Notifications',
+    component: NotificationsPage, // Ensure you create NotificationsPage.vue
+  },
+
+  {
+    path: '/admin', // This path is where the admin login will be handled
+    name: 'AdminPage',
+    component: AdminPage,
+  },
+
   {
     path: '/dashboard',
     name: 'Dashboard',

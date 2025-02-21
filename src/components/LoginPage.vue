@@ -1,11 +1,13 @@
 <template>
   <div class="login-page">
     <div class="login-container">
-      <div class="logo-container">
+      <!-- Logo as Admin Button -->
+      <div class="logo-container" @click="redirectToAdminPage" style="cursor: pointer;">
         <img src="@/assets/uic-logo.png" alt="University Logo" class="logo" />
       </div>
+
       <h1 class="title">UIC Cafe Beàta</h1>
-      <form @submit.prevent="handleLogin" class="login-form">
+      <form v-if="!isAdminLogin" @submit.prevent="handleLogin" class="login-form">
         <div class="input-container">
           <label for="username"></label>
           <input 
@@ -29,7 +31,7 @@
         <button type="submit" class="login-button">Login</button>
         <p v-if="errorMessage" class="error">{{ errorMessage }}</p>
       </form>
-      
+
       <p class="create-account-link">
         Don't have an account? <router-link to="/create-account">Create one</router-link>
       </p>
@@ -51,42 +53,64 @@ export default {
     };
   },
   methods: {
-  async handleLogin() {
-    // Updated email regex
-    const emailRegex = /^[a-zA-Z0-9]+(_\d{12})?@uic\.edu\.ph$/;
+    // Handle regular user login
+   async handleLogin() {
+  const emailRegex = /^[a-zA-Z0-9]+(_\d{12})?@uic\.edu\.ph$/;
 
-    if (!emailRegex.test(this.username)) {
-      this.errorMessage = "Invalid UIC Email";
-      return;
-    }
+  if (!emailRegex.test(this.username)) {
+    this.errorMessage = "Invalid UIC Email";
+    return;
+  }
 
-    try {
-      const response = await fetch("http://127.0.0.1:8000/login", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email: this.username, password: this.password }),
-      });
-      const data = await response.json();
-      if (response.ok) {
-        localStorage.setItem("loggedIn", "true");
-        localStorage.setItem("userEmail", this.username);
-        this.$router.push({ name: "Dashboard" });
-      } else {
-        this.errorMessage = data.detail || "An error occurred. Please try again.";
+  try {
+    const response = await fetch("http://127.0.0.1:8000/login", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email: this.username, password: this.password }),
+    });
+    const data = await response.json();
+    console.log('Login response:', data);  // Log the response to check if username is included
+
+    if (response.ok) {
+      localStorage.setItem("loggedIn", "true");
+      localStorage.setItem("userEmail", this.username);
+
+      // Ensure that the correct username is saved
+      if (data.username) {
+        localStorage.setItem("userName", data.username);  // Save username here
       }
-    } catch (error) {
-      console.error("Error during login:", error);
-      this.errorMessage = "An unexpected error occurred. Please try again.";
+
+      this.$router.push({ name: "Dashboard" });
+    } else {
+      this.errorMessage = data.detail || "An error occurred. Please try again.";
     }
+  } catch (error) {
+    console.error("Error during login:", error);
+    this.errorMessage = "An unexpected error occurred. Please try again.";
+      }
+    },
+
+    // Redirect to AdminPage
+    redirectToAdminPage() {
+      this.$router.push({ name: "AdminPage" }); // Redirect to AdminPage.vue
     },
   },
 };
 </script>
 
-
 <style scoped>
-/* Main background image for the login page */
+/* Logo as Admin Button Style */
+.logo-container {
+  cursor: pointer; /* Ensure the logo is clickable */
+  margin-top: 20px;
+}
 
+.logo {
+  width: 60%;
+  max-width: 220px;
+  height: auto;
+  margin-bottom: 20px;
+}
 
 .terms-text {
   margin-top: 20px;

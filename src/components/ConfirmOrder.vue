@@ -24,9 +24,14 @@
       <h2>Total: ₱{{ totalPrice }}</h2>
     </div>
 
-
     <!-- No items in cart -->
     <p v-else>No items in cart. Add some from the dashboard.</p>
+
+    <!-- Loading Indicator for Confirm Order -->
+    <div v-if="isProcessingOrder" class="loading-spinner">
+      <span>Processing your order...</span>
+      <!-- You can add a spinner or animation here -->
+    </div>
 
     <!-- Separate Buttons -->
     <div class="buttons">
@@ -34,7 +39,7 @@
         <button @click="addMoreOrder" class="glowing-btn">Add More Order</button>
       </div>
       <div class="confirm-button">
-        <button @click="confirmOrder" class="glowing-btn" :disabled="cart.length === 0">Confirm Order</button>
+        <button @click="confirmOrder" class="glowing-btn" :disabled="cart.length === 0 || isProcessingOrder">Confirm Order</button>
       </div>
     </div>
   </div>
@@ -44,8 +49,9 @@
 export default {
   data() {
     return {
-      isDarkMode: localStorage.getItem('darkMode') === 'true', // Load Dark Mode preference
       cart: [], // Store multiple selected items
+      userName: localStorage.getItem('userName') || "Guest", // Fetch the logged-in user's name
+      isProcessingOrder: false,  // Added to track the order processing state
     };
   },
   computed: {
@@ -56,36 +62,15 @@ export default {
   mounted() {
     this.loadCart();
     this.addToCart();
-    
-    // ✅ Fix: Always check and apply dark mode on page load
-    if (localStorage.getItem('darkMode') === 'true') {
-      this.isDarkMode = true; // Ensure reactivity
-      document.body.classList.add('dark-mode');
-    }
+    console.log('Customer Name:', this.userName);  // Debug to check if userName is fetched correctly
   },
   methods: {
-    // 🌓 Toggle Dark Mode and save preference
-    toggleDarkMode() {
-      this.isDarkMode = !this.isDarkMode; // Toggle dark mode state
-      localStorage.setItem('darkMode', this.isDarkMode); // Save preference
-
-      // ✅ Apply or remove dark mode class dynamically
-      if (this.isDarkMode) {
-        document.body.classList.add('dark-mode');
-      } else {
-        document.body.classList.remove('dark-mode');
-      }
-    },
-
-    // Load previous cart items (from localStorage)
     loadCart() {
       const storedCart = localStorage.getItem('cart');
       if (storedCart) {
         this.cart = JSON.parse(storedCart);
       }
     },
-
-    // Add the newly selected item to the cart
     addToCart() {
       const newItem = {
         name: this.$route.query.name,
@@ -95,7 +80,6 @@ export default {
       };
 
       if (newItem.name && newItem.price) {
-        // Check if item already exists in cart, just increase quantity
         const existingItem = this.cart.find(item => item.name === newItem.name);
         if (existingItem) {
           existingItem.quantity += 1;
@@ -105,84 +89,92 @@ export default {
         this.saveCart();
       }
     },
-
-    // Increase item quantity
     increaseQuantity(index) {
       this.cart[index].quantity += 1;
       this.saveCart();
     },
-
-    // Decrease item quantity but not below 1
     decreaseQuantity(index) {
       if (this.cart[index].quantity > 1) {
         this.cart[index].quantity -= 1;
         this.saveCart();
       }
     },
-
-    // Remove an item from the cart
     removeFromCart(index) {
       this.cart.splice(index, 1);
       this.saveCart();
     },
-
-    // Save cart to localStorage
     saveCart() {
       localStorage.setItem('cart', JSON.stringify(this.cart));
     },
-
-    // Go back to dashboard to add more orders
     addMoreOrder() {
       this.$router.push({ name: 'Dashboard' });
     },
 
-    // Generate a sequential order ID and confirm the order
     confirmOrder() {
-      // Show confirmation dialog
-      const isConfirmed = window.confirm("Are you sure this is everything you want to order?");
+    const isConfirmed = window.confirm("Are you sure this is everything you want to order?");
+    if (isConfirmed) {
+        this.isProcessingOrder = true;
 
-      if (isConfirmed) {
-        // Get the current order ID from localStorage, or set to 1 if it doesn't exist
-        let orderID = localStorage.getItem('currentOrderID') || 1;
+        const customerName = localStorage.getItem('userName') || "Unknown";  // Fetch the correct username
+        console.log('Customer Name:', customerName);  // Debugging
 
-        // Increment the order ID by 1 for the next order
-        orderID = parseInt(orderID) + 1;
+        const orderData = {
+            customer_name: customerName,  // Use username here
+            items: this.cart.map(item => ({
+                name: item.name,
+                quantity: item.quantity,
+                price: item.price
+            })),
+            status: 'pending'
+        };
 
-        // Save the updated order ID back to localStorage
-        localStorage.setItem('currentOrderID', orderID);
-
-        // Pass the order details to the Order ID Page
-        this.$router.push({
-          name: 'OrderIDPage', // Ensure this matches the name in the router
-          query: {
-            orderID: orderID,  // New sequential Order ID
-            items: JSON.stringify(this.cart),  // Cart items as JSON
-            totalPrice: this.totalPrice,  // Total price
-          },
+        fetch('http://127.0.0.1:8000/orders', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(orderData)
+        })
+        .then(response => response.json())
+        .then((data) => {
+            this.isProcessingOrder = false;
+            const orderID = data.order_id; // Use the specific order ID returned from the server
+            this.$router.push({
+                name: 'OrderIDPage',
+                query: {
+                    orderID: orderID,
+                    customerName: customerName,
+                    items: JSON.stringify(this.cart),
+                    totalPrice: this.totalPrice
+                }
+            });
+            localStorage.removeItem('cart');
+            this.cart = [];
+        })
+        .catch(error => {
+            this.isProcessingOrder = false;
+            console.error("Error creating order:", error);
         });
-
-        // Clear the cart after confirming the order
-        localStorage.removeItem('cart');
-        this.cart = [];
-      } else {
-        // If the user cancels, do nothing
-        return;
       }
     },
-
-    // Helper function to load images properly
     getImagePath(image) {
       return require(`@/assets/${image}`);
-    },
+    }
   },
 };
 </script>
 
 
 
+
 <style scoped>
 
-
+.loading-spinner {
+  text-align: center;
+  font-size: 18px;
+  padding: 10px;
+  background-color: rgba(0, 0, 0, 0.5);
+  color: white;
+  border-radius: 8px;
+}
 .dark-mode li {
   background-color: #f8d2e4 !important; /* Keep pink background */
   color: black !important; /* Make text dark for readability */

@@ -3,13 +3,13 @@
     <!-- Sidebar Toggle Button (For Mobile) -->
     <button class="menu-button" @click="toggleSidebar">≣</button>
     
-    <!-- Add this link to the head section of index.html -->
+
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
-<div v-if="isSidebarOpen" class="overlay" @click="closeSidebar"></div>
+    
+    <div v-if="isSidebarOpen" class="overlay" @click="closeSidebar"></div>
     <!-- Sidebar -->
     <div :class="['sidebar', { open: isSidebarOpen }]" @click.stop>
-   
-  <button class="close-sidebar" @click="toggleSidebar">✖</button>
+      <button class="close-sidebar" @click="toggleSidebar">✖</button>
       <div class="sidebar-category">
         <h3 @click="filterCategory('Drinks')">Drinks</h3>
         <ul>
@@ -51,16 +51,31 @@
             @input="filterItems"
           />
         </div>
+
         <div class="top-bar-buttons">
-        <button class="dark-mode-button" @click="toggleDarkMode">
-  <i class="fas fa-moon"></i> <!-- Moon icon -->
-</button>
+          <!-- Dark Mode Button -->
+          <button class="dark-mode-button" @click="toggleDarkMode">
+            <i class="fas fa-moon"></i> <!-- Moon icon -->
+          </button>
+          
+
+ <router-link to="/user-notifications">
+        <button class="notification-button">
+          <i class="fas fa-bell"></i> <!-- Bell icon for notifications -->
+        </button>
+      </router-link>
+
+
+          <!-- Order History Button -->
           <button class="order-history-button" @click="handleOrderHistory">Order History</button>
+          
           
           <!-- Profile Button as Icon -->
           <button class="profile-button" @click="handleProfile">
             <i class="fas fa-user"></i> <!-- Profile icon -->
           </button>
+          
+          <!-- Logout Button -->
           <button class="logout-button" @click="handleLogout">Logout</button>
         </div>
       </div>
@@ -98,7 +113,7 @@ export default {
       searchQuery: '',
        isDarkMode: localStorage.getItem("darkMode") === "enabled",
       currentCategory: 'Ice Coffee', // Default category
-      currentTime: '', // For live time
+      currentTime: new Date().toLocaleTimeString(),
       isSidebarOpen: false, // Sidebar starts closed
       iceCoffees: [
         { name: 'Ice Peppermint Latte', price: 115.00, image: 'peppermint-latte.png' },
@@ -316,6 +331,48 @@ export default {
 
 
 <style scoped>
+
+
+
+.dark-mode-button, 
+.notification-button {
+  background-color: rgb(48, 41, 44);
+  color: white;
+  padding: 8px 12px;
+  font-size: 14px;
+  border: none;
+  border-radius: 5px;
+  cursor: pointer;
+  transition: background 0.3s ease-in-out;
+}
+
+.dark-mode-button i, 
+.notification-button i {
+  font-size: 18px; /* Adjust icon size */
+}
+
+.top-bar-buttons {
+  display: flex;
+  gap: 10px; /* Space between buttons */
+}
+
+.notification-button {
+  background-color: rgb(48, 41, 44); /* Same background as dark mode */
+  color: white;
+  padding: 8px 12px;
+  font-size: 14px;
+  border-radius: 5px;
+  cursor: pointer;
+  transition: background 0.3s ease-in-out;
+}
+
+.notification-button:hover {
+  background-color: #b82d67; /* Same hover effect as dark mode button */
+}
+
+.notification-button i {
+  font-size: 18px; /* Adjust the icon size */
+}
 
 .dark-mode {
   background-color: #121212;

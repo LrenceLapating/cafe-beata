@@ -1,36 +1,39 @@
 <template>
   <div class="order-history">
     <div class="header">
-      <!-- Update the back button to go to the OrderHistory page -->
       <button @click="goToOrderHistory" class="back-button">← Back To Menu</button>
-     
     </div>
-<div :class="{ 'dark-mode': isDarkMode }">
-    <h1>Order History</h1> <!-- Example -->
-  </div>
-    <table class="order-table">
+    <div :class="{ 'dark-mode': isDarkMode }">
+      <h1>Order History</h1>
+    </div>
+
+    <!-- Display Orders only when orders array is available -->
+    <table class="order-table" v-if="orders && orders.length">
       <thead>
         <tr>
           <th>Order No. (ID)</th>
           <th>Order Date</th>
           <th>Bill Name</th>
-          <th>Total</th>
           <th>Action</th>
         </tr>
       </thead>
       <tbody>
-        <!-- Loop through orders -->
         <tr v-for="order in orders" :key="order.id">
           <td>{{ order.id }}</td>
-          <td>{{ order.date }}</td>
-          <td>{{ order.billName }}</td>
-          <td>₱{{ order.total }}</td>
+          <td>{{ order.created_at }}</td>
+          <td>{{ order.customer_name }}</td>
+          
           <td>
             <button @click="viewOrderDetails(order)" class="view-details-button">View Details</button>
           </td>
         </tr>
       </tbody>
     </table>
+
+    <!-- No Orders Message -->
+    <div v-else>
+      <p>No orders found. Add some orders from the dashboard.</p>
+    </div>
   </div>
 </template>
 
@@ -39,40 +42,57 @@ export default {
   data() {
     return {
       isDarkMode: localStorage.getItem('darkMode') === 'true', // Detects dark mode
-      // Sample order data (replace with real API/localStorage fetch)
-      orders: [
-        { id: '000173', date: '20/01/2025', billName: 'Leynard', total: 120 },
-        { id: '000174', date: '21/01/2025', billName: 'Juan', total: 150 },
-        { id: '000175', date: '22/01/2025', billName: 'Maria', total: 200 },
-      ],
+      orders: [], // Store the fetched orders
     };
   },
   methods: {
     goToOrderHistory() {
       this.$router.push({ name: 'Dashboard' });
     },
-    
-    // Navigate to Order Details with order data
-    viewOrderDetails(order) {
-      this.$router.push({
-        name: 'OrderDetails',
-        query: {
-          orderId: order.id,
-          date: order.date,
-          billName: order.billName,
-          total: order.total,
-          items: JSON.stringify(order.items),
+
+   fetchOrders() {
+  const userName = localStorage.getItem('userName'); 
+
+  if (!userName) {
+    console.error("User name not found in localStorage.");
+    return;
+  }
+
+  fetch(`http://127.0.0.1:8000/orders?customer_name=${userName}&status=completed`) // Fetch completed orders
+    .then(response => response.json())
+    .then(data => {
+      if (data.orders) {
+        this.orders = data.orders; 
+      } else {
+        this.orders = [];
+        console.error("No completed orders found for this user.");
+      }
+    })
+    .catch(error => console.error("Error fetching orders:", error));
+    },
+
+ viewOrderDetails(order) {
+  this.$router.push({
+    name: "OrderDetails",
+    query: {
+      orderId: order.id,
+      customerName: order.customer_name,
+      items: JSON.stringify(order.items) 
         },
       });
     },
   },
+  mounted() {
+    this.fetchOrders(); // Fetch orders when the component is mounted
+  },
   watch: {
     isDarkMode(newValue) {
       document.body.classList.toggle('dark-mode', newValue);
-    }
-  }
+    },
+  },
 };
 </script>
+
 
 <style scoped>
 

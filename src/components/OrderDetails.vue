@@ -3,15 +3,14 @@
     <div class="order-card">
       <h1>Order Details</h1>
       
-      <!-- Display item details -->
       <div class="order-items">
         <h2>Items:</h2>
-        <ul>
+        <ul v-if="items.length">
           <li v-for="item in items" :key="item.name">
-            <img :src="getImagePath(item.image)" :alt="item.name" class="item-image"/>
-            <span>{{ item.name }} x {{ item.quantity }} - ₱{{ item.price * item.quantity }}</span>
+            <span>{{ item.name }} x {{ item.quantity }} - ₱{{ (item.price * item.quantity).toFixed(2) }}</span>
           </li>
         </ul>
+        <p v-else>No items found.</p>
       </div>
 
       <button @click="goBackToHistory" class="back-button">Back to Order History</button>
@@ -23,24 +22,25 @@
 export default {
   data() {
     return {
-      // Parse the items from the query and set them to items
-      items: JSON.parse(this.$route.query.items || '[]'),  // Safely parse the items from the query
+      items: this.parseItems(this.$route.query.items),
     };
   },
   methods: {
-    goBackToHistory() {
-      this.$router.push({ name: 'OrderHistory' });
+    parseItems(items) {
+      try {
+        return JSON.parse(items) || [];
+      } catch (error) {
+        console.error("Error parsing order items:", error);
+        return [];
+      }
     },
-
-    // Helper function to load images properly
-    getImagePath(image) {
-      return require(`@/assets/${image}`);
+    
+    goBackToHistory() {
+      this.$router.push({ name: "OrderHistory" });
     },
   },
 };
 </script>
-
-
 
 
 

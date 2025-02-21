@@ -35,27 +35,7 @@
           />
         </div>
 
-        <!-- Secret Question -->
-        <div class="input-container">
-          <label for="secretQuestion">Choose a secret question:</label>
-          <select v-model="secretQuestion" required>
-            <option value="What is your favorite food?">What is your favorite food?</option>
-            <option value="What is the name of your pet?">What is the name of your pet?</option>
-            <option value="What is your mother’s maiden name?">What is your mother’s maiden name?</option>
-            <option value="What city were you born in?">What city were you born in?</option>
-          </select>
-        </div>
-
-        <!-- Secret Answer -->
-        <div class="input-container">
-          <input 
-            type="text" 
-            v-model="secretAnswer" 
-            placeholder="Answer to secret question" 
-            required 
-          />
-        </div>
-
+        
         <!-- Terms and Conditions with Checkbox -->
         <div class="terms-container">
           <input type="checkbox" v-model="agreeToTerms" id="termsCheckbox" required />
@@ -93,8 +73,6 @@ export default {
       name: "",
       email: "",
       password: "",
-      secretQuestion: "What is your favorite food?",
-      secretAnswer: "",
       errorMessage: "",
       showSuccessPopup: false,
       agreeToTerms: false, // Checkbox value
@@ -102,51 +80,47 @@ export default {
   },
   methods: {
   async handleSignUp() {
-    if (!this.agreeToTerms) {
-      this.errorMessage = "You must agree to the Privacy Policy to continue.";
-      return;
+  if (!this.agreeToTerms) {
+    this.errorMessage = "You must agree to the Privacy Policy to continue.";
+    return;
+  }
+
+  const emailRegex = /^[a-zA-Z0-9]+(_\d{12})?@uic\.edu\.ph$/;
+  if (!emailRegex.test(this.email)) {
+    this.errorMessage = "Email must be a valid UIC Email.";
+    return;
+  }
+
+  const username = this.name.trim();
+
+  try {
+    const response = await fetch("http://127.0.0.1:8000/register", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        email: this.email,
+        password: this.password,
+        username: username,
+      }),
+    });
+
+    const data = await response.json();
+    if (response.ok) {
+      this.showSuccessPopup = true;
+      localStorage.setItem('userName', username);  
+      localStorage.setItem('userEmail', this.email);
+      setTimeout(() => {
+        this.$router.push({ name: "Login" });
+      }, 2000);
+    } else {
+      console.error("Error response data:", data);
+      this.errorMessage = data.detail;
     }
-
-    // Updated email regex
-    const emailRegex = /^[a-zA-Z0-9]+(_\d{12})?@uic\.edu\.ph$/;
-
-
-    if (!emailRegex.test(this.email)) {
-      this.errorMessage = "Email must be a valid UIC Email.";
-      return;
-    }
-
-    const username = this.name.trim();
-
-    try {
-      const response = await fetch("http://127.0.0.1:8000/register", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          email: this.email,
-          password: this.password,
-          secret_answer: this.secretAnswer,
-          username: username,
-        }),
-      });
-
-      const data = await response.json();
-
-      if (response.ok) {
-        this.showSuccessPopup = true;
-        localStorage.setItem('userName', this.name);
-        localStorage.setItem('userEmail', this.email);
-        setTimeout(() => {
-          this.$router.push({ name: "Login" });
-        }, 2000);
-      } else {
-        this.errorMessage = data.detail;
-      }
-    } catch (error) {
-      console.error("Error during account creation:", error);
-      this.errorMessage = "An error occurred. Please try again.";
+  } catch (error) {
+    console.error("Error during account creation:", error);
+    this.errorMessage = "An error occurred. Please try again.";
     }
   },
 
@@ -156,6 +130,9 @@ export default {
   },
 };
 </script>
+
+
+
 
 
 <style scoped>
