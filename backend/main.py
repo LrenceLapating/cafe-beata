@@ -28,7 +28,7 @@ from datetime import datetime, timedelta
 from fastapi.responses import RedirectResponse
 from fastapi import FastAPI, HTTPException, Path
 import uuid
-
+from fastapi import BackgroundTasks
 
 load_dotenv()
 
@@ -92,7 +92,7 @@ def send_reset_email(to_email, reset_url):
 import mysql.connector
 
 @app.post("/request-password-reset")
-async def request_password_reset(request: ResetPasswordRequest):
+async def request_password_reset(request: ResetPasswordRequest, background_tasks: BackgroundTasks):
     email = request.email
 
     # Connect to the database and check if the email exists
@@ -104,11 +104,14 @@ async def request_password_reset(request: ResetPasswordRequest):
     if user is None:
         raise HTTPException(status_code=400, detail="Email not found")
 
-    # Generate reset token and send reset email
+    # Generate reset token and reset URL
     reset_token = generate_reset_token(email)
     reset_url = f"http://127.0.0.1:8000/reset-password/{reset_token}"
-    send_reset_email(email, reset_url)
 
+    # Add send_reset_email to background task
+    background_tasks.add_task(send_reset_email, email, reset_url)
+
+    # Respond immediately to the client
     return {"message": "Password reset link sent to your email!"}
 
 @app.get("/reset-password/{token}")

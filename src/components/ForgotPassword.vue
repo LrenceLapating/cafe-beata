@@ -1,6 +1,12 @@
 <template>
   <div class="forgot-password-page">
     <div class="form-container">
+      <!-- Back to Login Button with Icon (inside the form-container) -->
+      <router-link to="/login" class="back-to-login-btn">
+        <i class="fas fa-arrow-left"></i>
+      </router-link>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css" />
+
       <h1>Reset Password</h1>
 
       <form @submit.prevent="handleRequestReset">
@@ -61,8 +67,6 @@ export default {
 };
 </script>
 
-
-
 <style scoped>
 /* Styling for Forgot Password Page */
 .success {
@@ -90,6 +94,7 @@ export default {
   max-width: 400px;
   text-align: center;
   backdrop-filter: blur(10px);
+  position: relative; /* Make the form-container relative for positioning the button inside */
 }
 
 h1 {
@@ -119,5 +124,30 @@ button {
   padding: 10px 20px;
   border-radius: 8px;
   cursor: pointer;
+  width: 100%;
+  margin-top: 15px;
+}
+
+button:hover {
+  background-color: #e064a7;
+}
+
+/* Back to Login Button Styles (inside the form-container) */
+.back-to-login-btn {
+  position: absolute;
+  top: 10px;
+  left: 10px;
+  font-size: 18px; /* Icon size */
+  color: #ff69b4;
+  text-decoration: none;
+}
+
+.back-to-login-btn i {
+  font-size: 20px; /* Adjust icon size */
+}
+
+/* Add hover effect to the icon */
+.back-to-login-btn:hover i {
+  color: #e064a7; /* Slight color change on hover */
 }
 </style>
