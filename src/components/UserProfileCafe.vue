@@ -199,6 +199,12 @@ export default {
 
 
 
+
+
+
+<style scoped> 
+
+
 .dark-mode .profile-container {
   background-color: #222 !important; /* Dark background */
 }
@@ -242,14 +248,15 @@ export default {
 
 /* 🌙 Dark Mode - Profile Info Highlight */
 .dark-mode .profile-info strong {
-  color: #ffcc00 !important; /* Make the strong text more visible */
+  color:rgb(151, 15, 90) !important; /* Make the strong text more visible */
 }
 
 
-<style scoped> 
+
 .profile-container {
   padding: 30px;
-  background-color: #f9f9f9;
+  background-color: #fce6e6;
+   height: 90vh;
 }
 
 h2 {
@@ -260,7 +267,7 @@ h2 {
 
 .profile-card {
   position: relative;  /* Ensure the button is positioned relative to this container */
-  background-color: white;
+  background-color:rgb(243, 233, 233);
   border-radius: 8px;
   padding: 20px;
   box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);

@@ -95,33 +95,34 @@ export default {
 
 
 <style scoped>
-
+/* Dark mode */
 .dark-mode .order-table td {
-  color: white; /* Make text visible */
-  border-color: #666; /* Darker borders */
+  color: #fff; /* White text for better visibility */
+  border-color: #444; /* Darker borders */
 }
 
-
 .dark-mode .order-table th {
-  background-color: #444; /* Dark gray for better visibility */
-  color: white; /* Make text visible */
-  border-color: #666; /* Darker borders */
+  background-color: #333; /* Dark background for header */
+  color: #fff; /* White text for better visibility */
+  border-color: #444; /* Darker borders */
 }
 
 .dark-mode .order-history {
-  color: white;
+  color: #ccc; /* Lighter text color */
 }
+
 .dark-mode h1,
 .dark-mode .order-table th,
 .dark-mode .order-table td {
-  color: white;
+  color: #fff; /* White text */
 }
-
 
 /* Basic styling for the order history page */
 .order-history {
   padding: 20px;
   font-family: Arial, sans-serif;
+  background-color: #222; /* Dark background for page */
+  color: #ccc; /* Light text for dark background */
 }
 
 .header {
@@ -132,8 +133,8 @@ export default {
 
 /* Glowing effect for the "Back To Menu" button */
 .back-button {
-  padding: 10px 20px;  /* Adjust padding */
-  font-size: 14px;     /* Adjust font size */
+  padding: 10px 20px;
+  font-size: 14px;
   background-color: transparent;
   color: #FFF;
   cursor: pointer;
@@ -141,7 +142,7 @@ export default {
   text-transform: uppercase;
   position: relative;
   z-index: 0;
-  border: none; /* Removed border */
+  border: none;
 }
 
 .back-button::after {
@@ -150,7 +151,7 @@ export default {
   position: absolute;
   width: 100%;
   height: 100%;
-  background-color: #333;
+  background-color: #444; /* Darker background */
   left: 0;
   top: 0;
   border-radius: 10px;
@@ -195,8 +196,8 @@ export default {
 
 /* Glowing effect for the "View Details" button */
 .view-details-button {
-  padding: 10px 20px;  /* Adjust padding */
-  font-size: 14px;     /* Adjust font size */
+  padding: 10px 20px;
+  font-size: 14px;
   background-color: transparent;
   color: #FFF;
   cursor: pointer;
@@ -204,7 +205,7 @@ export default {
   z-index: 0;
   border-radius: 5px;
   text-transform: uppercase;
-  border: none; /* Removed border */
+  border: none;
 }
 
 .view-details-button::after {
@@ -213,7 +214,7 @@ export default {
   position: absolute;
   width: 100%;
   height: 100%;
-  background-color: #333;
+  background-color: #444; /* Darker background */
   left: 0;
   top: 0;
   border-radius: 10px;
@@ -265,7 +266,7 @@ export default {
 
 h1 {
   font-size: 28px;
-  color: #333;
+  color: #fff; /* White text for header */
 }
 
 .order-table {
@@ -276,16 +277,16 @@ h1 {
 
 .order-table th, .order-table td {
   padding: 10px;
-  border: 1px solid #ddd;
+  border: 1px solid #555; /* Darker border for dark mode */
   text-align: center;
 }
 
 .order-table th {
-  background-color: #f2f2f2;
+  background-color: #444; /* Dark background for header */
 }
 
 .order-table td button {
-  background-color: #d12f7a;
+  background-color:rgb(31, 28, 29);
   color: white;
   padding: 8px 16px;
   border: none;
@@ -310,5 +311,4 @@ h1 {
     font-size: 12px;
   }
 }
-
 </style>

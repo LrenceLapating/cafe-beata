@@ -21,22 +21,29 @@
         <li><strong>Payment Policy:</strong> All transactions must be completed through the approved payment methods. Failure to pay on time will result in order cancellation.</li>
         <li><strong>Refunds:</strong> Refunds will only be issued under special circumstances, such as system errors or unavailability of items.</li>
       </ul>
-      
-      <h2>4. Code of Conduct</h2>
+
+      <h2>4. Notifications and Payment Procedure</h2>
+      <ul>
+        <li><strong>Order Notifications:</strong> While waiting for your order, you can check the <strong>notification button</strong> in the dashboard for updates on your order status.</li>
+        <li><strong>Payment:</strong> Once you receive a notification that your order is ready, proceed immediately to the cashier to complete your payment before picking up the order.</li>
+        <li><strong>Order Pickup:</strong> After payment is made, you will be able to proceed to pick up your order. Ensure that payment is finalized before picking up the items.</li>
+      </ul>
+
+      <h2>5. Code of Conduct</h2>
       <ul>
         <li>Any form of <strong>misuse, fraudulent activities, or abuse</strong> of the ordering system will be taken seriously.</li>
         <li>Attempting to <strong>place fake orders</strong> or misuse someone else's UIC email for transactions will be reported to university authorities.</li>
         <li>Respect for cafe staff and adherence to pick-up schedules is mandatory. Any disrespectful behavior will result in immediate action.</li>
       </ul>
       
-      <h2>5. Disciplinary Actions</h2>
+      <h2>6. Disciplinary Actions</h2>
       <ol>
         <li><strong>First Offense:</strong> Formal warning and documentation by OSAD.</li>
         <li><strong>Second Offense:</strong> Temporary suspension of ordering privileges.</li>
         <li><strong>Third Offense:</strong> Permanent ban from the UIC Cafe Beàta system, with further disciplinary actions taken by the university.</li>
       </ol>
       
-      <h2>6. Changes to Policy</h2>
+      <h2>7. Changes to Policy</h2>
       <p>UIC Cafe Beàta reserves the right to amend these policies at any time. Users will be notified of any major changes.</p>
       
       <p>By continuing to use this service, you acknowledge that you have read, understood, and agreed to these terms. Failure to comply will result in strict enforcement of the stated guidelines.</p>

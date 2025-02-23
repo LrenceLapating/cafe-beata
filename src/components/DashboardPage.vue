@@ -381,11 +381,13 @@ export default {
 
 /* Buttons and Sidebar in Dark Mode */
 .dark-mode .sidebar,
+.dark-mode .dashboard,
 .dark-mode .top-bar,
 .dark-mode .content {
   background-color: #1e1e1e;
   color: #ffffff;
 }
+
 
 /* Dark Mode Button Styling */
 .dark-mode-button {
@@ -551,6 +553,7 @@ export default {
   display: flex;
   height: 100vh;
   flex-direction: column;
+  background-color: #fce6e6;
 }
 
 
@@ -560,7 +563,7 @@ export default {
   top: 0;
   width: 250px;
   height: 100vh;
-  background-color: #f6f6f6;
+  background-color: #fce6e6;
   transition: left 0.3s ease-in-out;
   z-index: 1000;
   box-shadow: 2px 0 5px rgba(0, 0, 0, 0.1);
@@ -657,12 +660,14 @@ export default {
 /* Add other necessary styling if needed */
 .top-bar {
   display: flex;
+   border-radius: 50px;
+  background-color:rgb(255, 239, 239);
   flex-direction: column;
   text-align: center;
   justify-content: space-between;
   align-items: center;
   padding: 10px 20px;
-  background-color: #fff;
+ 
   box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
   flex-wrap: nowrap; /* Allow wrapping */
   gap: 10px;
@@ -705,7 +710,7 @@ export default {
     left: -250px; /* Start completely hidden */
     width: 250px;
     height: 100vh;
-    background-color: #f6f6f6;
+    background-color: #fce6e6;
     transition: left 0.3s ease-in-out;
     z-index: 1000;
     box-shadow: 2px 0 5px rgba(0, 0, 0, 0.1);
@@ -730,12 +735,12 @@ export default {
   top: 15px;
   left: 15px;
   z-index: 300;
-  background:rgb(56, 49, 52);
-  color: white;
+  background:rgb(255, 255, 255);
+  color: black;
   padding: 10px 15px;
   font-size: 18px;
   border: none;
-  border-radius: 5px;
+  border-radius: 15px;
   cursor: pointer;
   transition: background 0.3s ease-in-out;
 }
@@ -898,7 +903,7 @@ export default {
 /* Item styling */
 .item {
   text-align: center;
-  background-color: #f8d2e4;
+  background-color: #f8d1d1;
   border-radius: 15px;
   padding: 15px;
   cursor: pointer;

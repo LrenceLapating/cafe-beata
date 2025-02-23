@@ -12,18 +12,25 @@ import PrivacyAndPolicy from './components/PrivacyAndPolicy.vue'; // Import Priv
 import AdminPage from './components/AdminPage.vue'; 
 import NotificationsPage from './components/NotificationsPage.vue';
 import ChangePassword from './components/ChangePassword.vue';
-import OrderRecord from './components/OrderRecord.vue';
+import OrderRecord from './components/OrderRecord.vue';  // Ensure this is correctly imported
 import UserNotifications from './components/UserNotifications.vue';
+import CafeBeata from './components/CafeBeata.vue';
+
+const routes = [
+
+  {
+    path: '/cafe-beata',
+    name: 'CafeBeata',
+    component: CafeBeata,
+  },
 
 
-const routes = [  
 
   {
     path: '/user-notifications',
     name: 'UserNotifications',
-    component: UserNotifications,// Adjust path accordingly
+    component: UserNotifications,
   },
-
   
   {
     path: '/',
@@ -35,18 +42,19 @@ const routes = [
     name: 'OrderRecord',
     component: OrderRecord,
   },
-  
 
-{
-  path: '/reset-password/:token',
-  name: 'reset-password',
-  component: ChangePassword,
-},
   {
-    path: '/login',  // Explicitly set to /login for login page
+    path: '/reset-password/:token',
+    name: 'reset-password',
+    component: ChangePassword,
+  },
+
+  {
+    path: '/login',
     name: 'Login',
     component: LoginPage,
   },
+
   {
     path: '/forgot-password',
     name: 'ForgotPassword',
@@ -54,13 +62,13 @@ const routes = [
   },
 
   {
-    path: '/notifications', // Route for Notifications Page
+    path: '/notifications', 
     name: 'Notifications',
-    component: NotificationsPage, // Ensure you create NotificationsPage.vue
+    component: NotificationsPage, 
   },
 
   {
-    path: '/admin', // This path is where the admin login will be handled
+    path: '/admin', 
     name: 'AdminPage',
     component: AdminPage,
   },
@@ -82,9 +90,9 @@ const routes = [
     name: 'ConfirmOrder',
     component: ConfirmOrder,
     props: route => ({
-      name: route.query.name,   // Pass name as a prop
-      price: route.query.price, // Pass price as a prop
-      image: route.query.image, // Pass image as a prop
+      name: route.query.name,   
+      price: route.query.price,
+      image: route.query.image, 
     }),
   },
   {
@@ -94,15 +102,17 @@ const routes = [
     props: true,
   },
   {
-    path: '/create-account',  // New route for creating an account
+    path: '/create-account',  
     name: 'CreateAccount',
     component: CreateAccountPage,
   },
+
   {
     path: '/order-history',
     name: 'OrderHistory',
     component: OrderHistory,
   },
+
   {
     path: '/order-details',
     name: 'OrderDetails',
@@ -112,16 +122,18 @@ const routes = [
       date: route.query.date,
       billName: route.query.billName,
       total: route.query.total,
-      items: JSON.parse(route.query.items || '[]'), // Ensure items are parsed as an array
+      items: JSON.parse(route.query.items || '[]'),
     }),
   },
+
   {
-    path: '/user-profile-cafe', // New path for the profile page
+    path: '/user-profile-cafe', 
     name: 'UserProfileCafe',
-    component: UserProfileCafe,  // Use the UserProfileCafe component
+    component: UserProfileCafe,  
   },
+
   {
-    path: '/privacy-policy', // New path for Privacy and Policy
+    path: '/privacy-policy', 
     name: 'PrivacyPolicy',
     component: PrivacyAndPolicy,
   },
@@ -130,19 +142,6 @@ const routes = [
 const router = createRouter({
   history: createWebHistory(process.env.BASE_URL),
   routes,
-
-
-});
-  router.beforeEach((to, from, next) => {
-    const publicPages = ["Login", "CreateAccount", "ForgotPassword", "PrivacyPolicy"];
-  
-    if (publicPages.includes(to.name)) {
-      document.body.classList.remove("dark-mode"); // Ensure dark mode is removed on public pages
-    }
-  
-    next();
-
-
 });
 
 export default router;

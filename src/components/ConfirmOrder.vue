@@ -63,6 +63,9 @@ export default {
     this.loadCart();
     this.addToCart();
     console.log('Customer Name:', this.userName);  // Debug to check if userName is fetched correctly
+    
+    // Dynamically adjust the background color and height of the confirm order container
+    this.adjustContainerHeight();
   },
   methods: {
     loadCart() {
@@ -111,50 +114,71 @@ export default {
     },
 
     confirmOrder() {
-    const isConfirmed = window.confirm("Are you sure this is everything you want to order?");
-    if (isConfirmed) {
-        this.isProcessingOrder = true;
+      const isConfirmed = window.confirm("Are you sure this is everything you want to order?");
+      if (isConfirmed) {
+          this.isProcessingOrder = true;
 
-        const customerName = localStorage.getItem('userName') || "Unknown";  // Fetch the correct username
-        console.log('Customer Name:', customerName);  // Debugging
+          const customerName = localStorage.getItem('userName') || "Unknown";  // Fetch the correct username
+          console.log('Customer Name:', customerName);  // Debugging
 
-        const orderData = {
-            customer_name: customerName,  // Use username here
-            items: this.cart.map(item => ({
-                name: item.name,
-                quantity: item.quantity,
-                price: item.price
-            })),
-            status: 'pending'
-        };
+          const orderData = {
+              customer_name: customerName,  // Use username here
+              items: this.cart.map(item => ({
+                  name: item.name,
+                  quantity: item.quantity,
+                  price: item.price
+              })),
+              status: 'pending'
+          };
 
-        fetch('http://127.0.0.1:8000/orders', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(orderData)
-        })
-        .then(response => response.json())
-        .then((data) => {
-            this.isProcessingOrder = false;
-            const orderID = data.order_id; // Use the specific order ID returned from the server
-            this.$router.push({
-                name: 'OrderIDPage',
-                query: {
-                    orderID: orderID,
-                    customerName: customerName,
-                    items: JSON.stringify(this.cart),
-                    totalPrice: this.totalPrice
-                }
-            });
-            localStorage.removeItem('cart');
-            this.cart = [];
-        })
-        .catch(error => {
-            this.isProcessingOrder = false;
-            console.error("Error creating order:", error);
-        });
+          fetch('http://127.0.0.1:8000/orders', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify(orderData)
+          })
+          .then(response => response.json())
+          .then((data) => {
+              this.isProcessingOrder = false;
+              const orderID = data.order_id; // Use the specific order ID returned from the server
+              this.$router.push({
+                  name: 'OrderIDPage',
+                  query: {
+                      orderID: orderID,
+                      customerName: customerName,
+                      items: JSON.stringify(this.cart),
+                      totalPrice: this.totalPrice
+                  }
+              });
+              localStorage.removeItem('cart');
+              this.cart = [];
+          })
+          .catch(error => {
+              this.isProcessingOrder = false;
+              console.error("Error creating order:", error);
+          });
+        }
+      },
+
+    // Function to adjust the container height dynamically based on the number of items
+    adjustContainerHeight() {
+      const orderItems = document.querySelectorAll('.order-details li'); // Get all items in the order list
+      const confirmOrderContainer = document.querySelector('.confirm-order'); // Get the confirm-order container
+
+      const totalItems = orderItems.length;  // Calculate the number of items
+
+      // Dynamically adjust padding based on the number of items
+      if (totalItems <= 3) {
+        confirmOrderContainer.style.padding = '20px';  // For fewer items, keep normal padding
+      } else if (totalItems <= 6) {
+        confirmOrderContainer.style.padding = '25px';  // For moderate items, add more padding
+      } else {
+        confirmOrderContainer.style.padding = '30px';  // For many items, add more padding
       }
+
+      
+      
     },
+
     getImagePath(image) {
       return require(`@/assets/${image}`);
     }
@@ -176,7 +200,7 @@ export default {
   border-radius: 8px;
 }
 .dark-mode li {
-  background-color: #f8d2e4 !important; /* Keep pink background */
+  background-color: #fce6e6 !important; /* Keep pink background */
   color: black !important; /* Make text dark for readability */
 }
 .dark-mode li h3,
@@ -224,9 +248,13 @@ export default {
 .confirm-order {
   text-align: center;
   padding: 20px;
-  background-color: #fff;
+  background-color: #fce6e6;
   border-radius: 15px;
   box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+  height: 100vh; /* Auto height to fit the content */
+  max-height: 90vh; /* Maximum height to avoid overflowing */
+  overflow-y: auto; /* Enable scrolling if content exceeds the height */
+  transition: height 0.3s ease;  /* Smooth transition when height changes */
 }
 
 /* Order Image */
@@ -241,6 +269,8 @@ export default {
 ul {
   list-style-type: none;
   padding: 0;
+   background-color: #f8d1d1;
+   border-radius: 30px;
 }
 
 /* Order List Items */
@@ -250,8 +280,8 @@ li {
   justify-content: space-between;
   margin: 15px 0;
   padding: 15px;
-  background-color: #f8d2e4;
-  border-radius: 12px;
+  background-color: #f8d1d1;
+  border-radius: 30px;
   flex-wrap: wrap; /* Ensures content wraps properly on small screens */
   box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
 }

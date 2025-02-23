@@ -72,8 +72,9 @@ export default {
   fetch("http://127.0.0.1:8000/orders?status=completed") // Fetch only completed orders
     .then(response => response.json())
     .then(data => {
+      console.log("Fetched orders:", data); // Debugging
       if (data.orders) {
-        this.orders = data.orders; 
+        this.orders = data.orders;
         this.filteredOrders = data.orders;
       } else {
         this.orders = [];

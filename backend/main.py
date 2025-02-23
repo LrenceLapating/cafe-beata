@@ -478,42 +478,49 @@ async def create_order(order: Order):
 
     cursor = connection.cursor()
 
-    # Fetch the maximum Order ID from the database
-    cursor.execute("SELECT MAX(CAST(id AS UNSIGNED)) FROM orders")
-    result = cursor.fetchone()
-
-    # Get the last Order ID as an integer (default to 0 if no orders exist)
-    last_order_id = int(result[0]) if result[0] is not None else 0
-
-    # Generate the new Order ID (001-999 loop)
-    new_order_id = last_order_id + 1 if last_order_id < 999 else 1
-
-    # Ensure the order ID is stored as a three-digit string (e.g., "001", "045", "999")
-    formatted_order_id = f"{new_order_id:03d}"  # Converts 1 → "001", 45 → "045", 999 → "999"
-
-    # Prepare the order items as JSON
     try:
-        items_json = json.dumps([{
-            "name": item.name,
-            "quantity": item.quantity,
-            "price": item.price
-        } for item in order.items])
+        # Start a transaction
+        connection.start_transaction()
+
+        # Find the highest existing order_id
+        cursor.execute("SELECT MAX(id) FROM orders")
+        result = cursor.fetchone()
+
+        last_order_id = result[0] if result[0] else 0
+        new_order_id = last_order_id + 1 if last_order_id < 999 else 1  # Reset to 1 when it reaches 999
+
+        # Ensure the order ID is always 3 digits (001, 002, etc.)
+        formatted_order_id = f"{new_order_id:03d}"
+
+        # Prepare the order items as JSON
+        try:
+            items_json = json.dumps([{
+                "name": item.name,
+                "quantity": item.quantity,
+                "price": item.price
+            } for item in order.items])
+        except Exception as e:
+            raise HTTPException(status_code=400, detail="Error processing items: " + str(e))
+
+        # Insert the new order into the database
+        cursor.execute(
+            "INSERT INTO orders (id, customer_name, items, status) VALUES (%s, %s, %s, %s)",
+            (formatted_order_id, order.customer_name, items_json, order.status)
+        )
+
+        # Commit the transaction
+        connection.commit()
+
+        return {"message": "Order created successfully", "order_id": formatted_order_id}
+
     except Exception as e:
-        raise HTTPException(status_code=400, detail="Error processing items: " + str(e))
+        # Rollback the transaction in case of an error
+        connection.rollback()
+        raise HTTPException(status_code=500, detail="Error creating order: " + str(e))
 
-    # Insert the new order with the formatted Order ID
-    cursor.execute(
-        "INSERT INTO orders (id, customer_name, items, status) VALUES (%s, %s, %s, %s)",
-        (formatted_order_id, order.customer_name, items_json, order.status)
-    )
-    connection.commit()
-    cursor.close()
-    connection.close()
-
-    return {"message": "Order created successfully", "order_id": formatted_order_id}
-
-
-
+    finally:
+        cursor.close()
+        connection.close()
 @app.get("/orders/{order_id}")
 async def get_order_details(order_id: int):
     connection = get_db_connection()

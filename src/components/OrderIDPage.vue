@@ -1,18 +1,24 @@
 <template>
   <div :class="['order-id-page', { 'dark-mode': isDarkMode }]">
+    
+    <!-- New Order Queue Notification -->
+    
+
     <!-- Order Completion Notification -->
     <div v-if="orderCompletedMessage" class="order-notification">
       <p>{{ orderCompletedMessage }}</p>
       <button @click="clearNotification">OK</button>
     </div>
 
-    <h4>Please Screenshot Your OrderID Number!</h4>
+    <h4>Your order is in queue. Please check your order in the notifications on the dashboard .‎‎ ‎‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎  ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎  ‎ ‎‎  ‎‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎  ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎  ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ 
+    PLEASE SCREENSHOT OR SAVE THE ORDER ID NUMBER ALWAYS!</h4>
+
     <h1>Order Confirmation</h1>
 
     <!-- Display Generated Order ID -->
     <div class="order-id">
-      <h2>Order ID: {{ orderID }}</h2>
-    </div>
+      <h2>Order ID: {{ parseInt(orderID) }}</h2>
+    </div>‎ 
 
     <!-- Display Customer Name -->
     <div class="customer-name">
@@ -21,18 +27,12 @@
 
     <!-- Display Order Details -->
     <div class="order-details">
-      <h3>Items:</h3>
       <ul>
         <li v-for="(item, index) in orderItems" :key="index">
           <span>{{ item.name }} - ₱{{ item.price * item.quantity }}</span>
           <span> x {{ item.quantity }}</span>
         </li>
       </ul>
-    </div>
-
-    <!-- New message instead of Estimated Pickup Time -->
-    <div class="message">
-      <h3>You can watch your order in notifications in the dashboard</h3>
     </div>
 
     <div class="buttons">
@@ -68,18 +68,25 @@ export default {
 
     // This method sends the notification to a specific user
     markOrderAsDone() {
-      if (!this.orderCompleted) {
-        this.orderCompleted = true;  // Set order to completed
-        this.orderCompletedMessage = "Your Order Has Completed Ready To Pickup!";
-        const notification = {
-          orderId: this.orderID,
-          customerName: this.customerName, // Attach the customer name
-          message: "Your Order Has Completed Ready To Pickup!",
-          timestamp: new Date().toISOString(),
-        };
+  if (!this.orderCompleted) {
+    this.orderCompleted = true;  // Set order to completed
+    this.orderCompletedMessage = "Your Order Has Completed Ready To Pickup!";
+    
+    const orderDetails = this.orderItems.map(item => `${item.name} x${item.quantity}`).join(", ");
+    const total = this.orderItems.reduce((sum, item) => sum + item.price * item.quantity, 0).toFixed(2);
+    
+    // Constructing the notification message with highlighted details
+    const message = `Your order is ready! Proceed to the cashier for payment and pickup. <span class="highlighted-order-details">Order details: ${orderDetails}. Total: ₱${total}</span>`;
+    
+    const notification = {
+      orderId: this.orderID,
+      customerName: this.customerName, // Attach the customer name
+      message: message, // Highlighted message
+      timestamp: new Date().toISOString(),
+    };
 
-        // Add the notification to localStorage under the specific user's notifications
-        this.addNotificationToUserNotifications(notification);
+    // Add the notification to localStorage under the specific user's notifications
+    this.addNotificationToUserNotifications(notification);
       }
     },
 
@@ -102,7 +109,11 @@ export default {
 };
 </script>
 
+
+
 <style scoped>
+
+
 /* Order Completion Notification */
 .order-notification {
   position: fixed;
@@ -140,14 +151,14 @@ export default {
 
 /* 🌙 Dark Mode - Keep Order ID Box Light */
 .dark-mode .order-id {
-  background: #f8d2e4 !important;
+  background-color: #fce6e6 !important;
   color: black !important;
   border: 1px solid #ccc !important;
 }
 
 /* 🌙 Dark Mode - Keep Order Details Box Light */
 .dark-mode .order-details li {
-  background: #f8d2e4 !important;
+ background-color: #fce6e6 !important;
   color: black !important;
   border: 1px solid #ccc !important;
 }
@@ -182,14 +193,22 @@ export default {
 
 /* Order ID Page */
 .order-id-page {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;  
+  align-items: center;      
+  height: auto;            /* Ensure it adjusts based on content */
   text-align: center;
   padding: 30px;
-  background-color: #fff;
+  background-color: #fce6e6;
   border-radius: 15px;
   box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
-  max-width: 700px;
-  margin: 0 auto;
+  width: 100%;             
+  max-width: 700px;         
+  margin: 0 auto;           
+  box-sizing: border-box;   
 }
+
 
 /* Order ID Display */
 .order-id {
@@ -202,7 +221,6 @@ export default {
   box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
 }
 
-/* Order Details */
 .order-details {
   text-align: center;
   margin-bottom: 30px;
