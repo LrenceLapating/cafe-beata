@@ -22,6 +22,11 @@
               </li>
             </ul>
           </div>
+
+          <!-- Total Amount below items -->
+          <div class="order-total">
+            <p><strong>Total Amount: ₱{{ calculateOrderTotal(order.items) }}</strong></p>
+          </div>
         </div>
 
         <!-- Mark as Completed button -->
@@ -35,17 +40,17 @@
         </button>
 
         <!-- Custom message input for decline -->
-<div v-if="order.id === activeDeclineOrderId" class="decline-container">
-  <textarea v-model="customDeclineMessage" placeholder="Customize your message here..." rows="3" ref="declineText"></textarea>
-  
-  <!-- Button Container -->
-  <div class="decline-buttons">
-    <button @click="declineOrder(order.id, order.customer_name, order.items)" class="decline-submit-btn">
-      Submit
-    </button>
-    <button @click="activeDeclineOrderId = null" class="decline-cancel-btn">
-      Cancel
-    </button>
+        <div v-if="order.id === activeDeclineOrderId" class="decline-container">
+          <textarea v-model="customDeclineMessage" placeholder="Customize your message here..." rows="3" ref="declineText"></textarea>
+          
+          <!-- Button Container -->
+          <div class="decline-buttons">
+            <button @click="declineOrder(order.id, order.customer_name, order.items)" class="decline-submit-btn">
+              Submit
+            </button>
+            <button @click="activeDeclineOrderId = null" class="decline-cancel-btn">
+              Cancel
+            </button>
           </div>
         </div>
       </div>
@@ -71,21 +76,31 @@ export default {
   },
   methods: {
 
-cancelDecline() {
-  this.activeDeclineOrderId = null; // Hide decline input
-  this.customDeclineMessage = ""; // Clear text
-},
+    // Method to format the order date in the required format
+    formatDate(dateString) {
+      const date = new Date(dateString);
+      const hours = date.getHours();
+      const minutes = date.getMinutes();
+      const seconds = date.getSeconds();
+      const period = hours >= 12 ? 'PM' : 'AM';
+      const formattedDate = `${date.getFullYear()}-${(date.getMonth() + 1).toString().padStart(2, '0')}-${date.getDate().toString().padStart(2, '0')} ${period}${(hours % 12 || 12)}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+      return formattedDate;
+    },
+
+    cancelDecline() {
+      this.activeDeclineOrderId = null; // Hide decline input
+      this.customDeclineMessage = ""; // Clear text
+    },
 
     // Navigate to the Order Record page
     goToOrderRecord() {
       this.$router.push({ name: "OrderRecord" });  // Ensure this matches the name of the route
     },
 
-
-logout() {
-    localStorage.removeItem("userName");  // Remove the userName from localStorage
-    this.$router.push({ name: "LoginPage" });  // Redirect the user to the Login page (adjust the route as needed)
-  },
+    logout() {
+      localStorage.removeItem("userName");  // Remove the userName from localStorage
+      this.$router.push({ name: "LoginPage" });  // Redirect the user to the Login page (adjust the route as needed)
+    },
 
     // Fetch orders from API
     fetchOrders() {
@@ -116,48 +131,54 @@ logout() {
       return items.map(item => `${item.name} x${item.quantity}`).join(", ");
     },
 
+    // Calculate the total price for a single order
+    calculateOrderTotal(items) {
+      if (!Array.isArray(items)) return "₱0";
+      return items.reduce((sum, item) => sum + item.price * item.quantity, 0).toFixed(2);
+    },
+
     // Mark an order as completed and send notification
-   markAsCompleted(orderId, customerName, items) {
-  fetch(`http://127.0.0.1:8000/orders/${orderId}`, {
-    method: "PUT",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ status: "completed" }) // Properly formatted JSON
-  })
-    .then(response => {
-      if (!response.ok) {
-        throw new Error(`HTTP error! Status: ${response.status}`);
-      }
-      return response.json();
-    })
-    .then(() => {
-      // Immediately remove from pending orders
-      this.orders = this.orders.filter(order => order.id !== orderId);
+    markAsCompleted(orderId, customerName, items) {
+      fetch(`http://127.0.0.1:8000/orders/${orderId}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ status: "completed" }) // Properly formatted JSON
+      })
+        .then(response => {
+          if (!response.ok) {
+            throw new Error(`HTTP error! Status: ${response.status}`);
+          }
+          return response.json();
+        })
+        .then(() => {
+          // Immediately remove from pending orders
+          this.orders = this.orders.filter(order => order.id !== orderId);
 
-      // Calculate the total price
-      const total = items.reduce((sum, item) => sum + item.price * item.quantity, 0).toFixed(2);
+          // Calculate the total price
+          const total = items.reduce((sum, item) => sum + item.price * item.quantity, 0).toFixed(2);
 
-      // Prepare the notification with highlighted order details (HTML added)
-      const notification = {
-        orderId,
-        customerName,
-        message: `Your order is now ready! Proceed to the cashier for payment and pickup. <span class="highlighted-order-details">Order details: ${this.formatItems(items)}. Total: ₱${total}</span>`,
-        timestamp: new Date().toISOString(),
-        items,  // Include items in the notification
-        total,  // Include total in the notification
-      };
+          // Prepare the notification with highlighted order details (HTML added)
+          const notification = {
+            orderId,
+            customerName,
+            message: `Your order is now ready! Proceed to the cashier for payment and pickup. <span class="highlighted-order-details">Order details: ${this.formatItems(items)}. Total: ₱${total}</span>`,
+            timestamp: new Date().toISOString(),
+            items,  // Include items in the notification
+            total,  // Include total in the notification
+          };
 
-      // Save the notification in localStorage for the specific user
-      const userNotificationsKey = `user_notifications_${customerName}`;
-      let notifications = JSON.parse(localStorage.getItem(userNotificationsKey)) || [];
-      notifications.push(notification);
-      localStorage.setItem(userNotificationsKey, JSON.stringify(notifications));
+          // Save the notification in localStorage for the specific user
+          const userNotificationsKey = `user_notifications_${customerName}`;
+          let notifications = JSON.parse(localStorage.getItem(userNotificationsKey)) || [];
+          notifications.push(notification);
+          localStorage.setItem(userNotificationsKey, JSON.stringify(notifications));
 
-      // Emit an event to notify other components (optional)
-      window.dispatchEvent(new Event("orderCompleted"));
+          // Emit an event to notify other components (optional)
+          window.dispatchEvent(new Event("orderCompleted"));
 
-      alert("Order marked as completed!");
-    })
-    .catch(error => console.error("Error marking order as completed:", error));
+          alert("Order marked as completed!");
+        })
+        .catch(error => console.error("Error marking order as completed:", error));
     },
 
     // Open the custom decline message input for a specific order
@@ -251,6 +272,9 @@ logout() {
 };
 </script>
 
+
+
+
 <style scoped>
 
 
@@ -277,6 +301,8 @@ logout() {
   font-size: 14px;
   margin-bottom: 10px; /* Space between textarea and buttons */
 }
+
+
 
 
 .decline-buttons {
@@ -346,6 +372,13 @@ h1 {
   justify-content: flex-start;  /* Align items to the left */
 }
 
+.order-total {
+  margin-top: 10px;
+  font-weight: bold;
+  color: #d12f7a;
+  text-align: center; /* Ensure it aligns nicely with the rest of the content */
+}
+
 .order-item {
   background-color: #f8d2e4; /* Light pink background */
   padding: 15px;
@@ -358,6 +391,7 @@ h1 {
   justify-content: space-between;
   height: auto; /* Let height adjust based on content */
   box-sizing: border-box;
+  margin-bottom: 20px;
 }
 
 .order-details h3 {

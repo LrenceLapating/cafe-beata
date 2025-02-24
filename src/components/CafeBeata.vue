@@ -110,18 +110,24 @@ export default {
   padding: 15px 20px; /* Adjusted for better mobile fit */
   background-color: #fce6e6;
   z-index: 1000; /* Ensures it stays above other content */
-  position: sticky; 
+  position: sticky;
   border-bottom: 2px solid #d88e8e; /* Added border for a more defined header */
+  animation: slideIn 0.5s ease-out; /* Header slide-in animation */
 }
 
 .logo {
   font-size: 1.8em; /* Slightly smaller font size for better fit */
   font-weight: bold;
-   font-family: 'Roboto', sans-serif;
-  color:rgb(180, 102, 102); /* Highlight text color */
+  font-family: 'Roboto', sans-serif;
+  color: rgb(180, 102, 102); /* Highlight text color */
   margin-left: 10px;
   cursor: pointer; /* Make it clickable */
   text-transform: uppercase; /* Adds emphasis */
+  transition: transform 0.3s ease;
+}
+
+.logo:hover {
+  transform: scale(1.1); /* Logo scaling on hover */
 }
 
 .nav-links {
@@ -129,44 +135,49 @@ export default {
   gap: 20px;
   font-size: 1.1em; /* Slightly smaller font size */
   font-weight: bold;
-   font-family: 'Roboto', sans-serif;
+  font-family: 'Roboto', sans-serif;
   color: #5e5e5e;
 }
 
 .nav-links a {
   text-decoration: none;
   color: #5e5e5e;
-  transition: color 0.3s ease;
+  transition: color 0.3s ease, transform 0.3s ease;
   cursor: pointer;
 }
 
 .nav-links a:hover {
   color: #f4a261;
-  text-decoration: underline; /* Added underline effect on hover */
+  text-decoration: underline;
+  transform: scale(1.1); /* Hover scaling for links */
 }
 
 .hero {
   display: flex;
   justify-content: space-between;
   padding: 40px;
-  background-color: #f8d1d1;
+  background: linear-gradient(to right, #f8d1d1, #fce6e6);
   flex-wrap: wrap;
+  animation: fadeIn 1s ease-in-out; /* Fade-in animation for hero section */
 }
 
 .hero-text {
   max-width: 50%;
   padding: 20px;
+  animation: slideInRight 1s ease-out; /* Slide-in right animation */
 }
 
 .hero-text h1 {
   font-size: 3em;
   color: #3b2a2a;
+  animation: fadeIn 1s ease-in-out;
 }
 
 .hero-text p {
   margin-top: 10px;
   font-size: 1.2em;
   color: #5e5e5e;
+  animation: fadeIn 1s ease-in-out 0.5s; /* Delay for paragraph */
 }
 
 .get-now-btn,
@@ -181,11 +192,14 @@ export default {
   margin-right: 10px;
   border-radius: 5px;
   transition: all 0.3s ease;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1); /* Box shadow */
 }
 
 .get-now-btn:hover,
 .play-video-btn:hover {
   background-color: #e0763d;
+  transform: scale(1.05); /* Button scaling effect */
+  box-shadow: 0 6px 12px rgba(0, 0, 0, 0.2); /* Hover box shadow */
 }
 
 .hero-image {
@@ -196,6 +210,12 @@ export default {
   max-width: 100%;
   height: auto;
   border-radius: 10px;
+  animation: fadeIn 1s ease-in-out 0.8s; /* Fade-in with delay */
+  transition: transform 0.3s ease;
+}
+
+.hero-image img:hover {
+  transform: scale(1.05); /* Slight zoom on hover */
 }
 
 /* About Us Section */
@@ -203,6 +223,9 @@ export default {
   background-color: #fce6e6;
   padding: 40px;
   text-align: center;
+  animation: fadeIn 1s ease-in-out 1s; /* About section fade-in */
+  border-radius: 15px;
+  box-shadow: 0 10px 20px rgba(0, 0, 0, 0.1); /* Card-like shadow */
 }
 
 .about-us h2 {
@@ -222,6 +245,8 @@ export default {
   padding: 40px;
   text-align: center;
   background-color: #fce6e6;
+  border-radius: 15px;
+  box-shadow: 0 10px 20px rgba(0, 0, 0, 0.1); /* Card-like shadow */
 }
 
 .contact-us h2 {
@@ -244,11 +269,12 @@ export default {
 .social-icon img {
   width: 40px;
   height: 40px;
-  transition: transform 0.3s ease;
+  transition: transform 0.3s ease, filter 0.3s ease;
 }
 
 .social-icon img:hover {
   transform: scale(1.1);
+  filter: brightness(1.3); /* Brighten on hover */
 }
 
 /* Footer */
@@ -277,6 +303,34 @@ export default {
 .footer-info p {
   font-size: 1.2em;
   color: #5e5e5e;
+}
+
+/* Animations */
+@keyframes slideIn {
+  0% {
+    transform: translateY(-100%);
+  }
+  100% {
+    transform: translateY(0);
+  }
+}
+
+@keyframes fadeIn {
+  0% {
+    opacity: 0;
+  }
+  100% {
+    opacity: 1;
+  }
+}
+
+@keyframes slideInRight {
+  0% {
+    transform: translateX(100%);
+  }
+  100% {
+    transform: translateX(0);
+  }
 }
 
 /* Media Queries for responsiveness */
@@ -348,7 +402,7 @@ export default {
   .nav-links a {
     font-size: 1em;
     text-align: center;
-      color:rgb(189, 56, 56);
+    color: rgb(189, 56, 56);
   }
 
   .nav-links a:hover {

@@ -5,10 +5,19 @@
     </div>
     <div :class="{ 'dark-mode': isDarkMode }">
       <h1>Order History</h1>
+
+      <!-- Search Bar -->
+      <input 
+        type="text" 
+        v-model="searchQuery" 
+        @input="filterOrders" 
+        placeholder="Search by Order ID, Order Date, or Bill Name" 
+        class="search-bar"
+      />
     </div>
 
     <!-- Display Orders only when orders array is available -->
-    <table class="order-table" v-if="orders && orders.length">
+    <table class="order-table" v-if="filteredOrders.length">
       <thead>
         <tr>
           <th>Order No. (ID)</th>
@@ -18,9 +27,9 @@
         </tr>
       </thead>
       <tbody>
-        <tr v-for="order in orders" :key="order.id">
+        <tr v-for="order in filteredOrders" :key="order.id">
           <td>{{ order.id }}</td>
-          <td>{{ order.created_at }}</td>
+          <td>{{ formatDate(order.created_at) }}</td> <!-- Format Order Date -->
           <td>{{ order.customer_name }}</td>
           
           <td>
@@ -37,12 +46,15 @@
   </div>
 </template>
 
+
 <script>
 export default {
   data() {
     return {
       isDarkMode: localStorage.getItem('darkMode') === 'true', // Detects dark mode
       orders: [], // Store the fetched orders
+      searchQuery: '', // Store search query input
+      filteredOrders: [], // Store filtered orders based on search
     };
   },
   methods: {
@@ -50,34 +62,62 @@ export default {
       this.$router.push({ name: 'Dashboard' });
     },
 
-   fetchOrders() {
-  const userName = localStorage.getItem('userName'); 
+    fetchOrders() {
+      const userName = localStorage.getItem('userName'); 
 
-  if (!userName) {
-    console.error("User name not found in localStorage.");
-    return;
-  }
-
-  fetch(`http://127.0.0.1:8000/orders?customer_name=${userName}&status=completed`) // Fetch completed orders
-    .then(response => response.json())
-    .then(data => {
-      if (data.orders) {
-        this.orders = data.orders; 
-      } else {
-        this.orders = [];
-        console.error("No completed orders found for this user.");
+      if (!userName) {
+        console.error("User name not found in localStorage.");
+        return;
       }
-    })
-    .catch(error => console.error("Error fetching orders:", error));
+
+      fetch(`http://127.0.0.1:8000/orders?customer_name=${userName}&status=completed`) // Fetch completed orders
+        .then(response => response.json())
+        .then(data => {
+          if (data.orders) {
+            this.orders = data.orders;
+            this.filteredOrders = this.orders; // Initially set filteredOrders to all orders
+          } else {
+            this.orders = [];
+            this.filteredOrders = [];
+            console.error("No completed orders found for this user.");
+          }
+        })
+        .catch(error => console.error("Error fetching orders:", error));
     },
 
- viewOrderDetails(order) {
-  this.$router.push({
-    name: "OrderDetails",
-    query: {
-      orderId: order.id,
-      customerName: order.customer_name,
-      items: JSON.stringify(order.items) 
+    filterOrders() {
+      if (this.searchQuery === '') {
+        this.filteredOrders = this.orders;
+      } else {
+        this.filteredOrders = this.orders.filter(order => {
+          const searchQueryLower = this.searchQuery.toLowerCase();
+          return (
+            order.id.toString().includes(this.searchQuery) || 
+            order.customer_name.toLowerCase().includes(searchQueryLower) ||
+            order.created_at.toLowerCase().includes(searchQueryLower) // Include Order Date in the search
+          );
+        });
+      }
+    },
+
+    // Method to format the order date
+    formatDate(dateString) {
+      const date = new Date(dateString);
+      const hours = date.getHours();
+      const minutes = date.getMinutes();
+      const seconds = date.getSeconds();
+      const period = hours >= 12 ? 'PM' : 'AM';
+      const formattedDate = `${date.getFullYear()}-${(date.getMonth() + 1).toString().padStart(2, '0')}-${date.getDate().toString().padStart(2, '0')} ${period}${(hours % 12 || 12)}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+      return formattedDate;
+    },
+
+    viewOrderDetails(order) {
+      this.$router.push({
+        name: "OrderDetails",
+        query: {
+          orderId: order.id,
+          customerName: order.customer_name,
+          items: JSON.stringify(order.items) 
         },
       });
     },
@@ -94,41 +134,83 @@ export default {
 </script>
 
 
+
 <style scoped>
-/* Dark mode */
+
+.search-bar {
+  margin: 20px 0;
+  padding: 10px;
+  font-size: 16px;
+  border-radius: 10px;
+  border: 1px solid #ddd;
+  width: 90%;
+  max-width: 400px;
+  display: block;
+}
+
+
+
+/* Light mode styles */
+.order-history {
+  padding: 20px;
+  font-family: Arial, sans-serif;
+  background-color: #fce6e6; /* Light pink background */
+  color: #222; /* Dark text for light background */
+  height: 110vh; /* Auto height to fit the content */
+  max-height: 90vh; /* Maximum height to avoid overflowing */
+  overflow-y: auto; /* Enable scrolling if content exceeds the height */
+  transition: height 0.3s ease;  /* Smooth transition when height changes */
+}
+
+.order-table th {
+  background-color: #ffffff; /* White background for table headers */
+  color: #333; /* Dark text for better visibility */
+  border-color: #ddd; /* Light border */
+}
+
+.order-table td {
+  background-color: #ffffff; /* White background for table data */
+  color: #333; /* Dark text */
+  border-color: #ddd; /* Light border */
+}
+
+.order-table td button {
+  background-color: rgb(31, 28, 29); /* Button color */
+  color: white;
+  padding: 8px 16px;
+  border: none;
+  border-radius: 5px;
+  cursor: pointer;
+  font-size: 14px;
+  transition: background-color 0.3s;
+}
+
+.order-table td button:hover {
+  background-color: #b82d67; /* Hover color */
+}
+
+/* Dark mode styles (still included for the future or switch) */
 .dark-mode .order-table td {
   color: #fff; /* White text for better visibility */
+  background-color: #333; /* Dark background for table data */
   border-color: #444; /* Darker borders */
 }
 
 .dark-mode .order-table th {
-  background-color: #333; /* Dark background for header */
-  color: #fff; /* White text for better visibility */
+  background-color: #222; /* Dark background for header */
+  color: #fff; /* White text for visibility */
   border-color: #444; /* Darker borders */
 }
 
 .dark-mode .order-history {
-  color: #ccc; /* Lighter text color */
+  color: #ccc; /* Lighter text color for better contrast */
+  background-color: #1d1d1d; /* Dark background */
 }
 
 .dark-mode h1,
 .dark-mode .order-table th,
 .dark-mode .order-table td {
-  color: #fff; /* White text */
-}
-
-/* Basic styling for the order history page */
-.order-history {
-  padding: 20px;
-  font-family: Arial, sans-serif;
-  background-color: #222; /* Dark background for page */
-  color: #ccc; /* Light text for dark background */
-}
-
-.header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
+  color: #fff; /* White text for dark mode */
 }
 
 /* Glowing effect for the "Back To Menu" button */
@@ -203,7 +285,7 @@ export default {
   cursor: pointer;
   position: relative;
   z-index: 0;
-  border-radius: 5px;
+  border-radius: 10px;
   text-transform: uppercase;
   border: none;
 }
@@ -266,7 +348,7 @@ export default {
 
 h1 {
   font-size: 28px;
-  color: #fff; /* White text for header */
+  color: #333; /* Dark text for light mode */
 }
 
 .order-table {
@@ -277,16 +359,16 @@ h1 {
 
 .order-table th, .order-table td {
   padding: 10px;
-  border: 1px solid #555; /* Darker border for dark mode */
+  border: 1px solid #ddd; /* Lighter border for light mode */
   text-align: center;
 }
 
 .order-table th {
-  background-color: #444; /* Dark background for header */
+  background-color: #f4f4f4; /* Light header background */
 }
 
 .order-table td button {
-  background-color:rgb(31, 28, 29);
+  background-color: rgb(31, 28, 29);
   color: white;
   padding: 8px 16px;
   border: none;

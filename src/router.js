@@ -34,7 +34,7 @@ const routes = [
   
   {
     path: '/',
-    redirect: '/login',  // Set this to redirect to login as default
+    redirect: '/cafe-beata',  // Set this to redirect to login as default
   },
 
   {

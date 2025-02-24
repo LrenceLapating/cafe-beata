@@ -33,7 +33,7 @@
       <tbody>
         <tr v-for="order in filteredOrders" :key="order.id">
           <td>{{ order.id }}</td>
-          <td>{{ order.created_at }}</td>
+          <td>{{ formatDate(order.created_at) }}</td> <!-- Format Order Date -->
           <td>{{ order.customer_name }}</td>
           <td>{{ calculateTotal(order.items) }}</td>
           <td>
@@ -53,6 +53,7 @@
   </div>
 </template>
 
+
 <script>
 export default {
   data() {
@@ -68,21 +69,21 @@ export default {
       this.$router.push({ name: "Notifications" });
     },
 
-   fetchOrders() {
-  fetch("http://127.0.0.1:8000/orders?status=completed") // Fetch only completed orders
-    .then(response => response.json())
-    .then(data => {
-      console.log("Fetched orders:", data); // Debugging
-      if (data.orders) {
-        this.orders = data.orders;
-        this.filteredOrders = data.orders;
-      } else {
-        this.orders = [];
-        this.filteredOrders = [];
-        console.error("No orders found.");
-      }
-    })
-    .catch(error => console.error("Error fetching orders:", error));
+    fetchOrders() {
+      fetch("http://127.0.0.1:8000/orders?status=completed") // Fetch only completed orders
+        .then(response => response.json())
+        .then(data => {
+          console.log("Fetched orders:", data); // Debugging
+          if (data.orders) {
+            this.orders = data.orders;
+            this.filteredOrders = data.orders;
+          } else {
+            this.orders = [];
+            this.filteredOrders = [];
+            console.error("No orders found.");
+          }
+        })
+        .catch(error => console.error("Error fetching orders:", error));
     },
 
     filterOrders() {
@@ -92,9 +93,21 @@ export default {
         return (
           order.id.toString().includes(query) || // Match Order ID
           order.customer_name.toLowerCase().includes(query) || // Match Customer Name
-          order.items.some(item => item.name.toLowerCase().includes(query)) // Match Items
+          order.items.some(item => item.name.toLowerCase().includes(query)) || // Match Items
+          this.formatDate(order.created_at).toLowerCase().includes(query) // Match Order Date
         );
       });
+    },
+
+    // Method to format the order date
+    formatDate(dateString) {
+      const date = new Date(dateString);
+      const hours = date.getHours();
+      const minutes = date.getMinutes();
+      const seconds = date.getSeconds();
+      const period = hours >= 12 ? 'PM' : 'AM';
+      const formattedDate = `${date.getFullYear()}-${(date.getMonth() + 1).toString().padStart(2, '0')}-${date.getDate().toString().padStart(2, '0')} ${period}${(hours % 12 || 12)}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+      return formattedDate;
     },
 
     formatItems(items) {
@@ -120,6 +133,9 @@ export default {
   },
 };
 </script>
+
+
+
 
 <style scoped>
 .order-record {
