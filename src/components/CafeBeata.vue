@@ -45,8 +45,8 @@
           <div class="coffee-img-container">
             <img src="@/assets/cappuccino.png" alt="Cappuccino">
           </div>
-          <h3>Cappuccino</h3>
-          <button>Order Now</button>
+          <h3>Cappuccino</h3>           
+          <button class="order-now-btn" @click="goToPage('/login')">Order Now</button>
         </div>
 
         <div class="coffee-card">
@@ -54,7 +54,7 @@
             <img src="@/assets/americano.png" alt="Americano">
           </div>
           <h3>Americano</h3>
-          <button>Order Now</button>
+          <button class="order-now-btn" @click="goToPage('/login')">Order Now</button>
         </div>
 
         <div class="coffee-card">
@@ -62,7 +62,7 @@
             <img src="@/assets/espresso.png" alt="Espresso">
           </div>
           <h3>Espresso</h3>
-          <button>Order Now</button>
+          <button class="order-now-btn" @click="goToPage('/login')">Order Now</button>
         </div>
       </div>
 

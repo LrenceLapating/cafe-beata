@@ -252,7 +252,7 @@ export default {
   border-radius: 15px;
   box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
   height: 100vh; /* Auto height to fit the content */
-  max-height: 90vh; /* Maximum height to avoid overflowing */
+  max-height: 95vh; /* Maximum height to avoid overflowing */
   overflow-y: auto; /* Enable scrolling if content exceeds the height */
   transition: height 0.3s ease;  /* Smooth transition when height changes */
 }
@@ -299,7 +299,7 @@ li {
   border: none;
   border-radius: 50%;
   cursor: pointer;
-  background-color: #d12f7a;
+  background-color:rgb(219, 144, 144);
   color: white;
   font-size: 18px;
   transition: background 0.3s;
@@ -323,6 +323,13 @@ li {
 
 .remove-btn:hover {
   background-color: darkred;
+}
+@media (max-width: 480px) {
+    button[data-v-77d1959e] {
+        font-size: 13px;
+        padding: 8px;
+        max-width: 260px;
+    }
 }
 
 /* Buttons Container */
@@ -444,6 +451,25 @@ li {
     max-width: 280px;
   }
 }
+
+
+
+@media (max-width: 480px) {
+    .remove-btn[data-v-77d1959e] {
+        font-size: 12px;
+        padding: 5px 8px;
+        margin-top: 10px; /* Adjust this value to move the button down */
+    }
+} 
+
+@media (max-width: 768px) {
+    .remove-btn[data-v-77d1959e] {
+        font-size: 12px;
+        padding: 6px 10px;
+        margin-top: 12px; /* Adjust this value to move the button down */
+    }
+}
+
 
 /* Extra Small Screens (iPhone SE, very small phones) */
 @media (max-width: 480px) {

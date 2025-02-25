@@ -118,7 +118,7 @@ export default {
       iceCoffees: [
         { name: 'Ice Peppermint Latte', price: 115.00, image: 'peppermint-latte.png' },
         { name: 'Ice Matcha Cafe Latte', price: 115.00, image: 'matcha-cafe-latte.png' },
-        { name: 'Ice Cafe Latte', price: 80.00, image: 'cafe-latte.png' },
+        { name: 'Ice Cafe Latte', price: 80.00, image: 'ice-cafe-latte.png' },
         { name: 'Ice Caramel Macchiato', price: 115.00, image: 'caramel-macchiato.png' },
         { name: 'Ice Angel Affogato', price: 115.00, image: 'angel-affogato.png' },
         { name: 'Ice Spanish Latte', price: 115.00, image: 'spanish-latte.png' },
@@ -130,21 +130,21 @@ export default {
         { name: 'Ice Hazelnut Latte', price: 115.00, image: 'hazelnut-latte.png' },
         { name: 'Ice Cafe Frizzy', price: 80.00, image: 'cafe-frizzy.png' },
         { name: 'Ice Americano Lemon', price: 90.00, image: 'americano-lemon.png' },
-        { name: 'Ice Cafe Americano', price: 75.00, image: 'cafe-americano.png' }
+        { name: 'Ice Cafe Americano', price: 75.00, image: 'ice-cafe-americano.png' }
       ],
       hotCoffees: [
         { name: 'Hot Cafe Americano', price: 70.00, image: 'cafe-americano.png' },
-        { name: 'Hot Peppermint Latte', price: 90.00, image: 'peppermint-latte.png' },
-        { name: 'Hot Matcha Cafe Latte', price: 90.00, image: 'matcha-cafe-latte.png' },
+        { name: 'Hot Peppermint Latte', price: 90.00, image: 'hot-peppermint-latte.png' },
+        { name: 'Hot Matcha Cafe Latte', price: 90.00, image: 'hot-matcha-cafe-latte.png' },
         { name: 'Hot Cafe Latte', price: 85.00, image: 'cafe-latte.png' },
-        { name: 'Hot Cafe Latte Macchiato', price: 85.00, image: 'cafelattemacc.png' },
-        { name: 'Hot Caramel Macchiato', price: 90.00, image: 'caramel-macchiato.png' },
-        { name: 'Hot Spanish Latte', price: 90.00, image: 'spanish-latte.png' },
-        { name: 'Hot Ice Cappuccino', price: 75.00, image: 'ice-cappuccino.png' },
-        { name: 'Hot Cafe Mocha', price: 90.00, image: 'cafe-mocha.png' },
-        { name: 'Hot Salted Caramel Macchiato', price: 90.00, image: 'salted-caramel-macchiato.png' },
-        { name: 'Hot Vanilla Latte', price: 90.00, image: 'vanilla-latte.png' },
-        { name: 'Hot Hazelnut Latte', price: 90.00, image: 'hazelnut-latte.png' },
+        { name: 'Hot Cafe Latte Macchiato', price: 85.00, image: 'hot-cafelattemacc.png' },
+        { name: 'Hot Caramel Macchiato', price: 90.00, image: 'hot-caramel-macchiato.png' },
+        { name: 'Hot Spanish Latte', price: 90.00, image: 'hot-spanish-latte.png' },
+        { name: 'Hot Ice Cappuccino', price: 75.00, image: 'hot-cappuccino.png' },
+        { name: 'Hot Cafe Mocha', price: 90.00, image: 'hot-cafe-mocha.png' },
+        { name: 'Hot Salted Caramel Macchiato', price: 90.00, image: 'hot-salted-caramel-macchiato.png' },
+        { name: 'Hot Vanilla Latte', price: 90.00, image: 'hot-vanilla-latte.png' },
+        { name: 'Hot Hazelnut Latte', price: 90.00, image: 'hot-hazelnut-latte.png' },
         { name: 'Hot Tea Pot', price: 60.00, image: 'hotea-pot.png' }
       ],
       juiceDrinks: [
