@@ -10,7 +10,10 @@
       <button @click="clearNotification">OK</button>
     </div>
 
-    <h4>Your order is in queue. Please check your order in the notifications on the dashboard .‎‎ ‎‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎  ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎  ‎ ‎‎  ‎‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎  ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎  ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ ‎ 
+ <h4>
+    Your order is in queue.. Please check your dashboard notifications regularly for updates.</h4>
+
+    <h4>
     PLEASE SCREENSHOT OR SAVE THE ORDER ID NUMBER ALWAYS!</h4>
 
     <h1>Order Confirmation</h1>
@@ -195,15 +198,17 @@ export default {
 .order-id-page {
   display: flex;
   flex-direction: column;
-  justify-content: center;  
+   
   align-items: center;      
-  height: auto;            /* Ensure it adjusts based on content */
+  height: 100vh;
+  max-height: 100vh;    
+  overflow-y: auto;          /* Ensure it adjusts based on content */
   text-align: center;
   padding: 30px;
   background-color: #fce6e6;
   border-radius: 15px;
   box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
-  width: 100%;             
+  width: 100%;         
   max-width: 700px;         
   margin: 0 auto;           
   box-sizing: border-box;   

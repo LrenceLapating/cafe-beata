@@ -2,7 +2,7 @@
   <div :class="['notifications-container', { 'dark-mode': isDarkMode }]">
     <!-- Back Button -->
     <router-link to="/dashboard" class="back-button">
-      <i class="fas fa-arrow-left"></i> Back
+      ← Back
     </router-link>
 
     <!-- Title -->
@@ -197,7 +197,7 @@ export default {
 
 .notification-item {
   background-color: #e6e6e6;
-  margin-bottom: 10px;
+  margin-bottom: 20px;
   padding: 15px;
   border-radius: 10px;
 }
@@ -205,10 +205,12 @@ export default {
 .order-id {
   font-weight: bold;
   color: #333;
+  font-size: 20px;
 }
 
 .notification-message {
   color: #333;
+  font-size: 19px;
 }
 
 hr {

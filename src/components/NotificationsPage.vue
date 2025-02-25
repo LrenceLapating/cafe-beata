@@ -1,8 +1,13 @@
 <template>
   <div class="notifications-page">
     <div class="header">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css">
+
+      <button @click="goToOrderRecord" class="order-record-button">View Order Record</button>
       <h1>Admin Dashboard</h1>
-      <button @click="goToOrderRecord" class="order-record-button">View Order History</button>
+      <button @click="logout" class="logout-button">
+        <i class="fa-solid fa-right-from-bracket"></i>
+      </button>
     </div>
 
     <div v-if="isLoading" class="loading">Loading...</div>
@@ -98,8 +103,8 @@ export default {
     },
 
     logout() {
-      localStorage.removeItem("userName");  // Remove the userName from localStorage
-      this.$router.push({ name: "LoginPage" });  // Redirect the user to the Login page (adjust the route as needed)
+     
+      this.$router.push({ name: "Login" });  // Redirect the user to the Login page (adjust the route as needed)
     },
 
     // Fetch orders from API
@@ -334,6 +339,9 @@ export default {
   color: #d12f7a;
 }
 
+.logout-button i {
+  font-size: 18px;
+}
 
 /* Header styles */
 .header {
@@ -341,12 +349,29 @@ export default {
   justify-content: space-between;
   align-items: center;
   margin-bottom: 20px;
+  gap: 10px;
+}
+.header-buttons {
+  display: flex;
+  gap: 10px;
+}
+
+.logout-button {
+  background-color: #f8d2e4;
+  color: #d12f7a;
+  padding: 10px 20px;
+  border-radius: 10px;
+  cursor: pointer;
+}
+
+.logout-button:hover {
+  background-color: #b82d67;
 }
 
 .order-record-button {
   background-color: #f8d2e4;
   color: #d12f7a;
-  padding: 10px 20px;
+  padding: 8px 20px;
   border-radius: 5px;
   cursor: pointer;
 }

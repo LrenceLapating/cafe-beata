@@ -157,9 +157,10 @@ export default {
   background-color: #fce6e6; /* Light pink background */
   color: #222; /* Dark text for light background */
   height: 110vh; /* Auto height to fit the content */
-  max-height: 90vh; /* Maximum height to avoid overflowing */
+  max-height: 95vh; /* Maximum height to avoid overflowing */
   overflow-y: auto; /* Enable scrolling if content exceeds the height */
   transition: height 0.3s ease;  /* Smooth transition when height changes */
+  
 }
 
 .order-table th {
