@@ -91,7 +91,7 @@
 
         <div class="contact-box">
           <h3 class="contact-title">Contact Us</h3>
-          <p>Email: cafebeatauic@gmail.com</p>
+          <p>Email: cafebeata2020@gmail.com</p>
           <p>Call Us: (321) 562 – 57420</p>
           <p>Text Us: (321) 562 – 57420</p>
           <p>Fr Selga, Davao City, Philippines</p>
