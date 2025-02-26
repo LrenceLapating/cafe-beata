@@ -1,49 +1,72 @@
 <template>
-  <div class="confirm-order">
-    <h1>Confirm Your Order</h1>
-
-    <div v-if="cart.length">
-      <h2>Orders:</h2>
-      <ul>
-        <li v-for="(order, index) in cart" :key="index">
-          <img :src="getImagePath(order.image)" :alt="order.name" class="order-image"/>
-          <span>{{ order.name }} - ₱{{ order.price * order.quantity }}</span>
-
-          <!-- Quantity Controls -->
-          <div class="quantity-controls">
-            <button @click="decreaseQuantity(index)">-</button>
-            <span>{{ order.quantity }}</span>
-            <button @click="increaseQuantity(index)">+</button>
-          </div>
-
-          <button class="remove-btn" @click="removeFromCart(index)">Remove</button>
-        </li>
-      </ul>
-
-      <!-- Total Price -->
-      <h2>Total: ₱{{ totalPrice }}</h2>
-    </div>
-
-    <!-- No items in cart -->
-    <p v-else>No items in cart. Add some from the dashboard.</p>
-
-    <!-- Loading Indicator for Confirm Order -->
-    <div v-if="isProcessingOrder" class="loading-spinner">
-      <span>Processing your order...</span>
-      <!-- You can add a spinner or animation here -->
-    </div>
-
-    <!-- Separate Buttons -->
-    <div class="buttons">
-      <div class="add-more-button">
-        <button @click="addMoreOrder" class="glowing-btn">Add More Order</button>
+  <div>
+    <!-- Confirm Modal -->
+    <div v-if="showModal" class="custom-modal">
+      <div class="modal-content">
+        <span class="close" @click="closeModal">&times;</span>
+        <h2>📢 Hey, Wait!!</h2>
+        <p>Are you sure, that this is all you want to order?</p>
+        <div class="modal-buttons">
+          <button @click="confirmOrder" class="yes-btn">Yes, I'm sure</button>
+          <button @click="stayOnPage" class="no-btn">No, I want to order more</button>
+        </div>
       </div>
-      <div class="confirm-button">
-        <button @click="confirmOrder" class="glowing-btn" :disabled="cart.length === 0 || isProcessingOrder">Confirm Order</button>
+    </div>
+
+    <!-- Main content -->
+    <div class="confirm-order">
+      <!-- Processing Order Section (moved to the center) -->
+      <div v-if="isProcessingOrder" class="loading-spinner-container">
+        <div class="loading-spinner">
+          <span>Processing your order...</span>
+          <div class="loading-bar">
+            <div class="progress" :style="{ width: progressBarWidth + '%' }"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Confirm Order Content -->
+      <h1>Confirm Your Order</h1>
+
+      <div v-if="cart.length">
+        <h2>Orders:</h2>
+        <ul>
+          <li v-for="(order, index) in cart" :key="index">
+            <img :src="getImagePath(order.image)" :alt="order.name" class="order-image"/>
+            <span>{{ order.name }} - ₱{{ order.price * order.quantity }}</span>
+
+            <!-- Quantity Controls -->
+            <div class="quantity-controls">
+              <button @click="decreaseQuantity(index)">-</button>
+              <span>{{ order.quantity }}</span>
+              <button @click="increaseQuantity(index)">+</button>
+            </div>
+
+            <button class="remove-btn" @click="removeFromCart(index)">Remove</button>
+          </li>
+        </ul>
+
+        <!-- Total Price -->
+        <h2>Total: ₱{{ totalPrice }}</h2>
+      </div>
+
+      <!-- No items in cart -->
+      <p v-else>No items in cart. Add some from the dashboard.</p>
+
+      <!-- Separate Buttons -->
+      <div class="buttons">
+        <div class="add-more-button">
+          <button @click="addMoreOrder" class="glowing-btn">Add More Order</button>
+        </div>
+        <div class="confirm-button">
+          <button @click="openModal" class="glowing-btn" :disabled="cart.length === 0 || isProcessingOrder">Confirm Order</button>
+        </div>
       </div>
     </div>
   </div>
 </template>
+
+
 
 <script>
 export default {
@@ -51,7 +74,10 @@ export default {
     return {
       cart: [], // Store multiple selected items
       userName: localStorage.getItem('userName') || "Guest", // Fetch the logged-in user's name
-      isProcessingOrder: false,  // Added to track the order processing state
+      isProcessingOrder: false,  // Track the order processing state
+      showModal: false, // Track the modal visibility
+      countdown: 3, // Countdown timer for the processing
+      progressBarWidth: 0, // Progress bar width
     };
   },
   computed: {
@@ -113,53 +139,84 @@ export default {
       this.$router.push({ name: 'Dashboard' });
     },
 
+    openModal() {
+      this.showModal = true;
+    },
+
+    closeModal() {
+      this.showModal = false;
+    },
+
     confirmOrder() {
-      const isConfirmed = window.confirm("Are you sure this is everything you want to order?");
-      if (isConfirmed) {
-          this.isProcessingOrder = true;
+      this.showModal = false; // Close the modal
 
-          const customerName = localStorage.getItem('userName') || "Unknown";  // Fetch the correct username
-          console.log('Customer Name:', customerName);  // Debugging
+      // Show loading spinner and start countdown
+      this.isProcessingOrder = true;
+      this.progressBarWidth = 0;
+      this.countdown = 2;
 
-          const orderData = {
-              customer_name: customerName,  // Use username here
-              items: this.cart.map(item => ({
-                  name: item.name,
-                  quantity: item.quantity,
-                  price: item.price
-              })),
-              status: 'pending'
-          };
-
-          fetch('http://127.0.0.1:8000/orders', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify(orderData)
-          })
-          .then(response => response.json())
-          .then((data) => {
-              this.isProcessingOrder = false;
-              const orderID = data.order_id; // Use the specific order ID returned from the server
-              this.$router.push({
-                  name: 'OrderIDPage',
-                  query: {
-                      orderID: orderID,
-                      customerName: customerName,
-                      items: JSON.stringify(this.cart),
-                      totalPrice: this.totalPrice
-                  }
-              });
-              localStorage.removeItem('cart');
-              this.cart = [];
-          })
-          .catch(error => {
-              this.isProcessingOrder = false;
-              console.error("Error creating order:", error);
-          });
+      // Interval for countdown and progress bar
+      const interval = setInterval(() => {
+        if (this.countdown > 0) {
+          this.countdown--;
+          this.progressBarWidth += 33.33; // Update the progress bar width
+        } else {
+          clearInterval(interval); // Stop the interval
+          this.processOrder(); // Call the function to send the order
         }
-      },
+      }, 1000); // Update every second
+    },
 
-    // Function to adjust the container height dynamically based on the number of items
+    processOrder() {
+      const customerName = localStorage.getItem('userName') || "Unknown";  // Fetch the correct username
+      console.log('Customer Name:', customerName);  // Debugging
+
+      const orderData = {
+        customer_name: customerName,  // Use username here
+        items: this.cart.map(item => ({
+          name: item.name,
+          quantity: item.quantity,
+          price: item.price
+        })),
+        status: 'pending'
+      };
+
+      // Proceed to send the order data to the backend
+      fetch('http://127.0.0.1:8000/orders', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(orderData)
+      })
+      .then(response => response.json())
+      .then((data) => {
+        this.isProcessingOrder = false; // Hide the loading spinner
+        const orderID = data.order_id; // Use the specific order ID returned from the server
+
+        // Navigate to the Order ID page after the delay
+        this.$router.push({
+          name: 'OrderIDPage',
+          query: {
+            orderID: orderID,
+            customerName: customerName,
+            items: JSON.stringify(this.cart),
+            totalPrice: this.totalPrice
+          }
+        });
+
+        // Clear cart data after the order is placed
+        localStorage.removeItem('cart');
+        this.cart = [];
+      })
+      .catch(error => {
+        this.isProcessingOrder = false; // Hide the loading spinner
+        console.error("Error creating order:", error);
+      });
+    },
+
+    stayOnPage() {
+      this.showModal = false; // Close the modal and stay on the page
+    },
+
     adjustContainerHeight() {
       const orderItems = document.querySelectorAll('.order-details li'); // Get all items in the order list
       const confirmOrderContainer = document.querySelector('.confirm-order'); // Get the confirm-order container
@@ -174,9 +231,6 @@ export default {
       } else {
         confirmOrderContainer.style.padding = '30px';  // For many items, add more padding
       }
-
-      
-      
     },
 
     getImagePath(image) {
@@ -192,10 +246,138 @@ export default {
 <style scoped>
 
 .loading-spinner {
+  background-color: white;
+  padding: 30px;
+  border-radius: 10px;
+  text-align: center;
+  width: 350px; /* Set the spinner container size */
+  height: 100px; /* Increase the height */
+  font-size: 20px; /* Adjust text size */
+}
+
+.spinner {
+  border: 4px solid #f3f3f3;
+  border-top: 4px solid #3498db;
+  border-radius: 50%;
+  width: 50px;
+  height: 50px;
+  animation: spin 2s linear infinite;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+.spinner p {
+  margin-top: 10px;
+  font-size: 1.2em;
+  color: #3498db;
+}
+
+.loading-bar {
+  width: 100%;
+  height: 20px; /* Increase the height of the bar */
+  background-color: #f0f0f0;
+  border-radius: 10px;
+  margin-top: 20px;
+}
+
+.progress {
+  height: 100%;
+  background-color: #4caf50; /* Green progress bar */
+  border-radius: 10px;
+  transition: width 0.5s ease-in-out;
+}
+
+/* Loading spinner fade-in animation */
+@keyframes fadeIn {
+  0% { opacity: 0; }
+  100% { opacity: 1; }
+}
+
+
+.custom-modal {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-color: rgba(0, 0, 0, 0.5);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 999;
+}
+
+.modal-content {
+  background-color: #fce6e6;
+  padding: 30px;
+  border-radius: 10px;
+  text-align: center;
+  width: 80%;
+  max-width: 600px;
+}
+
+.loading-spinner-container {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  z-index: 1000;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  flex-direction: column;
+}
+
+.close {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  font-size: 24px;
+  color: #333;
+  cursor: pointer;
+}
+
+.modal-buttons {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 20px;
+}
+
+.modal-buttons button {
+  padding: 10px 15px;
+  font-size: 14px;
+  border: none;
+  border-radius: 5px;
+  cursor: pointer;
+}
+
+.yes-btn {
+  background-color:rgb(136, 132, 136);
+  color: white;
+}
+
+.no-btn {
+  background-color:rgb(255, 0, 128);
+  color: white;
+}
+
+.yes-btn:hover {
+  background-color: #ff9a29;
+}
+
+.no-btn:hover {
+  background-color: #b82d67;
+}
+
+
+.loading-spinner {
   text-align: center;
   font-size: 18px;
   padding: 10px;
-  background-color: rgba(0, 0, 0, 0.5);
+  background-color:rgb(161, 100, 100);
   color: white;
   border-radius: 8px;
 }

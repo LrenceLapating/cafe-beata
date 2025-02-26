@@ -59,11 +59,13 @@
           </button>
           
 
- <router-link to="/user-notifications">
-        <button class="notification-button">
-          <i class="fas fa-bell"></i> <!-- Bell icon for notifications -->
-        </button>
-      </router-link>
+  <router-link to="/user-notifications">
+            <button class="notification-button">
+              <i class="fas fa-bell"></i> 
+              <!-- Notification Count Badge -->
+              <span v-if="unreadNotificationsCount > 0" class="notification-badge">{{ unreadNotificationsCount }}</span>
+            </button>
+          </router-link>
 
 
           <!-- Order History Button -->
@@ -107,9 +109,12 @@
 
 
 <script>
+import { eventBus } from "@/utils/eventBus"; // Correct the path if needed
 export default {
   data() {
     return {
+      unreadNotificationsCount: 0,   
+      refreshInterval: null,  
       searchQuery: '',
        isDarkMode: localStorage.getItem("darkMode") === "enabled",
       currentCategory: 'Ice Coffee', // Default category
@@ -215,12 +220,58 @@ export default {
       filteredItems: [], // List to display filtered items
     };
   },
+
+  
+
+  created() {
+      this.updateNotificationCount();
+    window.addEventListener("notificationUpdated", this.updateNotificationCount); // Listen for changes
+   this.startPollingForNewNotifications();
+  },
+beforeUnmount() {
+      window.removeEventListener("notificationUpdated", this.updateNotificationCount);
+       this.stopPollingForNewNotifications();
+  },
+  
   mounted() {
+   
+
+
+     this.$watch(
+      () => eventBus.notificationsCount,
+      (newCount) => {
+        this.unreadNotificationsCount = newCount;
+      }
+    );
     this.filterCategory('Drinks');
     this.updateTime(); // Call updateTime when the component is mounted
     this.applyDarkMode();
+      
+     
   },
+    
+ 
   methods: {
+  updateNotificationCount() {
+      const userName = localStorage.getItem("userName");
+      if (userName) {
+        const userNotificationsKey = `user_notifications_${userName}`;
+        const notifications = JSON.parse(localStorage.getItem(userNotificationsKey)) || [];
+          const unreadCount = notifications.filter(notification => !notification.read).length;
+        // Manually trigger a reactivity update for unreadNotificationsCount
+        this.unreadNotificationsCount = unreadCount;
+  }
+  },
+    
+       startPollingForNewNotifications() {
+      this.refreshInterval = setInterval(() => {
+        this.updateNotificationCount(); // Check for new notifications
+      }, 5000); // Update every 5 seconds (you can adjust this interval)
+    },
+    
+      stopPollingForNewNotifications() {
+      clearInterval(this.refreshInterval);
+    },
 
  toggleDarkMode() {
     this.isDarkMode = !this.isDarkMode;
@@ -336,6 +387,7 @@ export default {
 
 .dark-mode-button, 
 .notification-button {
+  position: relative;
   background-color: rgb(48, 41, 44);
   color: white;
   padding: 8px 12px;
@@ -344,6 +396,21 @@ export default {
   border-radius: 5px;
   cursor: pointer;
   transition: background 0.3s ease-in-out;
+}
+
+.notification-badge {
+  position: absolute;
+  top: -5px;
+  right: -5px;
+  background-color: red;
+  color: white;
+  border-radius: 50%; /* This ensures it’s fully circular */
+  font-size: 12px;
+  width: 20px; /* Set a fixed width */
+  height: 20px; /* Set a fixed height to ensure it's circular */
+  display: flex;
+  justify-content: center; /* Centers the content horizontally */
+  align-items: center; /* Centers the content vertically */
 }
 
 .dark-mode-button i, 

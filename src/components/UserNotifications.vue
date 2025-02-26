@@ -1,3 +1,5 @@
+
+
 <template>
   <div :class="['notifications-container', { 'dark-mode': isDarkMode }]">
     <!-- Back Button -->
@@ -30,7 +32,10 @@
 </template>
 
 
+
 <script>
+
+import { eventBus } from "@/utils/eventBus"; // Correct the path if needed
 export default {  
   data() {
     return {
@@ -40,17 +45,35 @@ export default {
     };
   },
   methods: {
+
+        updateNotificationCount() {
+    const unreadCount = this.notifications.filter(notification => !notification.read).length;
+    eventBus.notificationsCount = unreadCount; 
+  },
+
     // Fetch notifications specific to the current user
-    fetchNotifications() {
-      const userName = localStorage.getItem("userName");  // Get the logged-in user's name
-      if (userName) {
-        const userNotificationsKey = `user_notifications_${userName}`;  // Use the user-specific key
-        const storedNotifications = JSON.parse(localStorage.getItem(userNotificationsKey)) || [];
-        this.notifications = storedNotifications;  // Only display notifications for the current user
-      } else {
-        this.notifications = [];
+        fetchNotifications() {
+    const userName = localStorage.getItem("userName"); 
+    if (userName) {
+      const userNotificationsKey = `user_notifications_${userName}`;
+      const storedNotifications = JSON.parse(localStorage.getItem(userNotificationsKey)) || [];
+      this.notifications = storedNotifications;
+      this.updateNotificationCount(); // Call to update the count
+    } else {
+      this.notifications = [];
       }
     },
+
+     addNewNotification(notification) {
+  const userName = localStorage.getItem("userName");
+  const userNotificationsKey = `user_notifications_${userName}`;
+  let notifications = JSON.parse(localStorage.getItem(userNotificationsKey)) || [];
+  notifications.push(notification);
+  localStorage.setItem(userNotificationsKey, JSON.stringify(notifications));
+
+  // Emit event to update the Dashboard's notification count
+  window.dispatchEvent(new Event("notificationUpdated"));
+      },
 
     // Method to format and highlight the "Order details" and "Total"
     formatHighlightedMessage(message) {
@@ -61,12 +84,16 @@ export default {
     },
 
     // Clear all notifications (optional, if you want to give the user this option)
-    clearNotifications() {
-      const userName = localStorage.getItem("userName"); // Get the logged-in user's name
-      if (userName) {
-        const userNotificationsKey = `user_notifications_${userName}`;  // Use the user-specific key
-        localStorage.removeItem(userNotificationsKey);  // Clear notifications for this specific user
-        this.notifications = []; 
+   clearNotifications() {
+  const userName = localStorage.getItem("userName");
+  if (userName) {
+    const userNotificationsKey = `user_notifications_${userName}`;
+    localStorage.removeItem(userNotificationsKey);  // Clear notifications for this specific user
+    this.notifications = [];
+    localStorage.setItem("unread_notifications", 0);
+
+    // Emit event to update Dashboard's notification count
+    window.dispatchEvent(new Event("notificationUpdated"));
       }
     },
 
@@ -88,9 +115,10 @@ export default {
     // Fetch notifications when the component is created
     this.fetchNotifications();
     this.startAutoRefresh();
+     window.addEventListener("notificationUpdated", this.fetchNotifications);
   },
   beforeUnmount() {
-    // Stop the auto-refresh interval when the component is destroyed
+     window.removeEventListener("notificationUpdated", this.fetchNotifications);
     this.stopAutoRefresh();
   }
 };

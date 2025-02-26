@@ -144,46 +144,46 @@ export default {
 
     // Mark an order as completed and send notification
     markAsCompleted(orderId, customerName, items) {
-      fetch(`http://127.0.0.1:8000/orders/${orderId}`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ status: "completed" }) // Properly formatted JSON
-      })
-        .then(response => {
-          if (!response.ok) {
-            throw new Error(`HTTP error! Status: ${response.status}`);
-          }
-          return response.json();
-        })
-        .then(() => {
-          // Immediately remove from pending orders
-          this.orders = this.orders.filter(order => order.id !== orderId);
+  fetch(`http://127.0.0.1:8000/orders/${orderId}`, {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ status: "completed" }) // Properly formatted JSON
+  })
+    .then(response => {
+      if (!response.ok) {
+        throw new Error(`HTTP error! Status: ${response.status}`);
+      }
+      return response.json(); // Only handle the response JSON once here
+    })
+    .then(() => {
+      // Immediately remove from pending orders
+      this.orders = this.orders.filter(order => order.id !== orderId);
 
-          // Calculate the total price
-          const total = items.reduce((sum, item) => sum + item.price * item.quantity, 0).toFixed(2);
+      // Calculate the total price
+      const total = items.reduce((sum, item) => sum + item.price * item.quantity, 0).toFixed(2);
 
-          // Prepare the notification with highlighted order details (HTML added)
-          const notification = {
-            orderId,
-            customerName,
-            message: `Your order is now ready! Proceed to the cashier for payment and pickup. <span class="highlighted-order-details">Order details: ${this.formatItems(items)}. Total: ₱${total}</span>`,
-            timestamp: new Date().toISOString(),
-            items,  // Include items in the notification
-            total,  // Include total in the notification
-          };
+      // Prepare the notification with highlighted order details (HTML added)
+      const notification = {
+        orderId,
+        customerName,
+        message: `Your order is now ready! Proceed to the cashier for payment and pickup. <span class="highlighted-order-details">Order details: ${this.formatItems(items)}. Total: ₱${total}</span>`,
+        timestamp: new Date().toISOString(),
+        items,  // Include items in the notification
+        total,  // Include total in the notification
+      };
 
-          // Save the notification in localStorage for the specific user
-          const userNotificationsKey = `user_notifications_${customerName}`;
-          let notifications = JSON.parse(localStorage.getItem(userNotificationsKey)) || [];
-          notifications.push(notification);
-          localStorage.setItem(userNotificationsKey, JSON.stringify(notifications));
+      // Save the notification in localStorage for the specific user
+      const userNotificationsKey = `user_notifications_${customerName}`;
+      let notifications = JSON.parse(localStorage.getItem(userNotificationsKey)) || [];
+      notifications.push(notification);
+      localStorage.setItem(userNotificationsKey, JSON.stringify(notifications));
 
-          // Emit an event to notify other components (optional)
-          window.dispatchEvent(new Event("orderCompleted"));
+      // Emit an event to notify other components (optional)
+       window.dispatchEvent(new Event("notificationUpdated"));
 
-          alert("Order marked as completed!");
-        })
-        .catch(error => console.error("Error marking order as completed:", error));
+      alert("Order marked as completed!");
+    })
+    .catch(error => console.error("Error marking order as completed:", error));
     },
 
     // Open the custom decline message input for a specific order
@@ -254,7 +254,7 @@ export default {
     startAutoRefresh() {
       this.refreshInterval = setInterval(() => {
         this.fetchOrders();
-      }, 10000); // Set to 10000ms (10 seconds)
+      }, 5000); // Set to 10000ms (10 seconds)
     },
 
     // Stop auto-refresh
