@@ -382,7 +382,25 @@ beforeUnmount() {
 
 
 <style scoped>
+.dark-mode .item {
+  background-color: #555555; /* Light grey background for dark mode */
+  color: #ffffff; /* Light text color */
+  box-shadow: 0px 4px 6px rgba(255, 255, 255, 0.1); /* Lighter box shadow */
+}
 
+.dark-mode .item span {
+  color: #ffffff; /* Light text for item span */
+}
+
+.dark-mode .item-price {
+  background-color: #6e6e6e; /* Lighter background for price */
+  color: #ffffff; /* Light text color for price */
+}
+
+.dark-mode .item-price:hover {
+  background-color: #888888; /* Darker price background on hover */
+  cursor: pointer;
+}
 
 
 .dark-mode-button, 

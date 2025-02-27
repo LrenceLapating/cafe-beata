@@ -1,21 +1,41 @@
 <template>
   <div class="profile-container">
     <div class="profile-card">
-      <!-- Back Button -->
-      <button @click="goToDashboard" class="back-to-dashboard-button">
-        <i class="fa fa-arrow-left"></i> Back
-      </button>
+      <!-- Back Button Container -->
+      <div class="back-button-container">
+        <button @click="goToDashboard" class="back-to-dashboard-button">
+          <i class="fa fa-arrow-left"></i>
+        </button>
+      </div>
 
       <h2>PROFILE</h2>
 
-      <!-- Avatar Selection -->
+      <!-- Avatar Section with Upload Button -->
       <div class="avatar-container">
-        <!-- Dynamically load the avatar URL -->
-        <img :src="getAvatarUrl(user.avatar)" alt="Avatar" class="avatar-img" />
-        <div class="avatar-picker">
-        
+        <div class="avatar-wrapper">
+          <!-- Profile Image -->
+          <img :src="getAvatarUrl(user.avatar)" alt="Avatar" class="avatar-img" />
+          <!-- Upload Button with Pencil Icon -->
+          <button @click="triggerFileInput" class="upload-icon-btn">
+            <i class="fa fa-pencil"></i>
+          </button>
+          <!-- Hidden File Input for Avatar Upload -->
           <input type="file" ref="fileInput" @change="uploadAvatar" style="display: none;" />
-          <button @click="triggerFileInput">Upload Profile</button>
+        </div>
+        
+        <!-- Profile Information -->
+        <div class="profile-info">
+          <p class="username">{{ user.username }}</p>
+          <p class="email">{{ user.email }}</p>
+
+          <!-- Line between Email and Course -->
+          <hr class="divider" />
+
+          <!-- Display Course and Gender with left alignment -->
+          <div class="left-aligned">
+            <p class="course"><strong>Course:</strong> {{ user.course }}</p>
+            <p class="gender"><strong>Gender:</strong> {{ user.gender }}</p>
+          </div>
         </div>
       </div>
 
@@ -41,22 +61,19 @@
             <option value="Other">Other</option>
           </select>
         </div>
-        <button @click="saveChanges" class="save-button">Update Information</button>
+        <button @click="saveChanges" class="save-button">Save Changes</button>
         <button @click="cancelEdit" class="cancel-button">Cancel</button>
       </div>
 
+      <!-- Default View - View Profile Button -->
       <div v-else>
-        <div class="profile-info">
-          <p><strong>Username:</strong> {{ user.username }}</p>
-          <p><strong>E-mail:</strong> {{ user.email }}</p>
-          <p><strong>Course:</strong> {{ user.course }}</p>
-          <p><strong>Gender:</strong> {{ user.gender }}</p>
-        </div>
         <button @click="toggleEdit" class="edit-button">Edit Profile</button>
       </div>
     </div>
   </div>
 </template>
+
+
 
 <script>
 export default {
@@ -203,7 +220,32 @@ export default {
 
 
 <style scoped> 
+.profile-info {
+  margin-bottom: 20px;
+}
 
+.profile-info p {
+  font-size: 18px;
+  color: #333;
+}
+
+.profile-info strong {
+  color: #007bff;
+}
+
+.divider {
+  margin: 20px 0;
+  border: 0;
+  border-top: 2px solid #333;
+  width: 100%; /* Make it span the entire container width */
+  box-sizing: border-box; /* Include padding in the width calculation */
+  margin-left: 0; /* Reset the margin */
+}
+
+.left-aligned p {
+  text-align: left;
+  margin: 5px 0;
+}
 
 .dark-mode .profile-container {
   background-color: #222 !important; /* Dark background */
@@ -238,7 +280,7 @@ export default {
 
 /* 🌙 Dark Mode - Buttons */
 .dark-mode button {
-  background-color: #666 !important;
+  background-color: #white !important;
   color: white !important;
 }
 
@@ -248,15 +290,17 @@ export default {
 
 /* 🌙 Dark Mode - Profile Info Highlight */
 .dark-mode .profile-info strong {
-  color:rgb(151, 15, 90) !important; /* Make the strong text more visible */
+  color: rgb(151, 15, 90) !important; /* Make the strong text more visible */
 }
 
-
-
 .profile-container {
+  position: relative; /* Ensure this is positioned so that absolute elements inside it can be correctly aligned */
   padding: 30px;
   background-color: #fce6e6;
-   height: 90vh;
+  height: 100vh; /* Auto height to fit the content */
+  max-height: 95vh; /* Maximum height to avoid overflowing */
+  overflow-y: auto; /* Enable scrolling if content exceeds the height */
+  transition: height 0.3s ease;  /* Smooth transition when height changes */
 }
 
 h2 {
@@ -266,53 +310,153 @@ h2 {
 }
 
 .profile-card {
-  position: relative;  /* Ensure the button is positioned relative to this container */
-  background-color:rgb(243, 233, 233);
+  background-color: rgb(243, 233, 233);
   border-radius: 8px;
   padding: 20px;
   box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
-  max-width: 600px;
+  width: 100%;  /* Ensure it takes up the full width */
+  max-width: 600px;  /* Limit the width on larger screens */
   margin: 20px auto;
+  position: relative; /* Ensure the buttons can be positioned relative to this container */
 }
 
-/* Back Button */
+/* Back Button Container - Position it at the top-left of the profile container */
+.back-button-container {
+  position: absolute;
+  top: 10px;
+  left: 10px; /* Position it at the very top-left corner */
+  z-index: 1; /* Ensure it stays above other content */
+}
+
+/* Back Button Styling */
 .back-to-dashboard-button {
   background-color: transparent;
-  color: #3498db;
-  padding: 2px;
+  color: rgb(0, 0, 0);
+  padding: 0;
   font-size: 20px;
   border: none;
   cursor: pointer;
-  border-radius: 20%;
-  position: absolute;
-  top: 10px;
-  left: 0;  /* Ensure it is aligned with the left edge */
-  z-index: 1;
 }
 
+/* Icon size inside the button */
 .back-to-dashboard-button i {
   font-size: 20px;
+  margin: 0; /* Remove extra margin from icon */
 }
 
+/* Avatar Section */
 .avatar-container {
   display: flex;
+  flex-direction: column;
   justify-content: center;
   align-items: center;
-  gap: 20px;
   margin-bottom: 20px;
+}
+
+.avatar-wrapper {
+  position: relative;
 }
 
 .avatar-img {
   width: 100px;
   height: 100px;
-  border-radius: 50%; 
-  border: 3px solid #ddd;
+  border-radius: 50%;
+  border: 3px solid #333;
 }
 
-.upload-button,
+.upload-icon-btn {
+  position: absolute;
+  bottom: 0px; /* Place it at the bottom of the circle */
+  right: 0px; /* Place it at the right edge of the circle */
+  background-color: rgb(255, 255, 255); /* No background */
+  border: none; /* No border */
+  padding: 0; /* Remove padding to make it fit the icon */
+  cursor: pointer;
+  font-size: 20px; /* Set size for the pencil icon */
+  color: #007bff; /* Set color for the pencil icon */
+  width: 30px; /* Set width of the clickable area */
+  height: 30px; /* Set height of the clickable area */
+  border-radius: 50%; /* Make the clickable area circular */
+  display: flex;
+  justify-content: center; /* Center the icon inside the button */
+  align-items: center; /* Center the icon vertically */
+}
+
+.upload-icon-btn i {
+  font-size: 20px;
+  color: rgb(235, 175, 175);
+}
+
+/* Profile Information */
+.profile-info {
+  text-align: center;
+}
+
+.username {
+  font-size: 18px;
+  font-weight: bold;
+  color: #333;
+}
+
+.email {
+  font-size: 14px;
+  color: #555;
+}
+
+/* Form Styling */
+.form-group {
+  margin-top: 15px;
+}
+
+label {
+  font-size: 16px;
+  color: #555;
+}
+
+input,
+select,
+textarea {
+  margin-top: 5px;
+  padding: 12px;
+  font-size: 16px;
+  width: 95%;
+  border-radius: 6px;
+  border: 1px solid #ccc;
+}
+
+textarea {
+  resize: vertical;
+}
+
+button {
+  margin-top: 10px;
+  padding: 12px;
+  font-size: 16px;
+  background-color: rgb(53, 42, 47);
+  color: white;
+  border: none;
+  cursor: pointer;
+  border-radius: 5px;
+  width: 100%;
+}
+
+button:hover {
+  background-color: rgb(68, 63, 57);
+}
+
+.save-button,
+.cancel-button {
+  background-color: rgb(31, 32, 31);
+}
+
+.save-button:hover,
+.cancel-button:hover {
+  background-color: rgb(26, 27, 27);
+}
+
 .edit-button {
-  padding: 8px 20px;
-  font-size: 12px;
+  padding: 1px 1px;
+  font-size: 10px;
   background-color: transparent;
   color: #FFF;
   border: 2px solid #d12f7a;
@@ -323,20 +467,18 @@ h2 {
   text-transform: uppercase;
 }
 
-.upload-button::after,
 .edit-button::after {
   content: "";
   z-index: -1;
   position: absolute;
   width: 100%;
   height: 100%;
-  background-color: #333;
+  background-color: rgb(31, 32, 31);
   left: 0;
   top: 0;
   border-radius: 10px;
 }
 
-.upload-button::before,
 .edit-button::before {
   content: "";
   background: linear-gradient(
@@ -358,86 +500,21 @@ h2 {
   opacity: 0;
 }
 
-.upload-button:hover::before,
 .edit-button:hover::before {
   opacity: 1;
 }
 
-.upload-button {
-  background-color: #007bff;
-  color: white;
-  padding: 10px;
-  font-size: 14px;
-  border-radius: 5px;
-  border: none;
-  cursor: pointer;
-}
-
-.upload-button:hover {
-  background-color: #0056b3;
-}
-
-.avatar-upload-input {
-  display: none;
-}
-
-.form-group {
-  margin-top: 15px;
-}
-
-label {
-  font-size: 16px;
-  color: #555;
-}
-
-input,
-select,
-textarea {
-  margin-top: 5px;
-  padding: 12px;
-  font-size: 16px;
-  width: 100%;
-  border-radius: 6px;
-  border: 1px solid #ccc;
-}
-
-textarea {
-  resize: vertical;
-}
-
-button {
-  margin-top: 1px;
-  padding: 12px;
-  font-size: 16px;
-  background-color:rgb(53, 42, 47);
-  color: white;
-  border: none;
-  cursor: pointer;
-  border-radius: 5px;
-  width: 100%;
-}
-
-
-button:hover {
-  background-color:rgb(68, 63, 57);
-}
-
-.save-button,
-.cancel-button {
-  background-color:rgb(31, 32, 31);
-}
-
-.save-button:hover,
-.cancel-button:hover {
-  background-color:rgb(26, 27, 27);
-}
-
 .edit-button {
-  background-color: #f1c40f;
+  color: white;
+  padding: 6px 12px;
+  font-size: 12px;
+  border-radius: 5px;
+  border: none;
+  cursor: pointer;
 }
 
 .edit-button:hover {
-  background-color: #f39c12;
+  background-color: #0056b3;
 }
 
 .profile-info {
@@ -450,7 +527,7 @@ button:hover {
 }
 
 .profile-info strong {
-  color: #007bff;
+  color: rgb(114, 53, 68);
 }
 
 .about-me {
@@ -462,4 +539,33 @@ button:hover {
   font-size: 16px;
   color: #555;
 }
+
+/* Mobile responsiveness */
+@media (max-width: 768px) {
+  .profile-container {
+    padding: 10px; /* Adjust padding for smaller screens */
+  }
+
+  /* Ensure the profile card stays centered with proper margins */
+  .profile-card {
+    margin: 60px auto;
+    padding: 50px;
+    width: auto;  /* Make the profile card responsive */
+    max-width: none; /* Remove any max-width on smaller screens */
+  }
+
+  /* Back Button - position at top-left on mobile */
+  .back-button-container {
+    top: 10px;
+    left: 10px; /* Position back button at the top-left of the screen */
+  }
+
+  /* Ensure edit button stays at the bottom */
+  .edit-button {
+    font-size: 14px; /* Slightly smaller font for mobile */
+    margin-top: 20px; /* Add margin between content and button */
+  }
+}
+
+
 </style>

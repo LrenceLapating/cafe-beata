@@ -164,7 +164,9 @@ export default {
 }
 
 .dark-mode .order-id,
+.dark-mode .no-notifications,
 .dark-mode .notification-message {
+
    color: white; /* Lighter text color in dark mode */
 }
 
@@ -248,7 +250,7 @@ hr {
 
 .no-notifications {
   font-size: 18px;
-  color: #d12f7a;
+  color:rgb(68, 68, 68);
   font-weight: bold;
   text-align: center;
   margin-top: 20px;

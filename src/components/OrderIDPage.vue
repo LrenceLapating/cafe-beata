@@ -154,14 +154,14 @@ export default {
 
 /* 🌙 Dark Mode - Keep Order ID Box Light */
 .dark-mode .order-id {
-  background-color: #fce6e6 !important;
+  background-color:rgb(197, 197, 197) !important;
   color: black !important;
   border: 1px solid #ccc !important;
 }
 
 /* 🌙 Dark Mode - Keep Order Details Box Light */
 .dark-mode .order-details li {
- background-color: #fce6e6 !important;
+ background-color:rgb(197, 197, 197) !important;
   color: black !important;
   border: 1px solid #ccc !important;
 }
@@ -186,6 +186,8 @@ export default {
 .dark-mode .back-button:hover {
   background-color: #666 !important;
 }
+
+
 
 /* 🌙 Dark Mode - Ensure Text Inside Boxes is Dark */
 .dark-mode .order-id h2,

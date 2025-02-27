@@ -381,15 +381,114 @@ export default {
   color: white;
   border-radius: 8px;
 }
+
+.dark-mode .loading-spinner {
+  background-color: #333333; /* Dark background */
+  color: white; /* White text */
+  box-shadow: 0px 4px 6px rgba(255, 255, 255, 0.1); /* Lighter shadow */
+}
+
+/* Dark Mode for Spinner Circle */
+.dark-mode .spinner {
+  border-top: 4px solid #3498db; /* Keep blue color for spinner */
+  border-color: #555555; /* Darker border for spinner */
+}
+
+/* Dark Mode for Loading Bar */
+.dark-mode .loading-bar {
+  background-color: #444444; /* Darker background for loading bar */
+}
+
+.dark-mode .progress {
+  background-color: #2ecc71; /* Light green progress bar */
+}
+
+
+/* Dark Mode for Quantity Controls Button */
+.dark-mode .quantity-controls button {
+  background-color: #555555; /* Darker background for quantity buttons */
+  color: white; /* White text color */
+  border: 1px solid #777777; /* Darker border for quantity buttons */
+  border-radius: 50%; /* Keep the circular shape */
+  padding: 5px;
+  font-size: 18px;
+  cursor: pointer;
+  transition: background-color 0.3s ease;
+}
+
+/* Dark Mode Hover Effect for Quantity Controls Button */
+.dark-mode .quantity-controls button:hover {
+  background-color: #666666; /* Slightly lighter background on hover */
+}
+
+/* Dark Mode Active State for Quantity Controls Button */
+.dark-mode .quantity-controls button:active {
+  background-color: #777777; /* Darker background when active */
+}
+
+
+
+/* Dark Mode for Modal Content */
+.dark-mode .modal-content {
+  background-color: #222222; /* Dark background for modal content */
+  color: #ffffff; /* White text */
+  box-shadow: 0px 4px 6px rgba(255, 255, 255, 0.2); /* Lighter shadow for modal */
+  border-radius: 10px; /* Rounded corners */
+  padding: 30px;
+  width: 80%;
+  max-width: 600px;
+  text-align: center;
+}
+
+/* Dark Mode for Modal Buttons inside Modal */
+.dark-mode .modal-buttons button {
+  background-color: #444444; /* Dark buttons */
+  color: white; /* White text for buttons */
+  border: 1px solid #666666; /* Darker borders for buttons */
+}
+
+.dark-mode .modal-buttons button:hover {
+  background-color: #555555; /* Darker button on hover */
+}
+
+/* Dark Mode for Close Button inside Modal */
+.dark-mode .close {
+  color: #ffffff; /* White color for close button */
+}
+
+
+/* Dark Mode for "No" Button with Light Pink */
+.dark-mode .no-btn {
+  background-color: #f8c6d0 !important; /* Light pink color */
+  color: black !important; /* White text */
+  border: 1px solid #f8a1b2 !important; /* Lighter border for pink */
+}
+
+.dark-mode .no-btn:hover {
+  background-color: #f7a3b1 !important; /* Darker pink when hovered */
+}
+
+
 .dark-mode li {
-  background-color: #fce6e6 !important; /* Keep pink background */
-  color: black !important; /* Make text dark for readability */
+  background-color: #444444; /* Darker background for list items */
+  color: #ffffff; /* White text for list items */
+  border-radius: 10px; /* Optional: to match rounded corners */
+  padding: 10px; /* Add some padding for better spacing */
+  margin-bottom: 10px; /* Space between list items */
 }
 .dark-mode li h3,
 .dark-mode li span {
-  color: black !important;
+  color: #ffffff; /* White text for headings and spans */
 }
 
+
+.dark-mode ul {
+  background-color: #333333; /* Dark background */
+  color: #ffffff; /* White text color */
+}
+.dark-mode li:hover {
+  background-color: #555555; /* Lighter background on hover */
+}
 
 /* 🕶 Dark Mode - Lighten Text */
 .dark-mode .confirm-order {
