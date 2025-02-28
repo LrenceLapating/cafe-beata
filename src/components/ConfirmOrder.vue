@@ -1,5 +1,7 @@
 <template>
   <div>
+    <link href="https://fonts.googleapis.com/css2?family=Dancing+Script&display=swap" rel="stylesheet">
+
     <!-- Confirm Modal -->
     <div v-if="showModal" class="custom-modal">
       <div class="modal-content">
@@ -15,13 +17,12 @@
 
     <!-- Main content -->
     <div class="confirm-order">
-      <!-- Processing Order Section (moved to the center) -->
-      <div v-if="isProcessingOrder" class="loading-spinner-container">
-        <div class="loading-spinner">
-          <span>Processing your order...</span>
-          <div class="loading-bar">
-            <div class="progress" :style="{ width: progressBarWidth + '%' }"></div>
-          </div>
+      <!-- Processing Order Section (centered) -->
+      <div v-show="isProcessingOrder" class="loading-spinner-container">
+        <h1 class="wedding-text">Café Beàta</h1>
+        <h1 class="loading-text">Processing your order...</h1>
+        <div class="progress-bar-container">
+          <div class="progress-bar" :style="{ width: progressBarWidth + '%' }"></div>
         </div>
       </div>
 
@@ -68,6 +69,7 @@
 
 
 
+
 <script>
 export default {
   data() {
@@ -100,6 +102,31 @@ export default {
         this.cart = JSON.parse(storedCart);
       }
     },
+
+
+  startProcessingOrder() {
+     this.isProcessingOrder = true;  // This will display the loading section
+    this.progressBarWidth = 0;  // Reset the progress bar to 0%
+    this.updateProgressBar();   // Example method to update progress
+  },
+  
+updateProgressBar() {
+    let width = 0;
+    const interval = setInterval(() => {
+      if (width < 100) {
+        width += 10;
+        this.progressBarWidth = width;
+      } else {
+        clearInterval(interval);
+      }
+    }, 1000);  // Update every second
+  },
+
+  stopProcessingOrder() {
+    this.isProcessingOrder = false;  // Stop the loading process
+  },
+
+
     addToCart() {
       const newItem = {
         name: this.$route.query.name,
@@ -245,55 +272,98 @@ export default {
 
 <style scoped>
 
-.loading-spinner {
-  background-color: white;
-  padding: 30px;
-  border-radius: 10px;
-  text-align: center;
-  width: 350px; /* Set the spinner container size */
-  height: 100px; /* Increase the height */
-  font-size: 20px; /* Adjust text size */
+.wedding-text {
+  font-size: 36px; /* Larger size for emphasis */
+  font-weight: bold;
+  color: #d12f7a; /* Dark pink */
+  font-family: 'Dancing Script', cursive; /* Cursive font like in the image */
+  margin-bottom: 10px; /* Space below the Wedding text */
 }
 
-.spinner {
-  border: 4px solid #f3f3f3;
-  border-top: 4px solid #3498db;
-  border-radius: 50%;
-  width: 50px;
-  height: 50px;
-  animation: spin 2s linear infinite;
+/* Normal Loading Text */
+.loading-text {
+  font-size: 24px;  /* Adjust the size of the text */
+  font-weight: normal;  /* Regular weight for the text */
+  color: black;  /* White color to contrast with the background */
+  font-family: Arial, sans-serif; /* A simple font for "loading..." */
+  margin-top: 10px; /* Space between Wedding text and loading text */
 }
 
-@keyframes spin {
-  0% { transform: rotate(0deg); }
-  100% { transform: rotate(360deg); }
-}
-
-.spinner p {
-  margin-top: 10px;
-  font-size: 1.2em;
-  color: #3498db;
-}
-
-.loading-bar {
-  width: 100%;
-  height: 20px; /* Increase the height of the bar */
-  background-color: #f0f0f0;
-  border-radius: 10px;
+/* Progress Bar Container with Dark Pink Background */
+.progress-bar-container {
   margin-top: 20px;
+  width: 100%; /* Full width of container */
+  max-width: 400px;  /* Limit the max width of the progress bar */
+  height: 30px;
+  background-color: #d85d7f; /* Dark Pink background color */
+  border-radius: 20px;
+  overflow: hidden;
 }
 
-.progress {
+/* Striped Red Progress Bar */
+.progress-bar {
   height: 100%;
-  background-color: #4caf50; /* Green progress bar */
-  border-radius: 10px;
-  transition: width 0.5s ease-in-out;
+  background: repeating-linear-gradient(
+    45deg,
+    red 0%,
+    red 10%,
+    #d85d7f 10%,
+    #d85d7f 20%
+  );
+  border-radius: 20px;
+  animation: progressAnimation 3s linear infinite;
 }
 
-/* Loading spinner fade-in animation */
-@keyframes fadeIn {
-  0% { opacity: 0; }
-  100% { opacity: 1; }
+@keyframes progressAnimation {
+  0% { width: 0%; }
+  100% { width: 100%; }
+}
+
+.loading-spinner-container {
+  position: fixed;  /* Fixed position so it's always visible on the screen */
+  top: 50%;  /* Center vertically */
+  left: 50%;  /* Center horizontally */
+  transform: translate(-50%, -50%);  /* Adjust for perfect centering */
+  z-index: 1000;  /* Ensure it stays on top */
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  flex-direction: column;
+  text-align: center;
+  padding: 20px;
+  background-color:#f8d1d1; /* Dark Pink background */
+  border-radius: 35px;  /* Rounded corners */
+  width: 80%;  /* Ensure the container width is sufficient */
+  max-width: 600px;  /* Set a max width for the container */
+  min-height: 200px; /* Set a minimum height to ensure visibility */
+  margin: 0 auto;  /* Center the container */
+  overflow: visible;  /* Ensure nothing is clipped */
+}
+
+/* Mobile adjustments */
+@media (max-width: 768px) {
+  .loading-spinner-container {
+    width: 80%;  /* Reduce width to 80% for smaller screens */
+    padding: 12px;  /* Reduce padding for a more compact container */
+    max-height: 250px;  /* Limit the height for medium-sized screens */
+    overflow: hidden;  /* Prevent overflow if content exceeds max height */
+  }
+  .progress-bar-container {
+    max-width: 250px;  /* Adjust progress bar width for smaller screens */
+  }
+}
+
+@media (max-width: 480px) {
+  .loading-spinner-container {
+    width: 75%;  /* Reduce width to 75% for very small screens */
+    padding: 10px;  /* Further reduce padding */
+    max-height: 200px;  /* Set a smaller height for very small screens */
+    height: auto;  /* Allow height to adjust automatically */
+    overflow: hidden;  /* Prevent content from overflowing */
+  }
+  .progress-bar-container {
+    max-width: 220px;  /* Make the progress bar smaller for very small screens */
+  }
 }
 
 
@@ -319,17 +389,6 @@ export default {
   max-width: 600px;
 }
 
-.loading-spinner-container {
-  position: fixed;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
-  z-index: 1000;
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  flex-direction: column;
-}
 
 .close {
   position: absolute;
@@ -372,15 +431,53 @@ export default {
   background-color: #b82d67;
 }
 
-
-.loading-spinner {
-  text-align: center;
-  font-size: 18px;
-  padding: 10px;
-  background-color:rgb(161, 100, 100);
-  color: white;
-  border-radius: 8px;
+/* Dark Mode for the Loading Spinner Container */
+.dark-mode .loading-spinner-container {
+  background-color: #333;  /* Dark background color for dark mode */
+  color: #fff;  /* White text color for dark mode */
+  border-radius: 35px;  /* Keep the rounded corners */
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3); /* Lighter shadow for dark mode */
 }
+
+.dark-mode .loading-text {
+  color: #fff;  /* White color for the loading text */
+}
+
+.dark-mode .progress-bar-container {
+  background-color: #444;  /* Dark background for progress bar container */
+}
+
+.dark-mode .progress-bar {
+  background: repeating-linear-gradient(
+    45deg,
+    #555 0%, 
+    #555 10%, 
+    #333 10%, 
+    #333 20%  /* Darker stripes for progress bar in dark mode */
+  );
+  animation: progressAnimation 3s linear infinite;
+}
+
+.dark-mode .loading-spinner-container .progress-bar-container {
+  background-color: #555;  /* Slightly lighter background for the progress bar container */
+}
+
+.dark-mode .spinner {
+  border-top: 4px solid #3498db; /* Blue color for the spinner */
+  border-color: #555; /* Darker border for spinner */
+}
+
+/* Adjust the progress bar text color in dark mode */
+.dark-mode .loading-text {
+  color: #ddd;  /* Light gray for text in dark mode */
+}
+
+/* Optional: Apply shadow to make text and progress bar stand out more */
+.dark-mode .loading-spinner-container {
+  box-shadow: 0px 4px 8px rgba(0, 0, 0, 0.7);  /* Stronger shadow for dark mode */
+}
+
+
 
 .dark-mode .loading-spinner {
   background-color: #333333; /* Dark background */
@@ -425,7 +522,6 @@ export default {
 .dark-mode .quantity-controls button:active {
   background-color: #777777; /* Darker background when active */
 }
-
 
 
 /* Dark Mode for Modal Content */

@@ -1,7 +1,7 @@
 <template>
   <div class="notifications-page">
     <div class="header">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css">
+      <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css">
 
       <button @click="goToOrderRecord" class="order-record-button">View Order Record</button>
       <h1>Admin Dashboard</h1>
@@ -10,11 +10,21 @@
       </button>
     </div>
 
+    <!-- Search Bar -->
+    <div class="search-bar">
+      <input 
+        type="text" 
+        v-model="searchQuery" 
+        placeholder="Search orders by ID, customer name..." 
+        class="search-input"
+      />
+    </div>
+
     <div v-if="isLoading" class="loading">Loading...</div>
 
-    <div v-if="orders.length && !isLoading" class="orders-list">
+    <div v-if="filteredOrders.length && !isLoading" class="orders-list">
       <h2>Pending Orders</h2>
-      <div class="order-item" v-for="order in orders" :key="order.id">
+      <div class="order-item" v-for="order in filteredOrders" :key="order.id">
         <div class="order-details">
           <h3>Order ID: {{ order.id }}</h3>
           <p><strong>Customer:</strong> {{ order.customer_name }}</p>
@@ -37,6 +47,11 @@
         <!-- Mark as Completed button -->
         <button @click="markAsCompleted(order.id, order.customer_name, order.items)" class="mark-completed-btn small-btn">
           Mark as Completed
+        </button>
+
+        <!-- Order Ready button -->
+        <button @click="sendOrderReadyNotification(order.id, order.customer_name, order.items)" class="order-ready-btn small-btn">
+          Order Ready
         </button>
 
         <!-- Decline button -->
@@ -64,8 +79,16 @@
     <div v-else-if="!isLoading">
       <p>No pending orders at the moment.</p>
     </div>
+
+    <!-- Popup Notification Sent -->
+    <div v-if="notificationSent" class="notification-popup">
+      <p>Notification Sent!</p>
+      <button @click="notificationSent = false" class="close-popup-btn">Close</button>
+    </div>
   </div>
 </template>
+
+
 
 
 <script>
@@ -77,10 +100,26 @@ export default {
       refreshInterval: null, // Interval reference for auto-refresh
       activeDeclineOrderId: null, // Track the order for which decline message is being customized
       customDeclineMessage: "", // Store the custom decline message
+      notificationSent: false, // To track if the notification has been sent
+      searchQuery: "", // To hold the search query input
     };
   },
+  computed: {
+    // Filter orders based on search query
+    filteredOrders() {
+      if (!this.searchQuery) {
+        return this.orders;
+      }
+      return this.orders.filter(order => {
+        const lowerCaseSearchQuery = this.searchQuery.toLowerCase();
+        return (
+          order.id.toString().includes(lowerCaseSearchQuery) || // Search by Order ID
+          order.customer_name.toLowerCase().includes(lowerCaseSearchQuery) // Search by Customer Name
+        );
+      });
+    }
+  },
   methods: {
-
     // Method to format the order date in the required format
     formatDate(dateString) {
       const date = new Date(dateString);
@@ -103,18 +142,23 @@ export default {
     },
 
     logout() {
-     
       this.$router.push({ name: "Login" });  // Redirect the user to the Login page (adjust the route as needed)
     },
 
     // Fetch orders from API
-    fetchOrders() {
-      this.isLoading = true;
+    fetchOrders(silent = false) {
+      // Save scroll position before refreshing
+      const scrollPosition = window.scrollY;
+
+      if (this.isLoading && !silent) return; // Prevent fetch if already loading
+      if (!silent) {
+        this.isLoading = true;
+      }
+      
       fetch("http://127.0.0.1:8000/orders")
         .then(response => response.json())
         .then((data) => {
           if (data.orders && Array.isArray(data.orders)) {
-            // Only show pending orders
             this.orders = data.orders.filter(order => order.status === "pending");
           } else {
             console.error("Invalid data format", data);
@@ -123,7 +167,11 @@ export default {
         })
         .catch(error => console.error("Error fetching orders:", error))
         .finally(() => {
-          this.isLoading = false;
+          if (!silent) {
+            this.isLoading = false;
+          }
+          // Restore scroll position after refreshing
+          setTimeout(() => window.scrollTo(0, scrollPosition), 100); // Use a small timeout for smoother scroll restoration
         });
     },
 
@@ -144,46 +192,46 @@ export default {
 
     // Mark an order as completed and send notification
     markAsCompleted(orderId, customerName, items) {
-  fetch(`http://127.0.0.1:8000/orders/${orderId}`, {
-    method: "PUT",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ status: "completed" }) // Properly formatted JSON
-  })
-    .then(response => {
-      if (!response.ok) {
-        throw new Error(`HTTP error! Status: ${response.status}`);
-      }
-      return response.json(); // Only handle the response JSON once here
-    })
-    .then(() => {
-      // Immediately remove from pending orders
-      this.orders = this.orders.filter(order => order.id !== orderId);
+      fetch(`http://127.0.0.1:8000/orders/${orderId}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ status: "completed" }) // Properly formatted JSON
+      })
+        .then(response => {
+          if (!response.ok) {
+            throw new Error(`HTTP error! Status: ${response.status}`);
+          }
+          return response.json(); // Only handle the response JSON once here
+        })
+        .then(() => {
+          // Immediately remove from pending orders
+          this.orders = this.orders.filter(order => order.id !== orderId);
 
-      // Calculate the total price
-      const total = items.reduce((sum, item) => sum + item.price * item.quantity, 0).toFixed(2);
+          // Calculate the total price
+          const total = items.reduce((sum, item) => sum + item.price * item.quantity, 0).toFixed(2);
 
-      // Prepare the notification with highlighted order details (HTML added)
-      const notification = {
-        orderId,
-        customerName,
-        message: `Your order is now ready! Proceed to the cashier for payment and pickup. <span class="highlighted-order-details">Order details: ${this.formatItems(items)}. Total: ₱${total}</span>`,
-        timestamp: new Date().toISOString(),
-        items,  // Include items in the notification
-        total,  // Include total in the notification
-      };
+          // Prepare the notification with highlighted order details (HTML added)
+          const notification = {
+            orderId,
+            customerName,
+            message: `Your order is completed! ✔️ Thank you for choosing Café Beata. Enjoy your food and drinks! 🥰. <span class="highlighted-order-details">Order details: ${this.formatItems(items)}. Total: ₱${total}</span>`,
+            timestamp: new Date().toISOString(),
+            items,  // Include items in the notification
+            total,  // Include total in the notification
+          };
 
-      // Save the notification in localStorage for the specific user
-      const userNotificationsKey = `user_notifications_${customerName}`;
-      let notifications = JSON.parse(localStorage.getItem(userNotificationsKey)) || [];
-      notifications.push(notification);
-      localStorage.setItem(userNotificationsKey, JSON.stringify(notifications));
+          // Save the notification in localStorage for the specific user
+          const userNotificationsKey = `user_notifications_${customerName}`;
+          let notifications = JSON.parse(localStorage.getItem(userNotificationsKey)) || [];
+          notifications.push(notification);
+          localStorage.setItem(userNotificationsKey, JSON.stringify(notifications));
 
-      // Emit an event to notify other components (optional)
-       window.dispatchEvent(new Event("notificationUpdated"));
+          // Emit an event to notify other components (optional)
+          window.dispatchEvent(new Event("notificationUpdated"));
 
-      alert("Order marked as completed!");
-    })
-    .catch(error => console.error("Error marking order as completed:", error));
+          alert("Order marked as completed!");
+        })
+        .catch(error => console.error("Error marking order as completed:", error));
     },
 
     // Open the custom decline message input for a specific order
@@ -194,7 +242,7 @@ export default {
 
     // Decline an order and send notification with custom message
     declineOrder(orderId, customerName, items) {
-      const message = this.customDeclineMessage || "Unfortunately, this item is temporarily out of stock. We apologize for the inconvenience and appreciate your patience.";
+      const message = this.customDeclineMessage || "Unfortunately, this item is temporarily out of stock. We apologize for the inconvenience and appreciate your patience. 🙏";
 
       fetch(`http://127.0.0.1:8000/orders/${orderId}`, {
         method: "PUT",
@@ -250,11 +298,12 @@ export default {
       }
     },
 
-    // Start auto-refresh for pending orders every 10 seconds (instead of 1 second)
+    // Start auto-refresh for pending orders every 5 seconds
     startAutoRefresh() {
       this.refreshInterval = setInterval(() => {
-        this.fetchOrders();
-      }, 5000); // Set to 10000ms (10 seconds)
+        // Perform fetch silently
+        this.fetchOrders(true);  // Call silently without triggering loading state
+      }, 5000);  // Refresh every 5 seconds
     },
 
     // Stop auto-refresh
@@ -263,16 +312,45 @@ export default {
         clearInterval(this.refreshInterval);
         this.refreshInterval = null;
       }
-    }
+    },
+
+    // New method to handle the "Order Ready" button click and show pop-up notification
+    sendOrderReadyNotification(orderId, customerName, items) {
+      const total = items.reduce((sum, item) => sum + item.price * item.quantity, 0).toFixed(2);
+
+      const notification = {
+        orderId,
+        customerName,
+        message: `Your order is now ready! Proceed to the cashier for payment and pickup. ☺️ Order details: ${this.formatItems(items)}. Total: ₱${total}`,
+        timestamp: new Date().toISOString(),
+        items,
+        total,
+      };
+
+      // Save the notification in localStorage for the specific user
+      const userNotificationsKey = `user_notifications_${customerName}`;
+      let notifications = JSON.parse(localStorage.getItem(userNotificationsKey)) || [];
+      notifications.push(notification);
+      localStorage.setItem(userNotificationsKey, JSON.stringify(notifications));
+
+      // Emit event to notify other components (optional)
+      window.dispatchEvent(new Event("notificationUpdated"));
+
+       this.notificationSent = true;
+
+         setTimeout(() => {
+      this.notificationSent = false;
+    }, 3000);  // Hide the popup after 3 seconds
+    },
   },
 
   mounted() {
-    this.fetchOrders();
-    this.startAutoRefresh(); // Start auto-fetching every 10 seconds
+    this.fetchOrders(); // Initial fetch when the page loads
+    this.startAutoRefresh(); // Start auto-fetching every 5 seconds
   },
 
   beforeUnmount() {
-    this.stopAutoRefresh(); // Stop fetching when leaving the page
+    this.stopAutoRefresh(); // Stop auto-fetching when leaving the page
   }
 };
 </script>
@@ -280,8 +358,102 @@ export default {
 
 
 
+
+
+
+
 <style scoped>
 
+
+
+/* Style for the search bar container */
+.search-bar {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  margin: 20px auto;
+  width: 90%;
+  max-width: 400px; /* Limit the width for cleaner appearance */
+  background-color: transparent;
+  border-radius: 30px;
+  border: 2px solid #d12f7a; /* Pink border */
+  
+}
+
+/* Input field inside the search bar */
+.search-input {
+  width: 100%;
+  padding: 10px 15px;
+  font-size: 16px;
+  border: none;
+  outline: none;
+  background-color: transparent;
+  color: #333;
+  border-radius: 30px;
+}
+
+
+
+
+.order-ready-btn {
+  background-color: #4caf50; /* Green background for success */
+  color: white; /* White text */
+  padding: 5px 5px; /* Larger padding for better visibility */
+  font-size: 14px; /* Slightly larger font size */
+  border: none;
+  border-radius: 5px; /* Rounded corners */
+  cursor: pointer;
+  margin-top: 15px; /* Space between the Mark as Completed button */
+  width: 100%; /* Make the button full width of its container */
+  transition: background-color 0.3s ease, transform 0.3s ease; /* Smooth transition for hover effect */
+}
+
+.order-ready-btn:hover {
+  background-color: #45a049; /* Slightly darker green when hovered */
+  transform: translateY(-2px); /* Slight upward movement on hover */
+}
+
+.order-ready-btn:active {
+  background-color: #388e3c; /* Even darker green when clicked */
+  transform: translateY(0); /* Reset the movement after click */
+}
+
+.notification-popup {
+  position: fixed;
+  top: 20px; /* Distance from the top of the screen */
+  left: 20px; /* Distance from the left side of the screen */
+  background-color: #4caf50; /* Green background for success */
+  color: white; /* White text */
+  padding: 15px 30px; /* Increased padding for a bigger box */
+  border-radius: 8px; /* Slightly rounded corners */
+  box-shadow: 0 6px 8px rgba(0, 0, 0, 0.2); /* Slightly larger shadow for a more pronounced 3D effect */
+  font-size: 20px; /* Larger font size */
+  min-width: 200px; /* Minimum width to prevent it from being too small */
+  z-index: 1000; /* Make sure the pop-up is on top of other content */
+  transition: opacity 0.3s ease, transform 0.3s ease; /* Smooth transition for fade-in/out */
+  opacity: 1; /* Initially visible */
+  transform: translateY(0); /* Initially positioned normally */
+}
+
+.notification-popup.hide {
+  opacity: 0; /* Fade-out effect */
+  transform: translateY(-20px); /* Slightly move up during fade-out */
+}
+
+.notification-popup button {
+  background-color: #fff;
+  color: #4caf50;
+  border: none;
+  padding: 5px 10px;
+  border-radius: 3px;
+  cursor: pointer;
+  margin-left: 10px;
+  font-size: 14px;
+}
+
+.notification-popup button:hover {
+  background-color: #f1f1f1;
+}
 
 .decline-container {
   width: 100%; 

@@ -1,11 +1,9 @@
-
-
 <template>
   <div :class="['notifications-container', { 'dark-mode': isDarkMode }]">
     <!-- Back Button -->
     <router-link to="/dashboard" class="back-button">
       ← Back
-    </router-link>
+    </router-link>  
 
     <!-- Title -->
     <h2 class="notifications-title">Notifications</h2>
@@ -25,6 +23,10 @@
         <p class="order-id">Order ID: {{ notification.orderId }}</p>
         <!-- Render message with highlighted details -->
         <p class="notification-message" v-html="formatHighlightedMessage(notification.message)"></p>
+        
+        <!-- Time Ago -->
+        <p class="notification-time">{{ formatTimeAgo(notification.timestamp) }}</p>
+        
         <hr />
       </div>
     </div>
@@ -32,11 +34,10 @@
 </template>
 
 
-
 <script>
-
 import { eventBus } from "@/utils/eventBus"; // Correct the path if needed
-export default {  
+
+export default {
   data() {
     return {
       notifications: [],  // Will hold notifications fetched from localStorage
@@ -45,37 +46,50 @@ export default {
     };
   },
   methods: {
+    // Method to get time ago in a human-readable format
+    formatTimeAgo(timestamp) {
+      const now = new Date();
+      const diff = now - new Date(timestamp); // Difference in milliseconds
+      const minutes = Math.floor(diff / 1000 / 60);
+      const hours = Math.floor(diff / 1000 / 60 / 60);
+      const days = Math.floor(diff / 1000 / 60 / 60 / 24);
 
-        updateNotificationCount() {
-    const unreadCount = this.notifications.filter(notification => !notification.read).length;
-    eventBus.notificationsCount = unreadCount; 
-  },
+      if (days > 0) return `${days} day${days > 1 ? "s" : ""} ago`;
+      if (hours > 0) return `${hours} hour${hours > 1 ? "s" : ""} ago`;
+      if (minutes > 0) return `${minutes} minute${minutes > 1 ? "s" : ""} ago`;
+      return "Just now";
+    },
 
-    // Fetch notifications specific to the current user
-        fetchNotifications() {
-    const userName = localStorage.getItem("userName"); 
-    if (userName) {
-      const userNotificationsKey = `user_notifications_${userName}`;
-      const storedNotifications = JSON.parse(localStorage.getItem(userNotificationsKey)) || [];
-      this.notifications = storedNotifications;
-      this.updateNotificationCount(); // Call to update the count
-    } else {
-      this.notifications = [];
+    updateNotificationCount() {
+      const unreadCount = this.notifications.filter(notification => !notification.read).length;
+      eventBus.notificationsCount = unreadCount; 
+    },
+
+    fetchNotifications() {
+      const userName = localStorage.getItem("userName"); 
+      if (userName) {
+        const userNotificationsKey = `user_notifications_${userName}`;
+        const storedNotifications = JSON.parse(localStorage.getItem(userNotificationsKey)) || [];
+        this.notifications = storedNotifications.reverse();  // Reverse the notifications array to display newest first
+        this.updateNotificationCount(); // Call to update the count
+      } else {
+        this.notifications = [];
       }
     },
 
-     addNewNotification(notification) {
-  const userName = localStorage.getItem("userName");
-  const userNotificationsKey = `user_notifications_${userName}`;
-  let notifications = JSON.parse(localStorage.getItem(userNotificationsKey)) || [];
-  notifications.push(notification);
-  localStorage.setItem(userNotificationsKey, JSON.stringify(notifications));
+    addNewNotification(notification) {
+      const userName = localStorage.getItem("userName");
+      const userNotificationsKey = `user_notifications_${userName}`;
+      let notifications = JSON.parse(localStorage.getItem(userNotificationsKey)) || [];
+      
+      // Add the new notification at the start of the array (newest first)
+      notifications.unshift(notification);
+      localStorage.setItem(userNotificationsKey, JSON.stringify(notifications));
 
-  // Emit event to update the Dashboard's notification count
-  window.dispatchEvent(new Event("notificationUpdated"));
-      },
+      // Emit event to update the Dashboard's notification count
+      window.dispatchEvent(new Event("notificationUpdated"));
+    },
 
-    // Method to format and highlight the "Order details" and "Total"
     formatHighlightedMessage(message) {
       return message.replace(
         /(Order details:.*?Total:.*?)/,
@@ -83,28 +97,25 @@ export default {
       );
     },
 
-    // Clear all notifications (optional, if you want to give the user this option)
-   clearNotifications() {
-  const userName = localStorage.getItem("userName");
-  if (userName) {
-    const userNotificationsKey = `user_notifications_${userName}`;
-    localStorage.removeItem(userNotificationsKey);  // Clear notifications for this specific user
-    this.notifications = [];
-    localStorage.setItem("unread_notifications", 0);
+    clearNotifications() {
+      const userName = localStorage.getItem("userName");
+      if (userName) {
+        const userNotificationsKey = `user_notifications_${userName}`;
+        localStorage.removeItem(userNotificationsKey);  // Clear notifications for this specific user
+        this.notifications = [];
+        localStorage.setItem("unread_notifications", 0);
 
-    // Emit event to update Dashboard's notification count
-    window.dispatchEvent(new Event("notificationUpdated"));
+        // Emit event to update Dashboard's notification count
+        window.dispatchEvent(new Event("notificationUpdated"));
       }
     },
 
-    // Set up auto-refresh every 5 seconds to check for updates
     startAutoRefresh() {
       this.refreshInterval = setInterval(() => {
         this.fetchNotifications();
       }, 5000); // 5000 ms = 5 seconds
     },
 
-    // Stop auto-refresh (for cleanup, if necessary)
     stopAutoRefresh() {
       if (this.refreshInterval) {
         clearInterval(this.refreshInterval);
@@ -112,17 +123,17 @@ export default {
     }
   },
   created() {
-    // Fetch notifications when the component is created
     this.fetchNotifications();
     this.startAutoRefresh();
-     window.addEventListener("notificationUpdated", this.fetchNotifications);
+    window.addEventListener("notificationUpdated", this.fetchNotifications);
   },
   beforeUnmount() {
-     window.removeEventListener("notificationUpdated", this.fetchNotifications);
+    window.removeEventListener("notificationUpdated", this.fetchNotifications);
     this.stopAutoRefresh();
   }
 };
 </script>
+
 
 
 
@@ -157,6 +168,11 @@ export default {
   background-color: #333;
   color: white;  /* Light text for dark mode */
 }
+.dark-mode .notification-time {
+  color: #ccc;
+}
+
+
 
 .dark-mode .notification-item {
   background-color: #444;
@@ -166,12 +182,11 @@ export default {
 .dark-mode .order-id,
 .dark-mode .no-notifications,
 .dark-mode .notification-message {
-
-   color: white; /* Lighter text color in dark mode */
+  color: white; /* Lighter text color in dark mode */
 }
 
 .dark-mode .back-button {
-   color: white; /* White text for the back button */
+  color: white; /* White text for the back button */
 }
 
 .dark-mode .highlighted-order-details {
@@ -205,7 +220,7 @@ export default {
 }
 
 .clear-btn {
-  background-color:rgb(66, 47, 56);
+  background-color: rgb(66, 47, 56);
   color: white;
   padding: 8px 16px;
   border: none;
@@ -243,6 +258,14 @@ export default {
   font-size: 19px;
 }
 
+.notification-time {
+  font-size: 14px;
+  color: #222; /* Lighter color for the time ago text */
+  margin-top: 10px;
+  font-style: italic;
+  text-align: right; /* Align time to the right */
+}
+
 hr {
   margin: 10px 0;
   border-color: #ccc;
@@ -250,7 +273,7 @@ hr {
 
 .no-notifications {
   font-size: 18px;
-  color:rgb(68, 68, 68);
+  color: rgb(68, 68, 68);
   font-weight: bold;
   text-align: center;
   margin-top: 20px;
