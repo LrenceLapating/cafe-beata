@@ -2,12 +2,21 @@
   <div class="notifications-page">
     <div class="header">
       <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css">
-
       <button @click="goToOrderRecord" class="order-record-button">View Order Record</button>
       <h1>Admin Dashboard</h1>
       <button @click="logout" class="logout-button">
         <i class="fa-solid fa-right-from-bracket"></i>
       </button>
+    </div>
+
+    <div class="admin-cafe-status">
+      <button @click="toggleCafeStatus" :class="{'open-btn': isCafeOpen, 'closed-btn': !isCafeOpen}" class="cafe-toggle-btn">
+        {{ isCafeOpen ? 'Set Cafe Closed' : 'Set Cafe Open' }}
+      </button>
+    </div>
+
+  <div v-if="notificationVisible" :class="['notification-popup', notificationClass]">
+      <p>{{ notificationMessage }}</p>
     </div>
 
     <!-- Search Bar -->
@@ -29,6 +38,8 @@
           <h3>Order ID: {{ order.id }}</h3>
           <p><strong>Customer:</strong> {{ order.customer_name }}</p>
           <p><strong>Status:</strong> {{ order.status }}</p>
+          <p><strong>Time Order: </strong> {{ timeAgo(order.created_at) }}</p> <!-- Time Ago Display -->
+
           <div class="items-section">
             <strong>Items:</strong>
             <ul>
@@ -51,7 +62,7 @@
 
         <!-- Order Ready button -->
         <button @click="sendOrderReadyNotification(order.id, order.customer_name, order.items)" class="order-ready-btn small-btn">
-          Order Ready
+          Order Ready  🔔
         </button>
 
         <!-- Decline button -->
@@ -81,12 +92,13 @@
     </div>
 
     <!-- Popup Notification Sent -->
-    <div v-if="notificationSent" class="notification-popup">
+    <div v-if="notificationSent" class="notification-sent-popup">
       <p>Notification Sent!</p>
       <button @click="notificationSent = false" class="close-popup-btn">Close</button>
     </div>
   </div>
 </template>
+
 
 
 
@@ -102,6 +114,10 @@ export default {
       customDeclineMessage: "", // Store the custom decline message
       notificationSent: false, // To track if the notification has been sent
       searchQuery: "", // To hold the search query input
+      isCafeOpen: true,
+      notificationMessage: "",
+      notificationClass: "", 
+      notificationVisible: false
     };
   },
   computed: {
@@ -119,7 +135,72 @@ export default {
       });
     }
   },
+
   methods: {
+    toggleCafeStatus() {
+    this.isCafeOpen = !this.isCafeOpen; // Toggle the cafe status
+    localStorage.setItem('isCafeOpen', this.isCafeOpen); // Store cafe status
+
+    // Set the notification message and class based on the cafe status
+    if (this.isCafeOpen) {
+      this.notificationMessage = "Cafe Beàta is now Open!";
+      this.notificationClass = "open-notification"; // Set class for green when open
+    } else {
+      this.notificationMessage = "Cafe Beàta is now Closed!";
+      this.notificationClass = "closed-notification"; // Set class for red when closed
+    }
+
+    this.showNotification();  // Show the notification
+  },
+  
+   showNotification() {
+    // Show the notification and reset visibility after a timeout
+    this.notificationVisible = true;
+
+    setTimeout(() => {
+      this.notificationVisible = false;
+    }, 3000);  // Hide after 3 seconds
+  },
+
+
+    timeAgo(timestamp) {
+    // If timestamp is a string, ensure it's in ISO format by replacing space with "T"
+    if (typeof timestamp === "string") {
+      timestamp = timestamp.replace(" ", "T"); // Convert to ISO format: "YYYY-MM-DD HH:MM:SS" -> "YYYY-MM-DDTHH:MM:SS"
+    }
+
+    const now = new Date();
+    const orderTime = new Date(timestamp); // Parse the timestamp
+
+    // Check if the timestamp is valid
+    if (isNaN(orderTime)) {
+      return "Invalid time"; // Return fallback message if timestamp is invalid
+    }
+
+    const differenceInSeconds = Math.floor((now - orderTime) / 1000);
+
+    if (differenceInSeconds < 60) {
+      return 'Just now';
+    } else if (differenceInSeconds < 3600) {
+      const minutes = Math.floor(differenceInSeconds / 60);
+      return `${minutes} minute${minutes > 1 ? 's' : ''} ago`;
+    } else if (differenceInSeconds < 86400) {
+      const hours = Math.floor(differenceInSeconds / 3600);
+      return `${hours} hour${hours > 1 ? 's' : ''} ago`;
+    } else if (differenceInSeconds < 2592000) {
+      const days = Math.floor(differenceInSeconds / 86400);
+      return `${days} day${days > 1 ? 's' : ''} ago`;
+    } else if (differenceInSeconds < 31536000) {
+      const months = Math.floor(differenceInSeconds / 2592000);
+      return `${months} month${months > 1 ? 's' : ''} ago`;
+    } else {
+      const years = Math.floor(differenceInSeconds / 31536000);
+      return `${years} year${years > 1 ? 's' : ''} ago`;
+    }
+  },
+
+
+
     // Method to format the order date in the required format
     formatDate(dateString) {
       const date = new Date(dateString);
@@ -345,12 +426,21 @@ export default {
   },
 
   mounted() {
+
+  const savedCafeStatus = localStorage.getItem('isCafeOpen');
+    if (savedCafeStatus !== null) {
+      this.isCafeOpen = JSON.parse(savedCafeStatus);
+    }
+    
+
     this.fetchOrders(); // Initial fetch when the page loads
     this.startAutoRefresh(); // Start auto-fetching every 5 seconds
   },
 
   beforeUnmount() {
     this.stopAutoRefresh(); // Stop auto-fetching when leaving the page
+
+    
   }
 };
 </script>
@@ -364,6 +454,57 @@ export default {
 
 <style scoped>
 
+.closed-notification {
+  background-color: red; /* Red */
+  color: white;
+}
+
+.open-notification {
+  background-color: #4caf50; /* Green */
+  color: white;
+}
+
+
+/* Container for the Cafe Status Toggle */
+.admin-cafe-status {
+  margin-top: 20px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.cafe-toggle-btn {
+  font-size: 16px;
+  padding: 10px 20px;
+  border: 2px solid black; /* Black border */
+  cursor: pointer;
+  border-radius: 30px;
+  transition: background-color 0.3s ease, transform 0.2s ease;
+  font-weight: bold;
+  width: 200px;
+}
+
+/* Style for the button when Cafe is Open */
+.open-btn {
+  background-color: #28a745; /* Green */
+  color: white;
+}
+
+.open-btn:hover {
+  background-color: #218838; /* Darker green on hover */
+  transform: scale(1.05); /* Slightly enlarge the button */
+}
+
+/* Style for the button when Cafe is Closed */
+.closed-btn {
+  background-color: #dc3545; /* Red */
+  color: white;
+}
+
+.closed-btn:hover {
+  background-color: #c82333; /* Darker red on hover */
+  transform: scale(1.05); /* Slightly enlarge the button */
+}
 
 
 /* Style for the search bar container */
@@ -418,23 +559,55 @@ export default {
   transform: translateY(0); /* Reset the movement after click */
 }
 
-.notification-popup {
+
+/* Style for the Notification Sent popup */
+.notification-sent-popup {
   position: fixed;
   top: 20px; /* Distance from the top of the screen */
   left: 20px; /* Distance from the left side of the screen */
-  background-color: #4caf50; /* Green background for success */
-  color: white; /* White text */
-  padding: 15px 30px; /* Increased padding for a bigger box */
-  border-radius: 8px; /* Slightly rounded corners */
-  box-shadow: 0 6px 8px rgba(0, 0, 0, 0.2); /* Slightly larger shadow for a more pronounced 3D effect */
-  font-size: 20px; /* Larger font size */
-  min-width: 200px; /* Minimum width to prevent it from being too small */
-  z-index: 1000; /* Make sure the pop-up is on top of other content */
-  transition: opacity 0.3s ease, transform 0.3s ease; /* Smooth transition for fade-in/out */
-  opacity: 1; /* Initially visible */
-  transform: translateY(0); /* Initially positioned normally */
+  background-color:rgb(82, 13, 45); /* Blue background for "Notification Sent" */
+  color: white;
+  padding: 15px 30px;
+  border-radius: 8px;
+  box-shadow: 0 6px 8px rgba(0, 0, 0, 0.2);
+  font-size: 20px;
+  min-width: 200px;
+  z-index: 1000;
+  transition: opacity 0.3s ease, transform 0.3s ease;
+  opacity: 1;
+  transform: translateY(0);
 }
 
+.notification-sent-popup button {
+  background-color: #fff;
+  color: #007bff;
+  border: none;
+  padding: 5px 10px;
+  border-radius: 3px;
+  cursor: pointer;
+  margin-left: 10px;
+  font-size: 14px;
+}
+
+.notification-sent-popup button:hover {
+  background-color: #f1f1f1;
+}
+
+
+.notification-popup {
+  position: fixed;
+  top: 20px;
+  left: 20px;
+  padding: 15px 30px;
+  border-radius: 8px;
+  box-shadow: 0 6px 8px rgba(0, 0, 0, 0.2);
+  font-size: 20px;
+  min-width: 200px;
+  z-index: 1000;
+  transition: opacity 0.3s ease, transform 0.3s ease;
+  opacity: 1;
+  transform: translateY(0);
+}
 .notification-popup.hide {
   opacity: 0; /* Fade-out effect */
   transform: translateY(-20px); /* Slightly move up during fade-out */
@@ -600,7 +773,7 @@ h1 {
 }
 
 .items-section {
-  margin-top: 10px; 
+  margin-top: 25px; 
   flex-grow: 1; /* Allow the items section to expand and adapt */
 }
 

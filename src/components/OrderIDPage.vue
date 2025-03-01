@@ -30,7 +30,7 @@
             {{ item.name }} - ₱{{ item.price * item.quantity }} x{{ item.quantity }}
           </li>
         </ul>
-        <p><strong>Total Paid:</strong> ₱{{ total }}</p>
+        <p><strong>Total Payment:</strong> ₱{{ total }}</p>
       </div>
 
       <!-- Back to Dashboard Button -->

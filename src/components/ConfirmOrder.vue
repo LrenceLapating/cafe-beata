@@ -1,7 +1,5 @@
 <template>
   <div>
-    <link href="https://fonts.googleapis.com/css2?family=Dancing+Script&display=swap" rel="stylesheet">
-
     <!-- Confirm Modal -->
     <div v-if="showModal" class="custom-modal">
       <div class="modal-content">
@@ -24,6 +22,11 @@
         <div class="progress-bar-container">
           <div class="progress-bar" :style="{ width: progressBarWidth + '%' }"></div>
         </div>
+      </div>
+
+      <!-- Order Closed Message -->
+      <div v-if="!isCafeOpen" class="closed-message">
+        <p>We apologize for the inconvenience. Café Beàta is currently closed. Our operating hours are Monday to Saturday, from 6:00 AM to 9:30 PM. </p>
       </div>
 
       <!-- Confirm Order Content -->
@@ -60,13 +63,14 @@
           <button @click="addMoreOrder" class="glowing-btn">Add More Order</button>
         </div>
         <div class="confirm-button">
-          <button @click="openModal" class="glowing-btn" :disabled="cart.length === 0 || isProcessingOrder">Confirm Order</button>
+          <button @click="openModal" class="glowing-btn" :disabled="cart.length === 0 || isProcessingOrder || !isCafeOpen">
+            Confirm Order
+          </button>
         </div>
       </div>
     </div>
   </div>
 </template>
-
 
 
 
@@ -80,6 +84,9 @@ export default {
       showModal: false, // Track the modal visibility
       countdown: 3, // Countdown timer for the processing
       progressBarWidth: 0, // Progress bar width
+      showOrderClosedMessage: false,
+      // Remove the duplicate definition of isCafeOpen here:
+      // isCafeOpen: true, 
     };
   },
   computed: {
@@ -88,14 +95,52 @@ export default {
     },
   },
   mounted() {
+    // Initialize isCafeOpen from localStorage or default to true if not found
+    const savedCafeStatus = localStorage.getItem('isCafeOpen');
+    if (savedCafeStatus !== null) {
+      this.isCafeOpen = JSON.parse(savedCafeStatus);
+    } else {
+      this.isCafeOpen = true;  // Default to open if not set
+    }
+    
     this.loadCart();
     this.addToCart();
     console.log('Customer Name:', this.userName);  // Debug to check if userName is fetched correctly
     
     // Dynamically adjust the background color and height of the confirm order container
     this.adjustContainerHeight();
+
+    // Check if the cafe is open, if not show the closed message
+    if (!this.isCafeOpen) {
+      this.openOrderClosedMessage();
+    }
   },
   methods: {
+    isCafeOpenMethod() {
+      const now = new Date();
+      const dayOfWeek = now.getDay(); // 0 is Sunday, 1 is Monday, ..., 6 is Saturday
+      const hour = now.getHours();
+      const minute = now.getMinutes();
+
+      // The cafe is open Monday to Saturday, from 6:00 AM to 9:30 PM
+      if (dayOfWeek === 0 || // Closed on Sunday
+          hour < 6 || // Before 6 AM
+          (hour === 9 && minute > 30) || // After 9:30 PM
+          hour > 21) { // After 9 PM
+        return false; // Cafe is closed
+      }
+      return true; // Cafe is open
+    },
+
+    openOrderClosedMessage() {
+      this.showOrderClosedMessage = true;
+      this.showModal = false; // Close the modal if it's open
+    },
+
+    closeOrderClosedMessage() {
+      this.showOrderClosedMessage = false;
+    },
+
     loadCart() {
       const storedCart = localStorage.getItem('cart');
       if (storedCart) {
@@ -103,29 +148,27 @@ export default {
       }
     },
 
+    startProcessingOrder() {
+      this.isProcessingOrder = true;  // This will display the loading section
+      this.progressBarWidth = 0;  // Reset the progress bar to 0%
+      this.updateProgressBar();   // Example method to update progress
+    },
 
-  startProcessingOrder() {
-     this.isProcessingOrder = true;  // This will display the loading section
-    this.progressBarWidth = 0;  // Reset the progress bar to 0%
-    this.updateProgressBar();   // Example method to update progress
-  },
-  
-updateProgressBar() {
-    let width = 0;
-    const interval = setInterval(() => {
-      if (width < 100) {
-        width += 10;
-        this.progressBarWidth = width;
-      } else {
-        clearInterval(interval);
-      }
-    }, 1000);  // Update every second
-  },
+    updateProgressBar() {
+      let width = 0;
+      const interval = setInterval(() => {
+        if (width < 100) {
+          width += 10;
+          this.progressBarWidth = width;
+        } else {
+          clearInterval(interval);
+        }
+      }, 1000);  // Update every second
+    },
 
-  stopProcessingOrder() {
-    this.isProcessingOrder = false;  // Stop the loading process
-  },
-
+    stopProcessingOrder() {
+      this.isProcessingOrder = false;  // Stop the loading process
+    },
 
     addToCart() {
       const newItem = {
@@ -145,23 +188,28 @@ updateProgressBar() {
         this.saveCart();
       }
     },
+
     increaseQuantity(index) {
       this.cart[index].quantity += 1;
       this.saveCart();
     },
+
     decreaseQuantity(index) {
       if (this.cart[index].quantity > 1) {
         this.cart[index].quantity -= 1;
         this.saveCart();
       }
     },
+
     removeFromCart(index) {
       this.cart.splice(index, 1);
       this.saveCart();
     },
+
     saveCart() {
       localStorage.setItem('cart', JSON.stringify(this.cart));
     },
+
     addMoreOrder() {
       this.$router.push({ name: 'Dashboard' });
     },
@@ -270,7 +318,49 @@ updateProgressBar() {
 
 
 
+
 <style scoped>
+
+
+.closed-message {
+  background-color: rgba(0, 0, 0, 0.7); /* Semi-transparent background */
+  color: #fff; /* White text color */
+  padding: 20px;
+  border-radius: 10px;
+  text-align: center;
+  font-size: 24px; /* Larger text size */
+  font-family: 'Dancing Script', cursive; /* Match font family */
+  position: fixed;
+  top: 30%;
+  left: 50%;
+  transform: translateX(-50%); /* Center the popup */
+  width: 80%;
+  max-width: 600px; /* Limit the width */
+  z-index: 9999; /* Make sure it's on top of everything else */
+  box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3); /* Shadow for the popup */
+}
+
+.closed-message p {
+  margin: 0;
+  font-size: 22px; /* Larger font size for the message text */
+  font-weight: bold; /* Make the message text bold */
+}
+
+.closed-message .close-btn {
+  background-color: #FF5C5C;
+  color: white;
+  padding: 10px 20px;
+  border-radius: 5px;
+  border: none;
+  cursor: pointer;
+  margin-top: 20px;
+  font-size: 18px;
+  transition: background-color 0.3s ease;
+}
+
+.closed-message .close-btn:hover {
+  background-color: #FF3B3B; /* Darker red on hover */
+}
 
 .wedding-text {
   font-size: 36px; /* Larger size for emphasis */
@@ -331,7 +421,7 @@ updateProgressBar() {
   flex-direction: column;
   text-align: center;
   padding: 20px;
-  background-color:#f8d1d1; /* Dark Pink background */
+  background-color:#f8d2e4; /* Dark Pink background */
   border-radius: 35px;  /* Rounded corners */
   width: 80%;  /* Ensure the container width is sufficient */
   max-width: 600px;  /* Set a max width for the container */
@@ -646,7 +736,7 @@ updateProgressBar() {
 ul {
   list-style-type: none;
   padding: 0;
-   background-color: #f8d1d1;
+  
    border-radius: 30px;
 }
 
