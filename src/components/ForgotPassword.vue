@@ -37,6 +37,13 @@ export default {
       successMessage: ""
     };
   },
+
+  created() {
+    // Ensure dark mode is not applied on this page
+    document.body.classList.remove("dark-mode");
+  },
+
+
   methods: {
     async handleRequestReset() {
       try {

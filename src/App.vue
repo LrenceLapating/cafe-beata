@@ -8,27 +8,42 @@
 export default {
   data() {
     return {
-      isDarkMode: localStorage.getItem("darkMode") === "true" && localStorage.getItem("loggedIn") === "true", 
+      isDarkMode: localStorage.getItem("darkMode") === "true" && localStorage.getItem("loggedIn") === "true",
+      isLoggedIn: localStorage.getItem("loggedIn") === "true",
     };
   },
   watch: {
     isDarkMode(newValue) {
-      localStorage.setItem("darkMode", newValue); // Save preference
+      localStorage.setItem("darkMode", newValue); // Save preference in localStorage
       document.body.classList.toggle("dark-mode", newValue);
-    }
+    },
   },
   created() {
-    // Check if the user is logged in before applying dark mode
-    const isLoggedIn = localStorage.getItem("loggedIn") === "true";
-    if (this.isDarkMode && isLoggedIn) {
-      document.body.classList.add("dark-mode");
-    } else {
-      document.body.classList.remove("dark-mode"); // Ensure light mode on public pages
-    }
+    this.applyDarkModeBasedOnRoute();
   },
   methods: {
+    applyDarkModeBasedOnRoute() {
+      // Don't apply dark mode for excluded pages like login, create-account, and forgot-password
+      const excludedPages = ['/login', '/create-account', '/forgot-password'];
+      
+      if (!this.isLoggedIn || excludedPages.includes(this.$route.path)) {
+        document.body.classList.remove("dark-mode");
+      } else {
+        if (this.isDarkMode) {
+          document.body.classList.add("dark-mode");
+        }
+      }
+    },
     toggleDarkMode() {
       this.isDarkMode = !this.isDarkMode;
+    },
+    logout() {
+      localStorage.setItem("loggedIn", "false"); // Mark user as logged out
+      localStorage.setItem("darkMode", "false"); // Turn off dark mode on logout
+      this.isDarkMode = false; // Update local data to reflect the logout state
+      this.isLoggedIn = false; // Update login status
+      document.body.classList.remove("dark-mode"); // Remove dark mode class on logout
+      this.$router.push('/login'); // Redirect to the login page
     }
   }
 };

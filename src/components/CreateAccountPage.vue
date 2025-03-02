@@ -78,6 +78,12 @@ export default {
       agreeToTerms: false, // Checkbox value
     };
   },
+
+  created() {
+    // Ensure dark mode is not applied on this page
+    document.body.classList.remove("dark-mode");
+  },
+
   methods: {
   async handleSignUp() {
   if (!this.agreeToTerms) {

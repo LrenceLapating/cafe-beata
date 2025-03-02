@@ -52,6 +52,13 @@ export default {
       errorMessage: "",
     };
   },
+
+  created() {
+    // Ensure dark mode is not applied on this page
+    document.body.classList.remove("dark-mode");
+  },
+
+
   methods: {
     // Handle regular user login
    async handleLogin() {

@@ -18,7 +18,7 @@
         <button class="play-video-btn" @click="scrollToSection('contact-us')">Contact Us</button>
       </div>
       <div class="hero-image">
-        <img src="@/assets/pink-cafe.png" alt="Coffee Cup" />
+        <img :src="require('@/assets/pink-cafe.png')" alt="Coffee Cup" />
       </div>
     </section>
 
@@ -28,51 +28,35 @@
       <p>Established in 2020, UIC Café Beata serves as a welcoming space for students, faculty, and staff at the University of the Immaculate Conception. Committed to providing high-quality and affordable food and beverages, our café has become a central hub for the campus community. With a focus on freshness, sustainability, and customer satisfaction, we strive to create a comfortable and engaging environment where everyone can connect and enjoy great food.</p>
     </section>
 
-    <!-- Best Selling Item Section (Added Below About Us) -->
+    <!-- Best Selling Item Section -->
     <section class="best-selling" id="best-selling">
       <h2>Best Selling Item</h2>
       <p class="description">UIC Café Beata – Since 2020 Our top-selling item stands out for its exceptional quality and taste. Crafted with the finest ingredients, it has been a customer favorite since we first opened our doors. Experience the perfect blend of flavor and tradition with every bite.</p>
       
       <div class="filter-menu">
         <span class="active">All</span>
-        <span>Black</span>
+        <span>Americano</span>
         <span>Espresso</span>
-        <span>Doppio</span>
+        <span>Latte</span>
       </div>
 
       <div class="coffee-items">
-        <div class="coffee-card">
+        <div v-for="(item, index) in displayedItems" :key="index" class="coffee-card">
           <div class="coffee-img-container">
-            <img src="@/assets/cappuccino.png" alt="Cappuccino">
+            <img :src="require(`@/assets/${item.image}`)" :alt="item.name" />
           </div>
-          <h3>Cappuccino</h3>           
-          <button class="order-now-btn" @click="goToPage('/login')">Order Now</button>
-        </div>
-
-        <div class="coffee-card">
-          <div class="coffee-img-container">
-            <img src="@/assets/americano.png" alt="Americano">
-          </div>
-          <h3>Americano</h3>
-          <button class="order-now-btn" @click="goToPage('/login')">Order Now</button>
-        </div>
-
-        <div class="coffee-card">
-          <div class="coffee-img-container">
-            <img src="@/assets/espresso.png" alt="Espresso">
-          </div>
-          <h3>Espresso</h3>
+          <h3>{{ item.name }}</h3>
           <button class="order-now-btn" @click="goToPage('/login')">Order Now</button>
         </div>
       </div>
 
       <div class="pagination">
-        <button class="prev-btn">⬅</button>
-        <button class="next-btn">➞</button>
+        <button class="prev-btn" @click="prevItem">⬅</button>
+        <button class="next-btn" @click="nextItem">➞</button>
       </div>
     </section>
 
-    <!-- Contact Us Section (Updated Design) -->
+    <!-- Contact Us Section -->
     <section class="contact-us" id="contact-us">
       <div class="contact-header">
         <h2>Stay Up To Date On<br>All News And Offers.</h2>
@@ -116,11 +100,40 @@
 </template>
 
 
-
 <script>
 export default {
-  name: "CoffeePage",
+  data() {
+    return {
+      items: [
+        { name: 'Cappuccino', image: 'cappuccino.png' },
+        { name: 'Americano', image: 'americano.png' },
+        { name: 'Espresso', image: 'espresso.png' },
+        { name: 'Latte', image: 'latte.png' },
+        { name: 'Mocha', image: 'mochaa.png' }
+      ],
+      currentIndex: 0
+    };
+  },
+  computed: {
+    displayedItems() {
+      return this.items.slice(this.currentIndex, this.currentIndex + 3);
+    }
+  },
   methods: {
+    prevItem() {
+      if (this.currentIndex > 0) {
+        this.currentIndex--;
+      } else {
+        this.currentIndex = this.items.length - 3; // Loop back to the last set
+      }
+    },
+    nextItem() {
+      if (this.currentIndex < this.items.length - 3) {
+        this.currentIndex++;
+      } else {
+        this.currentIndex = 0; // Loop back to the first set
+      }
+    },
     scrollToTop() {
       window.scrollTo({ top: 0, behavior: 'smooth' });
     },
