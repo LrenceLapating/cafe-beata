@@ -80,7 +80,7 @@ export default {
   data() {
     return {
       user: {
-        avatar: '/assets/default.png', // Default avatar
+        avatar: '', // Removed hardcoded default avatar
         username: '',
         email: '',
         course: '',
@@ -97,14 +97,14 @@ export default {
       this.loadProfile(); // Load profile on mount
     }
 
-    // ✅ Ensure dark mode is applied when page loads
+    // Ensure dark mode is applied when page loads
     if (localStorage.getItem('darkMode') === 'true') {
       this.isDarkMode = true; 
       document.body.classList.add('dark-mode');
     }
   },
   methods: {
-    // 🌓 Toggle Dark Mode and save preference
+    // Toggle Dark Mode and save preference
     toggleDarkMode() {
       this.isDarkMode = !this.isDarkMode;
       localStorage.setItem('darkMode', this.isDarkMode);
@@ -118,7 +118,7 @@ export default {
     },
 
    getAvatarUrl(avatar) {
-  return avatar ? `http://127.0.0.1:8000${avatar}` : '/assets/default.png';
+  return avatar ? `http://127.0.0.1:8000${avatar}` : ''; // Removed default.png reference
 
 
     },
@@ -151,8 +151,8 @@ export default {
   } catch (error) {
     console.error('Error:', error);
     alert('An error occurred while saving your profile.');
-      }
-    },
+      }   
+    },  
 
     cancelEdit() {
       this.isEditing = false;
@@ -165,7 +165,7 @@ export default {
     if (response.ok) {
       this.user = data;
       if (!this.user.avatar) {
-        this.user.avatar = '/assets/default.png';
+        this.user.avatar = ''; // Removed default.png reference
       }
     } else {
       alert(data.detail);
@@ -190,7 +190,7 @@ export default {
       .then((response) => response.json())
       .then((data) => {
         if (data.message === "Avatar uploaded successfully") {
-          this.user.avatar = data.avatar_url || "/assets/default.png";
+          this.user.avatar = data.avatar_url || ""; // Removed default.png reference
           this.saveChanges();
         } else {
           alert(data.detail || "Failed to upload avatar.");
@@ -256,7 +256,7 @@ export default {
   color: white !important; /* Light text */
 }
 
-/* 🌙 Dark Mode - Text Adjustments */
+/* Dark Mode - Text Adjustments */
 .dark-mode h2,
 .dark-mode label,
 .dark-mode .profile-info p,
@@ -264,12 +264,12 @@ export default {
   color: white !important; /* Ensure text is light */
 }
 
-/* 🌙 Dark Mode - Avatar Border */
+/* Dark Mode - Avatar Border */
 .dark-mode .avatar-img {
   border: 3px solid white !important;
 }
 
-/* 🌙 Dark Mode - Input Fields */
+/* Dark Mode - Input Fields */
 .dark-mode input,
 .dark-mode select,
 .dark-mode textarea {
@@ -278,7 +278,7 @@ export default {
   border: 1px solid #666 !important;
 }
 
-/* 🌙 Dark Mode - Buttons */
+/* Dark Mode - Buttons */
 .dark-mode button {
   background-color: #white !important;
   color: white !important;
@@ -288,7 +288,7 @@ export default {
   background-color: #777 !important;
 }
 
-/* 🌙 Dark Mode - Profile Info Highlight */
+/* Dark Mode - Profile Info Highlight */
 .dark-mode .profile-info strong {
   color: rgb(151, 15, 90) !important; /* Make the strong text more visible */
 }

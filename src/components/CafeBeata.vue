@@ -34,25 +34,32 @@
       <p class="description">UIC Café Beata – Since 2020 Our top-selling item stands out for its exceptional quality and taste. Crafted with the finest ingredients, it has been a customer favorite since we first opened our doors. Experience the perfect blend of flavor and tradition with every bite.</p>
       
       <div class="filter-menu">
-        <span class="active">All</span>
-        <span>Americano</span>
-        <span>Espresso</span>
-        <span>Latte</span>
+        <span 
+          v-for="category in ['All', 'Americano', 'Espresso', 'Latte']" 
+          :key="category"
+          :class="{ active: selectedCategory === category }"
+          @click="filterByCategory(category)"
+        >
+          {{ category }}
+        </span>
       </div>
 
       <div class="coffee-items">
-        <div v-for="(item, index) in displayedItems" :key="index" class="coffee-card">
-          <div class="coffee-img-container">
-            <img :src="require(`@/assets/${item.image}`)" :alt="item.name" />
+        <transition-group name="coffee-list">
+          <div v-for="item in displayedItems" :key="item.name" class="coffee-card">
+            <div class="coffee-img-container">
+              <img :src="require(`@/assets/${item.image}`)" :alt="item.name" />
+            </div>
+            <h3>{{ item.name }}</h3>
+            <p class="category">{{ item.category }}</p>
+            <button class="order-now-btn" @click="goToPage('/login')">Order Now</button>
           </div>
-          <h3>{{ item.name }}</h3>
-          <button class="order-now-btn" @click="goToPage('/login')">Order Now</button>
-        </div>
+        </transition-group>
       </div>
 
       <div class="pagination">
-        <button class="prev-btn" @click="prevItem">⬅</button>
-        <button class="next-btn" @click="nextItem">➞</button>
+        <button class="prev-btn" @click="prevItem" :disabled="currentIndex === 0">⬅</button>
+        <button class="next-btn" @click="nextItem" :disabled="currentIndex >= filteredItems.length - 3">➞</button>
       </div>
     </section>
 
@@ -62,8 +69,13 @@
         <h2>Stay Up To Date On<br>All News And Offers.</h2>
         <p>Be The First To Know About New Collections, Special Events, And What’s Going On At UIC Café Beàta.</p>
         <div class="newsletter">
-          <input type="email" placeholder="Enter Your Email Address">
-          <button>➞</button>
+          <input 
+            type="email" 
+            v-model="email" 
+            placeholder="Enter Your Email Address"
+            @keyup.enter="subscribeNewsletter"
+          >
+          <button @click="subscribeNewsletter">➞</button>
         </div>
       </div>
 
@@ -97,26 +109,43 @@
       <p class="copyright">Copyright: 2023 UIC Café Beàta</p>
     </section>
   </div>
-</template>
 
+  <!-- Notification Component -->
+  <transition name="fade">
+    <div v-if="showNotification" :class="['notification', notificationType]">
+      {{ notificationMessage }}
+    </div>
+  </transition>
+</template>
 
 <script>
 export default {
   data() {
     return {
       items: [
-        { name: 'Cappuccino', image: 'cappuccino.png' },
-        { name: 'Americano', image: 'americano.png' },
-        { name: 'Espresso', image: 'espresso.png' },
-        { name: 'Latte', image: 'latte.png' },
-        { name: 'Mocha', image: 'mochaa.png' }
+        { name: 'Cappuccino', image: 'cappuccino.png', category: 'Latte' },
+        { name: 'Americano', image: 'americano.png', category: 'Americano' },
+        { name: 'Espresso', image: 'espresso.png', category: 'Espresso' },
+        { name: 'Latte', image: 'latte.png', category: 'Latte' },
+        { name: 'Mocha', image: 'mochaa.png', category: 'Latte' }
       ],
-      currentIndex: 0
+      currentIndex: 0,
+      selectedCategory: 'All',
+      email: '',
+      showNotification: false,
+      notificationMessage: '',
+      notificationType: 'success'
     };
   },
   computed: {
+    filteredItems() {
+      if (this.selectedCategory === 'All') {
+        return this.items;
+      }
+      return this.items.filter(item => item.category === this.selectedCategory);
+    },
     displayedItems() {
-      return this.items.slice(this.currentIndex, this.currentIndex + 3);
+      return this.filteredItems.slice(this.currentIndex, this.currentIndex + 3);
     }
   },
   methods: {
@@ -124,14 +153,14 @@ export default {
       if (this.currentIndex > 0) {
         this.currentIndex--;
       } else {
-        this.currentIndex = this.items.length - 3; // Loop back to the last set
+        this.currentIndex = Math.max(0, this.filteredItems.length - 3);
       }
     },
     nextItem() {
-      if (this.currentIndex < this.items.length - 3) {
+      if (this.currentIndex < this.filteredItems.length - 3) {
         this.currentIndex++;
       } else {
-        this.currentIndex = 0; // Loop back to the first set
+        this.currentIndex = 0;
       }
     },
     scrollToTop() {
@@ -145,14 +174,42 @@ export default {
     },
     goToPage(pageUrl) {
       this.$router.push(pageUrl);
+    },
+    filterByCategory(category) {
+      this.selectedCategory = category;
+      this.currentIndex = 0;
+    },
+    subscribeNewsletter() {
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (!this.email) {
+        this.showNotification = true;
+        this.notificationMessage = 'Please enter your email address';
+        this.notificationType = 'error';
+        return;
+      }
+      if (!emailRegex.test(this.email)) {
+        this.showNotification = true;
+        this.notificationMessage = 'Please enter a valid email address';
+        this.notificationType = 'error';
+        return;
+      }
+
+      // Here you would typically make an API call to subscribe the email
+      // For now, we'll just show a success message
+      this.showNotification = true;
+      this.notificationMessage = 'Thank you for subscribing to our newsletter!';
+      this.notificationType = 'success';
+      this.email = '';
+
+      setTimeout(() => {
+        this.showNotification = false;
+      }, 3000);
     }
   }
 };
 </script>
 
-
 <style scoped>
-
 /* Mobile Responsive Adjustments */
 @media (max-width: 768px) {
   .best-selling {
@@ -818,5 +875,84 @@ export default {
     width: 100%;
     margin-top: 10px;
   }
+}
+
+.coffee-list-move {
+  transition: transform 0.5s;
+}
+
+.coffee-card {
+  transition: all 0.3s;
+}
+
+.coffee-card:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+}
+
+.category {
+  color: #666;
+  font-size: 0.9em;
+  margin: 5px 0;
+}
+
+.filter-menu span {
+  cursor: pointer;
+  padding: 8px 16px;
+  border-radius: 20px;
+  transition: all 0.3s;
+}
+
+.filter-menu span:hover {
+  background-color: #f4a261;
+  color: white;
+}
+
+.filter-menu span.active {
+  background-color: #f4a261;
+  color: white;
+}
+
+.notification {
+  position: fixed;
+  bottom: 20px;
+  right: 20px;
+  padding: 15px 25px;
+  border-radius: 5px;
+  color: white;
+  z-index: 1000;
+  animation: slideIn 0.3s ease-out;
+}
+
+.success {
+  background-color: #4caf50;
+}
+
+.error {
+  background-color: #f44336;
+}
+
+@keyframes slideIn {
+  from {
+    transform: translateX(100%);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+
+.fade-enter-active, .fade-leave-active {
+  transition: opacity 0.3s;
+}
+
+.fade-enter, .fade-leave-to {
+  opacity: 0;
+}
+
+.pagination button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
 }
 </style>

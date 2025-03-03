@@ -1,32 +1,97 @@
 <template>
   <div class="dashboard">
     <!-- Sidebar Toggle Button (For Mobile) -->
-    <button class="menu-button" @click="toggleSidebar">≣</button>
+    <button class="menu-button" @click="toggleSidebar">
+      <div class="menu-icon-container">
+        ≡
+        <span v-if="unreadNotificationsCount > 0" class="menu-notification-badge">{{ unreadNotificationsCount }}</span>
+      </div>
+    </button>
     
 
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
     
     <div v-if="isSidebarOpen" class="overlay" @click="closeSidebar"></div>
     <!-- Sidebar -->
-    <div :class="['sidebar', { open: isSidebarOpen }]" @click.stop>
-      <button class="close-sidebar" @click="toggleSidebar">✖</button>
-      <div class="sidebar-category">
-        <h3 @click="filterCategory('Drinks')">Drinks</h3>
-        <ul>
-          <li @click="filterCategory('Ice Coffee')">Ice Coffees</li>
-          <li @click="filterCategory('Hot Coffee')">Hot Coffees</li>
-          <li @click="filterCategory('Juice Drinks')">Juice Drinks</li>
-          <li @click="filterCategory('Milkteas')">Milkteas</li>
-          <li @click="filterCategory('Chocolate Drinks')">Chocolate Drinks</li>
-          <li @click="filterCategory('Blended Frappes')">Blended Frappes</li>
-        </ul>
+    <div :class="['sidebar', { 
+      'open': isSidebarOpen, 
+      'light-mode': !isDarkMode,
+      'dark-mode': isDarkMode 
+    }]" @click.stop>
+      <button class="close-sidebar" @click="toggleSidebar">✕</button>
+      
+      <!-- Profile Section -->
+      <button class="profile-section" @click="handleProfile">
+        <i class="fas fa-user"></i>
+        <span>Profile</span>
+      </button>
+
+      <!-- Utility Buttons -->
+      <div class="utility-section">
+        <button class="utility-button" @click="toggleDarkMode">
+          <i class="fas fa-moon"></i>
+          <span>Dark Mode</span>
+        </button>
+
+        <router-link to="/user-notifications" class="utility-button notification-link">
+          <div class="notification-icon">
+            <i class="fas fa-bell"></i>
+            <span v-if="unreadNotificationsCount > 0" class="notification-badge">{{ unreadNotificationsCount }}</span>
+          </div>
+          <span>Notifications</span>
+        </router-link>
+
+        <button class="utility-button" @click="handleOrderHistory">
+          <i class="fas fa-history"></i>
+          <span>Order History</span>
+        </button>
       </div>
 
-      <div class="sidebar-category">
-        <h3 @click="filterCategory('Food')">Food</h3>
-        <ul>
-          <li @click="filterCategory('Pasta & Dishes')">Pasta & Dishes</li>
-        </ul>
+      <!-- Categories -->
+      <div class="menu-section">
+        <h3>Drinks</h3>
+        <div class="menu-items">
+          <button class="menu-item" @click="filterCategory('Ice Coffee')">
+            <i class="fas fa-coffee"></i>
+            <span>Ice Coffees</span>
+          </button>
+          <button class="menu-item" @click="filterCategory('Hot Coffee')">
+            <i class="fas fa-mug-hot"></i>
+            <span>Hot Coffees</span>
+          </button>
+          <button class="menu-item" @click="filterCategory('Juice Drinks')">
+            <i class="fas fa-glass-martini"></i>
+            <span>Juice Drinks</span>
+          </button>
+          <button class="menu-item" @click="filterCategory('Milkteas')">
+            <i class="fas fa-glass-whiskey"></i>
+            <span>Milkteas</span>
+          </button>
+          <button class="menu-item" @click="filterCategory('Chocolate Drinks')">
+            <i class="fas fa-circle"></i>
+            <span>Chocolate Drinks</span>
+          </button>
+          <button class="menu-item" @click="filterCategory('Blended Frappes')">
+            <i class="fas fa-blender"></i>
+            <span>Blended Frappes</span>
+          </button>
+        </div>
+
+        <h3>Food</h3>
+        <div class="menu-items">
+          <button class="menu-item" @click="filterCategory('Pasta & Dishes')">
+            <i class="fas fa-utensils"></i>
+            <span>Pasta & Dishes</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- Logout Button -->
+      <div class="logout-container">
+        <button class="utility-button logout" @click="handleLogout">
+          <i class="fas fa-sign-out-alt"></i>
+          <span>Logout</span>
+        </button>
       </div>
     </div>
 
@@ -50,35 +115,6 @@
             placeholder="Search our Drinks and Food"
             @input="filterItems"
           />
-        </div>
-
-        <div class="top-bar-buttons">
-          <!-- Dark Mode Button -->
-          <button class="dark-mode-button" @click="toggleDarkMode">
-            <i class="fas fa-moon"></i> <!-- Moon icon -->
-          </button>
-          
-
-  <router-link to="/user-notifications">
-            <button class="notification-button">
-              <i class="fas fa-bell"></i> 
-              <!-- Notification Count Badge -->
-              <span v-if="unreadNotificationsCount > 0" class="notification-badge">{{ unreadNotificationsCount }}</span>
-            </button>
-          </router-link>
-
-
-          <!-- Order History Button -->
-          <button class="order-history-button" @click="handleOrderHistory">Order History</button>
-          
-          
-          <!-- Profile Button as Icon -->
-          <button class="profile-button" @click="handleProfile">
-            <i class="fas fa-user"></i> <!-- Profile icon -->
-          </button>
-          
-          <!-- Logout Button -->
-          <button class="logout-button" @click="handleLogout">Logout</button>
         </div>
       </div>
 
@@ -116,7 +152,7 @@ export default {
       unreadNotificationsCount: 0,   
       refreshInterval: null,  
       searchQuery: '',
-       isDarkMode: localStorage.getItem("darkMode") === "enabled",
+      isDarkMode: localStorage.getItem("darkMode") === "enabled",
       currentCategory: 'Ice Coffee', // Default category
       currentTime: new Date().toLocaleTimeString(),
       isSidebarOpen: false, // Sidebar starts closed
@@ -245,7 +281,7 @@ beforeUnmount() {
     );
     this.filterCategory('Drinks');
     this.updateTime(); // Call updateTime when the component is mounted
-    this.applyDarkMode();
+    this.applyDarkMode(this.isDarkMode);
       
      
   },
@@ -276,13 +312,13 @@ beforeUnmount() {
  toggleDarkMode() {
     this.isDarkMode = !this.isDarkMode;
     localStorage.setItem("darkMode", this.isDarkMode ? "enabled" : "disabled");
-    this.applyDarkMode();
+    this.applyDarkMode(this.isDarkMode);
   },
-  applyDarkMode() {
-    if (this.isDarkMode) {
-      document.body.classList.add("dark-mode");
+  applyDarkMode(isDark) {
+    if (isDark) {
+      document.body.classList.add('dark-mode');
     } else {
-      document.body.classList.remove("dark-mode");
+      document.body.classList.remove('dark-mode');
     }
   },
 
@@ -376,6 +412,18 @@ beforeUnmount() {
         this.isSidebarOpen = false; // Close sidebar when clicking outside on mobile
       }
     },
+  },
+  watch: {
+    isDarkMode: {
+      handler(newValue) {
+        if (newValue) {
+          document.body.classList.add('dark-mode');
+        } else {
+          document.body.classList.remove('dark-mode');
+        }
+      },
+      immediate: true
+    }
   },
 };
 </script>
@@ -630,9 +678,8 @@ beforeUnmount() {
 
 .profile-button:hover {
   background-color: #b82d67;
+
 }
-
-
 
 .dashboard {
   display: flex;
@@ -646,98 +693,244 @@ beforeUnmount() {
 .sidebar {
   position: fixed;
   top: 0;
-  width: 250px;
+  left: -280px;
   height: 100vh;
-  background-color: #fce6e6;
-  transition: left 0.3s ease-in-out;
+  width: 280px;
+  background-color: white;
+  transition: all 0.3s ease;
   z-index: 1000;
-  box-shadow: 2px 0 5px rgba(0, 0, 0, 0.1);
-  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  padding: 20px 0 20px 0; /* Add bottom padding */
+  box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
 }
 
-
-.close-sidebar {
-  background: none;
-  border: none;
-  font-size: 18px;
-  color: #333;
-  position: absolute;
-  top: 10px;
-  right: 10px;
-  cursor: pointer;
+.sidebar.light-mode {
+  background-color: #fce6e6;
 }
 
+.sidebar.dark-mode {
+  background-color: #333;
+  color: #fff;
+}
 
-.overlay {
-  position: fixed;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  background: rgba(0, 0, 0, 0.5); /* Dark overlay */
-  z-index: 999; /* Below sidebar but above content */
+.sidebar.dark-mode .utility-button,
+.sidebar.dark-mode .menu-item,
+.sidebar.dark-mode .profile-section,
+.sidebar.dark-mode h3 {
+  color: #fff;
+}
+
+.sidebar.dark-mode .utility-button:hover,
+.sidebar.dark-mode .menu-item:hover {
+  background-color: rgba(255, 255, 255, 0.1);
+}
+
+.sidebar.dark-mode .profile-section,
+.sidebar.dark-mode .utility-section,
+.sidebar.dark-mode .logout {
+  border-color: rgba(255, 255, 255, 0.1);
 }
 
 .sidebar.open {
-    left: 0; /* Move sidebar into view */
+  left: 0;
 }
 
-/* Sidebar category styling */
-.sidebar-category {
-  margin-bottom: 30px;
-}
-
-.sidebar-category h3 {
-  font-size: 30px;
-  font-weight: Roboto;
-  margin-bottom: 10px;
-  color: #d12f7a;
+.close-sidebar {
+  position: absolute;
+  top: 15px;
+  right: 15px;
+  background: none;
+  border: none;
+  font-size: 18px;
   cursor: pointer;
-    padding-left: 15px;
+  color: inherit;
+  padding: 5px;
 }
 
-.sidebar-category ul {
-  list-style: none;
- padding-left: 20px
+.profile-section {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 15px 20px;
+  color: inherit;
+  font-size: 15px;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.1);
+  background: none;
+  border: none;
+  width: 100%;
+  cursor: pointer;
+  text-align: left;
 }
 
-.sidebar-category ul li {
-  padding: 8px 0;
+.profile-section:hover {
+  background-color: rgba(0, 0, 0, 0.05);
+}
+
+.utility-section {
+  padding: 10px 0;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.1);
+}
+
+.utility-button {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 20px;
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: inherit;
+  font-size: 15px;
+  text-decoration: none;
+  transition: background-color 0.2s;
+}
+
+.utility-button:hover {
+  background-color: rgba(0, 0, 0, 0.05);
+}
+
+.notification-link {
+  position: relative;
+  text-decoration: none;
+  color: inherit;
+}
+
+.notification-icon {
+  position: relative;
+  display: inline-block;
+  width: 20px;
+}
+
+.notification-badge {
+  position: absolute;
+  top: -8px;
+  right: -8px;
+  background-color: red;
+  color: white;
+  border-radius: 50%; /* This ensures it’s fully circular */
+  font-size: 11px;
+  min-width: 15px;
+  height: 15px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.menu-section {
+  flex: 1;
+  padding: 15px 0 0 0;
+  overflow-y: auto;
+  margin-bottom: 0;
+}
+
+.menu-section h3 {
+  padding: 0 20px;
+  margin: 10px 0 5px;
+  font-size: 16px;
+  color: inherit;
+  font-weight: 500;
+}
+
+.menu-items {
+  display: flex;
+  flex-direction: column;
+  margin-bottom: 15px;
+}
+
+.menu-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 20px;
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: inherit;
+  font-size: 15px;
+  text-align: left;
+  transition: background-color 0.2s;
+}
+
+.menu-item:hover {
+  background-color: rgba(0, 0, 0, 0.05);
+}
+
+.menu-item i {
+  width: 20px;
+  text-align: center;
   font-size: 14px;
-  color: #333;
-  cursor: pointer;
 }
 
-.sidebar-category ul li:hover {
-  color: #d12f7a;
+.logout-container {
+  border-top: 1px solid rgba(0, 0, 0, 0.1);
+  padding: 0;
+  background-color: #fce6e6;
+  margin-bottom: 20px; /* Add space after logout button */
 }
 
+.dark-mode .logout-container {
+  background-color: #333;
+  border-top-color: rgba(255, 255, 255, 0.1);
+}
 
+.logout {
+  color: inherit;
+  padding: 10px 20px;
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+/* Mobile Responsive */
+@media (max-width: 768px) {
+  .content {
+    margin-left: 0;
+    padding: 15px;
+  }
+  
+  .menu-button {
+    display: block;
+  }
+}
+
+/* Desktop Responsive */
+@media (min-width: 769px) {
+  .content {
+    margin-left: 60px;
+  }
+  
+  .menu-button {
+    display: none;
+  }
+}
 /* Style the container for both logo and live time */
 .logo-time-container {
   display: flex;
   align-items: center;
-  gap: 0px; /* Add some space between the logo and the time */
+  gap: 0px;
 }
 
 .search-container { 
 
   display: flex;
-  justify-content: center; /* Center the search bar */
+  justify-content: center; 
   padding: 10px;
   border-radius: 15px;
   width: 80%;
   max-width: 300px;
-}
+} 
 
 /* Style for the live time text */
 .live-time {
   font-weight: bold;
   font-size: 15px;
   color: #333;
-  margin-top: 0; /* Remove margin-top to align it with the logo */
-  font-style: italic; /* Makes the text italic */
-  background: transparent; /* Remove background */
+  margin-top: 0; 
+  font-style: italic; 
+  background: transparent; 
   padding: 0;
   margin:  20px 0 0 0;
 }
@@ -754,7 +947,7 @@ beforeUnmount() {
   padding: 10px 20px;
  
   box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
-  flex-wrap: nowrap; /* Allow wrapping */
+  flex-wrap: nowrap; 
   gap: 10px;
 }
 
@@ -764,7 +957,7 @@ beforeUnmount() {
 
 .content {
   flex: 1;
-  margin-left: 270px; /* Adjust for sidebar */
+  margin-left: 270px; 
   padding: 20px;
   overflow-y: auto;
 }
@@ -779,12 +972,12 @@ beforeUnmount() {
 
 @media (min-width: 769px) {
   .menu-button {
-    display: none; /* Hide menu button on PC */
+    display: none; 
   }
 }
 @media (min-width: 769px) {
   .sidebar {
-    left: 0 !important; /* Always visible on PC */
+    left: 0 !important; 
   }
 }
 
@@ -792,24 +985,23 @@ beforeUnmount() {
   .sidebar {
     position: fixed;
     top: 0;
-    left: -250px; /* Start completely hidden */
+    left: -250px; 
     width: 250px;
     height: 100vh;
     background-color: #fce6e6;
     transition: left 0.3s ease-in-out;
     z-index: 1000;
     box-shadow: 2px 0 5px rgba(0, 0, 0, 0.1);
-    overflow-y: auto; /* Prevent content overflow */
-
+    overflow-y: auto; 
   }
 
   .sidebar.open {
-   left: 0; /* Sidebar slides in */
+   left: 0; 
 
   }
 
   .content {
-    margin-left: 0; /* Remove margin for mobile */
+    margin-left: 0; 
   }
 }
 
@@ -837,9 +1029,30 @@ beforeUnmount() {
   }
 }
 
+.menu-icon-container {
+  position: relative;
+  display: inline-block;
+}
 
+.menu-notification-badge {
+  position: absolute;
+  top: -8px;
+  right: -20px;
+  background-color: red;
+  color: white;
+  border-radius: 50%;
+  font-size: 12px;
+  min-width: 18px;
+  height: 18px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: bold;
+}
+
+/* Dashboard Title */
 .dashboard-title {
-    font-size: 30px;
+   font-size: 30px;
   }
 
 
@@ -885,15 +1098,15 @@ beforeUnmount() {
   margin-top: 15px;
   margin-bottom: 15px;
   text-align: center;
-  font-style: italic; /* Italic */
-  font-family: "Merriweather", serif; /* Optional: A more elegant font */
-  letter-spacing: 1px; /* Adds a bit more spacing for readability */
+  font-style: italic; 
+  font-family: "Merriweather", serif; 
+  letter-spacing: 1px; 
  
 }
 
  .dashboard-title:hover {
-    color: #fff; /* White text color on hover */
-    text-shadow: 0 0 10px rgba(209, 47, 122, 1), 0 0 20px rgba(209, 47, 122, 0.7); /* Glowing text effect */
+    color: #fff; 
+    text-shadow: 0 0 10px rgba(209, 47, 122, 1), 0 0 20px rgba(209, 47, 122, 0.7); 
 
  }
  
@@ -1044,8 +1257,8 @@ beforeUnmount() {
   .item-price {
     font-size: 18px;
     font-weight: bold;
-    color: #d12f7a; /* Use the same pink color for the price */
-    background-color: #f8e1e6; /* Light pink background for the price */
+    color: #d12f7a; 
+    background-color: #f8e1e6; 
     padding: 5px 10px;
     border-radius: 5px;
     margin-top: 5px;
@@ -1053,7 +1266,7 @@ beforeUnmount() {
   }
 
   .item-price:hover {
-    background-color: #f8c6d0; /* Change to a slightly darker pink on hover */
+    background-color: #f8c6d0; 
     cursor: pointer;
   }
 
