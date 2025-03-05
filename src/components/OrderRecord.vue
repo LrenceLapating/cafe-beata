@@ -13,26 +13,63 @@
       <h2>Sales by Date</h2>
       <div class="calendar-container">
         <div class="date-field">
-          <label for="date-picker">Sales date</label>
-          <div class="date-input-container">
-            <Datepicker
-              v-model="selectedDate"
-              @update:model-value="fetchSalesForDate"
-              :enable-time-picker="false"
-              class="custom-datepicker clickable-datepicker"
-              :format="formatDateYYYYMMDD"
-              :input-class-name="'date-input'"
-            />
-            <button class="calendar-button" @click="openDatepicker">
-              <img src="data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24'%3E%3Cpath fill='%23000' d='M20 3h-1V1h-2v2H7V1H5v2H4c-1.1 0-2 .9-2 2v16c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm0 18H4V8h16v13z'/%3E%3C/svg%3E" 
-                alt="calendar" 
-                width="16" 
-                height="16"
-              />
-            </button>
+          <div class="date-input-wrapper" @click="focusDateInput">
+            <input 
+              type="date" 
+              :value="formatDateForInput(selectedDate)" 
+              @input="handleDateChange"
+              class="date-input"
+              ref="dateInput"
+            >
+            <div class="calendar-icon">
+              <img src="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIxNiIgaGVpZ2h0PSIxNiIgdmlld0JveD0iMCAwIDE2IDE2Ij48cGF0aCBmaWxsPSIjNjY2IiBkPSJNNSAyVjFoMnYxaDJ2MEg1ek0xMyAzdjEwSDNWM2gxMHpNMyAyYTEgMSAwIDAwLTEgMXYxMGExIDEgMCAwMDEgMWgxMGExIDEgMCAwMDEtMVYzYTEgMSAwIDAwLTEtMWgtMVYxYTEgMSAwIDAwLTEtMUg1YTEgMSAwIDAwLTEgMXYxSDNhMSAxIDAgMDAtMSAxeiIvPjwvc3ZnPg==" alt="calendar" />
+            </div>
           </div>
         </div>
       </div>
+    </div>
+
+    <!-- Search Bar -->
+    <div class="search-container">
+      <input
+        v-model="searchQuery"
+        @input="filterOrders"
+        type="text"
+        placeholder="Search by Order ID, Order Date, or Bill Name"
+        class="search-bar"
+      />
+    </div>
+
+    <!-- Display Orders only when orders array is available -->
+    <table class="order-table" v-if="filteredOrders.length">
+      <thead>
+        <tr>
+          <th>Order No. (ID)</th>
+          <th>Order Date</th>
+          <th>Bill Name</th>
+          <th>Total</th>
+          <th>Item Details</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr v-for="order in filteredOrders" :key="order.id">
+          <td>{{ order.id }}</td>
+          <td>{{ formatDate(order.created_at) }}</td>
+          <td>{{ order.customer_name }}</td>
+          <td>{{ calculateTotal(order.items) }}</td>
+          <td>
+            <span v-if="order.items.length">
+              {{ formatItems(order.items) }}
+            </span>
+            <span v-else>No items found</span>
+          </td>
+        </tr>
+      </tbody>
+    </table>
+
+    <!-- No Orders Message -->
+    <div v-else>
+      <p>No matching orders found.</p>
     </div>
 
     <!-- Sales Modal -->
@@ -78,59 +115,13 @@
         </div>
       </div>
     </div>
-
-    <!-- Search Bar -->
-    <div class="search-container">
-      <input
-        v-model="searchQuery"
-        @input="filterOrders"
-        type="text"
-        placeholder="Search by Order ID, Customer Name, or Item"
-        class="search-bar"
-      />
-    </div>
-
-    <!-- Display Orders only when orders array is available -->
-    <table class="order-table" v-if="filteredOrders.length">
-      <thead>
-        <tr>
-          <th>Order No. (ID)</th>
-          <th>Order Date</th>
-          <th>Bill Name</th>
-          <th>Total</th>
-          <th>Item Details</th>
-        </tr>
-      </thead>
-      <tbody>
-        <tr v-for="order in filteredOrders" :key="order.id">
-          <td>{{ order.id }}</td>
-          <td>{{ formatDate(order.created_at) }}</td> <!-- Format Order Date -->
-          <td>{{ order.customer_name }}</td>
-          <td>{{ calculateTotal(order.items) }}</td>
-          <td>
-            <span v-if="order.items.length">
-              {{ formatItems(order.items) }}
-            </span>
-            <span v-else>No items found</span>
-          </td>
-        </tr>
-      </tbody>
-    </table>
-
-    <!-- No Orders Message -->
-    <div v-else>
-      <p>No matching orders found.</p>
-    </div>
   </div>
 </template>
 
 
 <script>
-import Datepicker from 'vue3-datepicker'
-
 export default {
   components: {
-    Datepicker
   },
   data() {
     return {
@@ -158,8 +149,10 @@ export default {
         .then(data => {
           console.log("Fetched orders:", data); // Debugging
           if (data.orders) {
-            this.orders = data.orders;
-            this.filteredOrders = data.orders.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+            // Sort orders by date (newest to oldest) before assigning
+            const sortedOrders = data.orders.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+            this.orders = sortedOrders;
+            this.filteredOrders = sortedOrders;
           } else {
             this.orders = [];
             this.filteredOrders = [];
@@ -170,21 +163,25 @@ export default {
     },
 
     filterOrders() {
-      const query = this.searchQuery.toLowerCase();
-
-      this.filteredOrders = this.orders.filter((order) => {
-        return (
-          order.id.toString().includes(query) || // Match Order ID
-          order.customer_name.toLowerCase().includes(query) || // Match Customer Name
-          order.items.some(item => item.name.toLowerCase().includes(query)) // Match Items
-        );
-      }).sort((a, b) => {
-        const aStartsWith = a.id.toString().startsWith(query) ? 1 : 0;
-        const bStartsWith = b.id.toString().startsWith(query) ? 1 : 0;
-        const aIncludes = a.id.toString().includes(query) ? 1 : 0;
-        const bIncludes = b.id.toString().includes(query) ? 1 : 0;
-        return (bStartsWith - aStartsWith) || (bIncludes - aIncludes) || (a.id - b.id);
-      });
+      if (this.searchQuery === '') {
+        this.filteredOrders = this.orders;
+      } else {
+        const query = this.searchQuery.toLowerCase();
+        this.filteredOrders = this.orders.filter(order => {
+          return (
+            order.id.toString().includes(query) || 
+            order.customer_name.toLowerCase().includes(query) ||
+            order.created_at.toLowerCase().includes(query)
+          );
+        }).sort((a, b) => {
+          // Prioritize orders that start with the search query
+          const aStartsWith = a.id.toString().startsWith(query) ? 1 : 0;
+          const bStartsWith = b.id.toString().startsWith(query) ? 1 : 0;
+          const aIncludes = a.id.toString().includes(query) ? 1 : 0;
+          const bIncludes = b.id.toString().includes(query) ? 1 : 0;
+          return (bStartsWith - aStartsWith) || (bIncludes - aIncludes) || (a.id - b.id);
+        });
+      }
     },
 
     // Method to format the order date
@@ -227,38 +224,45 @@ export default {
       return "₱" + items.reduce((sum, item) => sum + item.price * item.quantity, 0).toFixed(2);
     },
 
+    focusDateInput() {
+      this.$refs.dateInput.showPicker();
+    },
+    
+    handleDateChange(event) {
+      const newDate = new Date(event.target.value + 'T00:00:00');
+      if (!isNaN(newDate.getTime())) {
+        this.selectedDate = newDate;
+        this.fetchSalesForDate();
+      }
+    },
+    
     fetchSalesForDate() {
-      // Reset sales data
-      this.dailySales = {
-        total: 0,
-        orderCount: 0,
-        orders: []
-      };
-
-      // Format date to YYYY-MM-DD for comparison
-      const selectedDateStr = this.formatDateYYYYMMDD(this.selectedDate);
+      const startOfDay = new Date(this.selectedDate);
+      startOfDay.setHours(0, 0, 0, 0);
       
-      // Filter orders for the selected date
-      const ordersOnDate = this.orders.filter(order => {
-        const orderDate = this.formatDateYYYYMMDD(new Date(order.created_at));
-        return orderDate === selectedDateStr;
+      const endOfDay = new Date(this.selectedDate);
+      endOfDay.setHours(23, 59, 59, 999);
+      
+      // Filter completed orders for the selected date
+      const ordersForDate = this.orders.filter(order => {
+        const orderDate = new Date(order.created_at);
+        return orderDate >= startOfDay && orderDate <= endOfDay;
       });
       
       // Calculate total sales
-      let totalSales = 0;
-      ordersOnDate.forEach(order => {
-        const orderTotal = order.items.reduce((sum, item) => sum + (item.price * item.quantity), 0);
-        totalSales += orderTotal;
+      let total = 0;
+      ordersForDate.forEach(order => {
+        const orderTotal = parseFloat(this.calculateTotal(order.items).substring(1));
+        total += orderTotal;
       });
       
-      // Update daily sales data
+      // Update dailySales object
       this.dailySales = {
-        total: totalSales,
-        orderCount: ordersOnDate.length,
-        orders: ordersOnDate
+        total: total,
+        orderCount: ordersForDate.length,
+        orders: ordersForDate
       };
       
-      // Show the modal
       this.showSalesModal = true;
     },
     
@@ -267,8 +271,12 @@ export default {
       return `${d.getFullYear()}-${(d.getMonth() + 1).toString().padStart(2, '0')}-${d.getDate().toString().padStart(2, '0')}`;
     },
     
-    openDatepicker() {
-      document.querySelector('.custom-datepicker').click();
+    formatDateMMDDYYYY(date) {
+      const d = new Date(date);
+      const month = (d.getMonth() + 1).toString().padStart(2, '0');
+      const day = d.getDate().toString().padStart(2, '0');
+      const year = d.getFullYear();
+      return `${month}/${day}/${year}`;
     },
   },
   mounted() {
@@ -353,113 +361,50 @@ h2 {
 /* Calendar Section Styles */
 .calendar-section {
   margin: 20px 0;
-  padding: 20px;
-  background-color: #fff;
-  border-radius: 8px;
-  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
 }
 
 .calendar-container {
   display: flex;
-  align-items: center;
   justify-content: center;
   margin: 15px 0;
 }
 
 .date-field {
-  width: 280px;
-}
-
-.date-field label {
-  display: block;
-  margin-bottom: 4px;
-  font-size: 13px;
-  color: #000;
-}
-
-.date-input-container {
+  width: 200px;
   position: relative;
-  display: inline-flex;
-  align-items: center;
 }
 
-.custom-datepicker {
-  width: 150px;
-}
-
-.clickable-datepicker {
-  cursor: pointer;
-}
-
-:deep(.date-input) {
-  padding: 2px 4px;
-  border: 1px solid #ccc;
-  border-radius: 2px;
-  font-size: 13px;
-  cursor: pointer;
-  width: 150px;
-  background: white;
-}
-
-:deep(.dp__input_icon) {
-  display: none !important;
-}
-
-.calendar-button {
-  position: absolute;
-  right: -24px;
-  top: 50%;
-  transform: translateY(-50%);
-  background: none;
-  border: none;
-  padding: 0;
+.date-input-wrapper {
+  position: relative;
+  width: 100%;
   cursor: pointer;
   display: flex;
   align-items: center;
-  justify-content: center;
 }
 
-.calendar-button img {
+.date-input {
+  width: 100%;
+  padding: 4px 30px 4px 4px;
+  border: 1px solid #ccc;
+  border-radius: 0;
+  font-size: 14px;
+  cursor: pointer;
+}
+
+.calendar-icon {
+  position: absolute;
+  right: 5px;
+  top: 50%;
+  transform: translateY(-50%);
+  pointer-events: none;
+  display: flex;
+  align-items: center;
+}
+
+.calendar-icon img {
   width: 16px;
   height: 16px;
-}
-
-/* Hide the default calendar icon */
-:deep(.dp__input_wrap) {
-  width: 100%;
-}
-
-:deep(.dp__main) {
-  width: max-content;
-}
-
-:deep(.dp__input_icon) {
-  display: none;
-}
-
-/* Dark mode adjustments for new elements */
-.dark-mode .calendar-section {
-  background-color: #3d3d3d;
-  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
-}
-
-.dark-mode .date-field label {
-  color: #ddd;
-}
-
-.dark-mode .custom-datepicker {
-  background-color: #333;
-  color: #fff;
-  border-color: #555;
-}
-
-.dark-mode .custom-datepicker:hover {
-  border-color: #777;
-}
-
-.dark-mode .custom-datepicker:focus {
-  border-color: #3e9eff;
-  box-shadow: 0 0 0 3px rgba(62, 158, 255, 0.2);
+  display: block;
 }
 
 /* Modal Styles */
@@ -595,5 +540,15 @@ h2 {
 
 .dark-mode .no-sales {
   color: #bbb;
+}
+
+.dark-mode .date-input {
+  background-color: #2d2d2d;
+  border-color: #444;
+  color: #fff;
+}
+
+.dark-mode .calendar-icon img {
+  filter: invert(1);
 }
 </style>

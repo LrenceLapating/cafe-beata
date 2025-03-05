@@ -7,11 +7,11 @@
         <span v-if="unreadNotificationsCount > 0" class="menu-notification-badge">{{ unreadNotificationsCount }}</span>
       </div>
     </button>
-    
 
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
     
     <div v-if="isSidebarOpen" class="overlay" @click="closeSidebar"></div>
+    
     <!-- Sidebar -->
     <div :class="['sidebar', { 
       'open': isSidebarOpen, 
@@ -20,19 +20,29 @@
     }]" @click.stop>
       <button class="close-sidebar" @click="toggleSidebar">✕</button>
       
+      <!-- User Profile Section -->
+      <div class="user-profile-section">
+        <div class="profile-image">
+          <img :src="userProfileImage || require('@/assets/default.png')" alt="Profile Picture">
+        </div>
+        <div class="profile-info">
+          <span class="user-name">{{ userName }}</span>
+        </div>
+      </div>
+
+      <!-- Dark Mode Toggle beside profile -->
+      <button class="theme-toggle" @click="toggleDarkMode">
+        <i :class="['fas', isDarkMode ? 'fa-sun' : 'fa-moon', { 'light-icon': !isDarkMode, 'dark-icon': isDarkMode }]"></i>
+      </button>
+
       <!-- Profile Section -->
       <button class="profile-section" @click="handleProfile">
         <i class="fas fa-user"></i>
         <span>Profile</span>
       </button>
 
-      <!-- Utility Buttons -->
+      <!-- Utility Buttons (Removed Dark Mode from here) -->
       <div class="utility-section">
-        <button class="utility-button" @click="toggleDarkMode">
-          <i class="fas fa-moon"></i>
-          <span>Dark Mode</span>
-        </button>
-
         <router-link to="/user-notifications" class="utility-button notification-link">
           <div class="notification-icon">
             <i class="fas fa-bell"></i>
@@ -96,7 +106,7 @@
     </div>
 
     <!-- Main content area -->
-    <div class="content" @click="closeSidebar">
+    <div :class="['content', { 'close': isSidebarOpen }]" @click="closeSidebar">
       <!-- Top Bar -->
       <div class="top-bar">
         <div class="logo-time-container">
@@ -144,11 +154,15 @@
 </template>
 
 
+
 <script>
 import { eventBus } from "@/utils/eventBus"; // Correct the path if needed
 export default {
   data() {
     return {
+        userName: '',
+      userProfileImage: '',
+      userEmail: localStorage.getItem('userEmail'),
       unreadNotificationsCount: 0,   
       refreshInterval: null,  
       searchQuery: '',
@@ -269,7 +283,7 @@ beforeUnmount() {
        this.stopPollingForNewNotifications();
   },
   
-  mounted() {
+  async mounted() {
    
 
 
@@ -280,14 +294,34 @@ beforeUnmount() {
       }
     );
     this.filterCategory('Drinks');
-    this.updateTime(); // Call updateTime when the component is mounted
+    this.updateTime();
     this.applyDarkMode(this.isDarkMode);
-      
+    this.startPollingForNewNotifications();
+    await this.loadUserProfile();
      
   },
     
  
   methods: {
+
+
+ async loadUserProfile() {
+      try {
+        if (!this.userEmail) return;
+        
+        const response = await fetch(`http://127.0.0.1:8000/profile/${this.userEmail}`);
+        const data = await response.json();
+        
+        if (response.ok) {
+          this.userName = data.username;
+          this.userProfileImage = data.avatar ? `http://127.0.0.1:8000${data.avatar}` : require('@/assets/default.png');
+        }
+      } catch (error) {
+        console.error('Error loading profile:', error);
+      }
+    },
+
+
   updateNotificationCount() {
       const userName = localStorage.getItem("userName");
       if (userName) {
@@ -430,6 +464,85 @@ beforeUnmount() {
 
 
 <style scoped>
+
+
+.user-profile-section {
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 20px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+
+.profile-image {
+  width: 80px;
+  height: 80px;
+  border-radius: 50%;
+  overflow: hidden;
+  border: 2px solid rgba(255, 255, 255, 0.2);
+}
+
+.profile-image img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.user-name {
+  font-size: 1.1rem;
+  font-weight: 500;
+  color: #222;
+}
+
+.theme-toggle {
+  position: absolute;
+  top: 20px;
+  left: 20px;
+  background: transparent;
+  border: none;
+  font-size: 1.2rem;
+  cursor: pointer;
+  padding: 8px;
+  border-radius: 50%;
+  width: 40px;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.3s ease;
+}
+
+.theme-toggle:hover {
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.theme-toggle .light-icon {
+  color: #333;
+}
+
+.theme-toggle .dark-icon {
+  color: #fff;
+}
+
+.light-mode 
+
+.theme-toggle {
+  color: #333;
+}
+
+.light-mode 
+.user-name {
+  color: #333;
+}
+.dark-mode .user-name {
+  color: #fff;
+}
+.dark-mode .theme-toggle {
+  color: #fff;
+}
 .dark-mode .item {
   background-color: #555555; /* Light grey background for dark mode */
   color: #ffffff; /* Light text color */
@@ -899,13 +1012,84 @@ beforeUnmount() {
 /* Desktop Responsive */
 @media (min-width: 769px) {
   .content {
-    margin-left: 60px;
+    margin-left: 0; /* Remove default margin to match mobile behavior */
   }
   
   .menu-button {
-    display: none;
+    display: block; /* Show menu button on desktop */
+    background: rgb(255, 255, 255);
+    color: black;
+    padding: 10px 15px;
+    font-size: 18px;
+    border-radius: 15px;
+    transition: background 0.3s ease-in-out;
+  }
+
+  /* When sidebar is open */
+  .sidebar.open + .content {
+    margin-left: 270px;
   }
 }
+
+/* Update menu button base styles */
+.menu-button {
+  position: fixed;
+  top: 15px;
+  left: 15px;
+  z-index: 300;
+  background: rgb(255, 255, 255);
+  color: black;
+  padding: 10px 15px;
+  font-size: 18px;
+  border: none;
+  border-radius: 15px;
+  cursor: pointer;
+  transition: background 0.3s ease-in-out;
+  display: block; /* Always show the menu button */
+}
+
+.menu-icon-container {
+  position: relative;
+  display: inline-block;
+}
+
+.menu-notification-badge {
+  position: absolute;
+  top: -8px;
+  right: -20px;
+  background-color: red;
+  color: white;
+  border-radius: 50%;
+  font-size: 12px;
+  min-width: 18px;
+  height: 18px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: bold;
+}
+
+/* Add overlay styles */
+.overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.5);
+  z-index: 299;
+  display: none;
+}
+
+.overlay.show {
+  display: block;
+}
+
+/* Update content transition */
+.content {
+  transition: margin-left 0.3s ease;
+}
+
 /* Style the container for both logo and live time */
 .logo-time-container {
   display: flex;
@@ -957,28 +1141,51 @@ beforeUnmount() {
 
 .content {
   flex: 1;
-  margin-left: 270px; 
+  margin-left: 0;
   padding: 20px;
   overflow-y: auto;
-}
-@media (max-width: 768px) {
-  .top-bar {
-    flex-direction: column;
-    align-items: center;
-    gap: 10px;
-  }
+  transition: margin-left 0.3s ease;
 }
 
-
-@media (min-width: 769px) {
-  .menu-button {
-    display: none; 
-  }
+.content.shifted {
+  margin-left: 270px;
 }
-@media (min-width: 769px) {
-  .sidebar {
-    left: 0 !important; 
-  }
+
+/* Menu button styles */
+.menu-button {
+  position: fixed;
+  top: 15px;
+  left: 15px;
+  z-index: 300;
+  background: rgb(255, 255, 255);
+  color: black;
+  padding: 10px 15px;
+  font-size: 18px;
+  border: none;
+  border-radius: 15px;
+  cursor: pointer;
+  transition: background 0.3s ease-in-out;
+  display: block;
+}
+
+/* Sidebar styles */
+.sidebar {
+  position: fixed;
+  top: 0;
+  left: -280px;
+  height: 100vh;
+  width: 280px;
+  background-color: white;
+  transition: all 0.3s ease;
+  z-index: 1000;
+  display: flex;
+  flex-direction: column;
+  padding: 20px 0 20px 0;
+  box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+}
+
+.sidebar.open {
+  left: 0;
 }
 
 @media (max-width: 768px) {
@@ -1003,51 +1210,6 @@ beforeUnmount() {
   .content {
     margin-left: 0; 
   }
-}
-
-/* Menu Toggle Button */
-.menu-button {
-  display: none;
-  position: fixed;
-  top: 15px;
-  left: 15px;
-  z-index: 300;
-  background:rgb(255, 255, 255);
-  color: black;
-  padding: 10px 15px;
-  font-size: 18px;
-  border: none;
-  border-radius: 15px;
-  cursor: pointer;
-  transition: background 0.3s ease-in-out;
-}
-
-/* Show menu button on mobile */
-@media (max-width: 768px) {
-  .menu-button {
-    display: block;
-  }
-}
-
-.menu-icon-container {
-  position: relative;
-  display: inline-block;
-}
-
-.menu-notification-badge {
-  position: absolute;
-  top: -8px;
-  right: -20px;
-  background-color: red;
-  color: white;
-  border-radius: 50%;
-  font-size: 12px;
-  min-width: 18px;
-  height: 18px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-weight: bold;
 }
 
 /* Dashboard Title */

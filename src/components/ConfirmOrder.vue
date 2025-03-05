@@ -17,6 +17,7 @@
     <div class="confirm-order">
       <!-- Processing Order Section (centered) -->
       <div v-show="isProcessingOrder" class="loading-spinner-container">
+        <button class="close-processing" @click="cancelProcessing">&times;</button>
         <h1 class="wedding-text">Café Beàta</h1>
         <h1 class="loading-text">Processing your order...</h1>
         <div class="progress-bar-container">
@@ -33,7 +34,7 @@
       <h1>Confirm Your Order</h1>
 
       <div v-if="cart.length">
-        <h2>Orders:</h2>
+        <h2>Your Order:</h2>
         <ul>
           <li v-for="(order, index) in cart" :key="index">
             <img :src="getImagePath(order.image)" :alt="order.name" class="order-image"/>
@@ -85,6 +86,7 @@ export default {
       countdown: 3, // Countdown timer for the processing
       progressBarWidth: 0, // Progress bar width
       showOrderClosedMessage: false,
+      progressInterval: null, // Store the interval reference
       // Remove the duplicate definition of isCafeOpen here:
       // isCafeOpen: true, 
     };
@@ -230,14 +232,16 @@ export default {
       this.progressBarWidth = 0;
       this.countdown = 2;
 
-      // Interval for countdown and progress bar
-      const interval = setInterval(() => {
-        if (this.countdown > 0) {
+      // Store the interval reference so we can clear it when canceling
+      this.progressInterval = setInterval(() => {
+        if (this.countdown > 0 && this.isProcessingOrder) { // Check if still processing
           this.countdown--;
           this.progressBarWidth += 33.33; // Update the progress bar width
-        } else {
-          clearInterval(interval); // Stop the interval
+        } else if (this.isProcessingOrder) { // Only process if not cancelled
+          clearInterval(this.progressInterval);
           this.processOrder(); // Call the function to send the order
+        } else {
+          clearInterval(this.progressInterval);
         }
       }, 1000); // Update every second
     },
@@ -310,7 +314,15 @@ export default {
 
     getImagePath(image) {
       return require(`@/assets/${image}`);
-    }
+    },
+    cancelProcessing() {
+      this.isProcessingOrder = false;
+      this.progressBarWidth = 0;
+      this.showModal = false;
+      if (this.progressInterval) {
+        clearInterval(this.progressInterval);
+      }
+    },
   },
 };
 </script>
@@ -961,5 +973,40 @@ li {
     padding: 10px;
     max-width: 260px;
   }
+}
+
+.close-processing {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  background: none;
+  border: none;
+  font-size: 32px;
+  cursor: pointer;
+  color: #333;
+  padding: 5px 10px;
+  border-radius: 50%;
+  transition: all 0.3s ease;
+  z-index: 1001;
+}
+
+@media (max-width: 768px) {
+  .close-processing {
+    font-size: 28px; /* Adjust size for mobile */
+  }
+}
+
+@media (max-width: 480px) {
+  .close-processing {
+    font-size: 24px; /* Further adjust size for very small screens */
+  }
+}
+
+.dark-mode .close-processing {
+  color: #fff;
+}
+
+.dark-mode .close-processing:hover {
+  background-color: rgba(255, 255, 255, 0.1);
 }
 </style>

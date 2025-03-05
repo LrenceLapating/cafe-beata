@@ -74,7 +74,8 @@ export default {
         .then(response => response.json())
         .then(data => {
           if (data.orders) {
-            this.orders = data.orders;
+            // Sort orders by created_at date in descending order (newest first)
+            this.orders = data.orders.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
             this.filteredOrders = this.orders; // Initially set filteredOrders to all orders
           } else {
             this.orders = [];
@@ -89,13 +90,20 @@ export default {
       if (this.searchQuery === '') {
         this.filteredOrders = this.orders;
       } else {
+        const query = this.searchQuery.toLowerCase();
         this.filteredOrders = this.orders.filter(order => {
-          const searchQueryLower = this.searchQuery.toLowerCase();
           return (
-            order.id.toString().includes(this.searchQuery) || 
-            order.customer_name.toLowerCase().includes(searchQueryLower) ||
-            order.created_at.toLowerCase().includes(searchQueryLower) // Include Order Date in the search
+            order.id.toString().includes(query) || 
+            order.customer_name.toLowerCase().includes(query) ||
+            order.created_at.toLowerCase().includes(query)
           );
+        }).sort((a, b) => {
+          // Prioritize orders that start with the search query
+          const aStartsWith = a.id.toString().startsWith(query) ? 1 : 0;
+          const bStartsWith = b.id.toString().startsWith(query) ? 1 : 0;
+          const aIncludes = a.id.toString().includes(query) ? 1 : 0;
+          const bIncludes = b.id.toString().includes(query) ? 1 : 0;
+          return (bStartsWith - aStartsWith) || (bIncludes - aIncludes) || (a.id - b.id);
         });
       }
     },
