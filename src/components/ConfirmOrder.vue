@@ -87,8 +87,7 @@ export default {
       progressBarWidth: 0, // Progress bar width
       showOrderClosedMessage: false,
       progressInterval: null, // Store the interval reference
-      // Remove the duplicate definition of isCafeOpen here:
-      // isCafeOpen: true, 
+      isItemAdded: false // New flag to track if item has been added
     };
   },
   computed: {
@@ -97,17 +96,24 @@ export default {
     },
   },
   mounted() {
-    // Initialize isCafeOpen from localStorage or default to true if not found
+    // Initialize isCafeOpen from localStorage
     const savedCafeStatus = localStorage.getItem('isCafeOpen');
     if (savedCafeStatus !== null) {
       this.isCafeOpen = JSON.parse(savedCafeStatus);
     } else {
-      this.isCafeOpen = true;  // Default to open if not set
+      this.isCafeOpen = true;
     }
     
+    // Load existing cart first
     this.loadCart();
-    this.addToCart();
-    console.log('Customer Name:', this.userName);  // Debug to check if userName is fetched correctly
+    
+    // Check URL parameters and add item only if not already done
+    const itemFromUrl = this.$route.query.name && this.$route.query.price;
+    if (itemFromUrl && !this.isItemAdded) {
+      this.handleNewItem();
+    }
+    
+    console.log('Customer Name:', this.userName);
     
     // Dynamically adjust the background color and height of the confirm order container
     this.adjustContainerHeight();
@@ -147,7 +153,35 @@ export default {
       const storedCart = localStorage.getItem('cart');
       if (storedCart) {
         this.cart = JSON.parse(storedCart);
+        // Check if we have items from URL in the cart
+        if (this.$route.query.name) {
+          const urlItemExists = this.cart.some(item => item.name === this.$route.query.name);
+          this.isItemAdded = urlItemExists;
+        }
       }
+    },
+
+    handleNewItem() {
+      const newItem = {
+        name: this.$route.query.name,
+        price: Number(this.$route.query.price) || 0,
+        image: this.$route.query.image,
+        quantity: 1
+      };
+
+      // Check if item exists in cart
+      const existingItemIndex = this.cart.findIndex(item => item.name === newItem.name);
+      
+      if (existingItemIndex === -1) {
+        // Item doesn't exist, add it
+        this.cart.push(newItem);
+        this.isItemAdded = true;
+        this.saveCart();
+      }
+    },
+
+    saveCart() {
+      localStorage.setItem('cart', JSON.stringify(this.cart));
     },
 
     startProcessingOrder() {
@@ -172,25 +206,6 @@ export default {
       this.isProcessingOrder = false;  // Stop the loading process
     },
 
-    addToCart() {
-      const newItem = {
-        name: this.$route.query.name,
-        price: Number(this.$route.query.price) || 0,
-        image: this.$route.query.image,
-        quantity: 1, // Default quantity
-      };
-
-      if (newItem.name && newItem.price) {
-        const existingItem = this.cart.find(item => item.name === newItem.name);
-        if (existingItem) {
-          existingItem.quantity += 1;
-        } else {
-          this.cart.push(newItem);
-        }
-        this.saveCart();
-      }
-    },
-
     increaseQuantity(index) {
       this.cart[index].quantity += 1;
       this.saveCart();
@@ -206,10 +221,6 @@ export default {
     removeFromCart(index) {
       this.cart.splice(index, 1);
       this.saveCart();
-    },
-
-    saveCart() {
-      localStorage.setItem('cart', JSON.stringify(this.cart));
     },
 
     addMoreOrder() {
@@ -538,7 +549,7 @@ export default {
   background-color: #333;  /* Dark background color for dark mode */
   color: #fff;  /* White text color for dark mode */
   border-radius: 35px;  /* Keep the rounded corners */
-  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3); /* Lighter shadow for dark mode */
+  box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3); /* Lighter shadow for dark mode */
 }
 
 .dark-mode .loading-text {

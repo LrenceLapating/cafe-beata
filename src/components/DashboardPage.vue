@@ -41,6 +41,8 @@
         <span>Profile</span>
       </button>
 
+      <hr class="utility-divider">
+
       <!-- Utility Buttons (Removed Dark Mode from here) -->
       <div class="utility-section">
         <router-link to="/user-notifications" class="utility-button notification-link">
@@ -195,7 +197,7 @@ export default {
         { name: 'Hot Cafe Latte Macchiato', price: 85.00, image: 'hot-cafelattemacc.png' },
         { name: 'Hot Caramel Macchiato', price: 90.00, image: 'hot-caramel-macchiato.png' },
         { name: 'Hot Spanish Latte', price: 90.00, image: 'hot-spanish-latte.png' },
-        { name: 'Hot Ice Cappuccino', price: 75.00, image: 'hot-cappuccino.png' },
+        { name: 'Hot Cappuccino', price: 75.00, image: 'hot-cappuccino.png' },
         { name: 'Hot Cafe Mocha', price: 90.00, image: 'hot-cafe-mocha.png' },
         { name: 'Hot Salted Caramel Macchiato', price: 90.00, image: 'hot-salted-caramel-macchiato.png' },
         { name: 'Hot Vanilla Latte', price: 90.00, image: 'hot-vanilla-latte.png' },
@@ -464,7 +466,12 @@ beforeUnmount() {
 
 
 <style scoped>
-
+.utility-divider {
+  border: none;
+  height: 1px;
+ background-color: rgba(0, 0, 0, 0.1);
+  margin: 10px 0;
+}
 
 .user-profile-section {
   padding: 20px;
@@ -473,8 +480,9 @@ beforeUnmount() {
   align-items: center;
   gap: 10px;
   margin-bottom: 20px;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
 }
+
+
 
 
 .profile-image {
@@ -516,7 +524,7 @@ beforeUnmount() {
 }
 
 .theme-toggle:hover {
-  background: rgba(255, 255, 255, 0.1);
+ background-color: rgba(0, 0, 0, 0.05);
 }
 
 .theme-toggle .light-icon {
@@ -543,6 +551,10 @@ beforeUnmount() {
 .dark-mode .theme-toggle {
   color: #fff;
 }
+.dark-mode .utility-divider {
+  background-color: rgba(255, 255, 255, 0.1);
+}
+
 .dark-mode .item {
   background-color: #555555; /* Light grey background for dark mode */
   color: #ffffff; /* Light text color */
@@ -1165,7 +1177,7 @@ beforeUnmount() {
   border-radius: 15px;
   cursor: pointer;
   transition: background 0.3s ease-in-out;
-  display: block;
+  display: block; /* Always show the menu button */
 }
 
 /* Sidebar styles */
@@ -1180,7 +1192,7 @@ beforeUnmount() {
   z-index: 1000;
   display: flex;
   flex-direction: column;
-  padding: 20px 0 20px 0;
+  padding: 20px 0 20px 0; /* Add bottom padding */
   box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
 }
 
