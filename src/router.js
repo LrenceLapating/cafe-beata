@@ -86,7 +86,7 @@ const routes = [
     },
   },
   {
-    path: '/confirm-order',
+    path: '/confirm-order', 
     name: 'ConfirmOrder',
     component: ConfirmOrder,
     props: route => ({

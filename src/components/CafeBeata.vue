@@ -2,7 +2,10 @@
   <div class="coffee-container">
     <header class="header">
       <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
-      <div class="logo" @click="scrollToTop">UIC Café Beàta</div>
+      <div class="logo" @click="scrollToTop">
+        <img src="@/assets/cafe-logo.png" alt="Cafe Logo" class="cafe-logo" />
+        
+      </div>
       <nav class="nav-links">
         <a href="javascript:void(0);" @click="scrollToSection('contact-us')">Contact Us</a>       
         <a href="javascript:void(0);" @click="scrollToSection('about-us')">About Us</a>
@@ -15,12 +18,23 @@
         <h1>Enjoy Your Morning Coffee in UIC Café Beàta</h1>
         <p>Boost your productivity and build your mood with a glass of coffee in the morning.</p>
         <button class="get-now-btn" @click="goToPage('/login')">Get your Coffee now!</button>
-        <button class="play-video-btn" @click="scrollToSection('contact-us')">Contact Us</button>
+        <button class="play-video-btn" @click="toggleVideo">Watch Video</button>
       </div>
       <div class="hero-image">
         <img :src="require('@/assets/pink-cafe.png')" alt="Coffee Cup" />
       </div>
     </section>
+
+    <!-- Video Modal -->
+    <div v-if="showVideo" class="video-modal" @click="toggleVideo">
+      <div class="video-container" @click.stop>
+        <video ref="videoPlayer" controls>
+          <source :src="require('@/assets/Uic Cafe Video.mp4')" type="video/mp4">
+          Your browser does not support the video tag.
+        </video>
+        <button class="close-video" @click="toggleVideo">&times;</button>
+      </div>
+    </div>
 
     <!-- About Us Section -->
     <section class="about-us" id="about-us">
@@ -67,7 +81,7 @@
     <section class="contact-us" id="contact-us">
       <div class="contact-header">
         <h2>Stay Up To Date On<br>All News And Offers.</h2>
-        <p>Be The First To Know About New Collections, Special Events, And What’s Going On At UIC Café Beàta.</p>
+        <p>Be The First To Know About New Collections, Special Events, And What's Going On At UIC Café Beàta.</p>
         <div class="newsletter">
           <input 
             type="email" 
@@ -134,7 +148,8 @@ export default {
       email: '',
       showNotification: false,
       notificationMessage: '',
-      notificationType: 'success'
+      notificationType: 'success',
+      showVideo: false
     };
   },
   computed: {
@@ -178,6 +193,21 @@ export default {
     filterByCategory(category) {
       this.selectedCategory = category;
       this.currentIndex = 0;
+    },
+    toggleVideo() {
+      this.showVideo = !this.showVideo;
+      if (this.showVideo) {
+        // Wait for the video element to be mounted
+        this.$nextTick(() => {
+          if (this.$refs.videoPlayer) {
+            this.$refs.videoPlayer.play();
+          }
+        });
+      } else {
+        if (this.$refs.videoPlayer) {
+          this.$refs.videoPlayer.pause();
+        }
+      }
     },
     subscribeNewsletter() {
       const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -399,18 +429,21 @@ export default {
 }
 
 .pagination button {
-  background-color: black;
+  background: #3b2a2a;
   color: white;
-  border: none;
-  padding: 8px 15px;
+  border: 1px solid #2a1f1f;
+  padding: 10px 20px;
   font-size: 1.2em;
   cursor: pointer;
   margin: 5px;
   border-radius: 5px;
+  transition: all 0.3s ease;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
 }
 
 .pagination button:hover {
-  background-color: #444;
+  background: #2a1f1f;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
 }
 
 .coffee-container {
@@ -424,36 +457,39 @@ export default {
 }
 
 .header {
-  top: 0;
   display: flex;
   justify-content: space-between;
-  padding: 15px 20px; /* Adjusted for better mobile fit */
+  align-items: center;
+  padding: 15px 20px;
   background-color: #fce6e6;
-  z-index: 1000; /* Ensures it stays above other content */
+  z-index: 1000;
   position: sticky;
-  border-bottom: 2px solid #d88e8e; /* Added border for a more defined header */
-  animation: slideIn 0.5s ease-out; /* Header slide-in animation */
+  top: 0;
+  border-bottom: 2px solid #d88e8e;
+  animation: slideIn 0.5s ease-out;
 }
 
 .logo {
-  font-size: 1.8em; /* Slightly smaller font size for better fit */
+  display: flex;
+  align-items: center;
+  font-size: 1.8em;
   font-weight: bold;
   font-family: 'Roboto', sans-serif;
-  color: rgb(180, 102, 102); /* Highlight text color */
+  color: rgb(180, 102, 102);
   margin-left: 10px;
-  cursor: pointer; /* Make it clickable */
-  text-transform: uppercase; /* Adds emphasis */
+  cursor: pointer;
+  text-transform: uppercase;
   transition: transform 0.3s ease;
 }
 
 .logo:hover {
-  transform: scale(1.1); /* Logo scaling on hover */
+  transform: scale(1.1);
 }
 
 .nav-links {
   display: flex;
   gap: 20px;
-  font-size: 1.1em; /* Slightly smaller font size */
+  font-size: 1.1em;
   font-weight: bold;
   font-family: 'Roboto', sans-serif;
   color: #5e5e5e;
@@ -469,7 +505,7 @@ export default {
 .nav-links a:hover {
   color: #f4a261;
   text-decoration: underline;
-  transform: scale(1.1); /* Hover scaling for links */
+  transform: scale(1.1);
 }
 
 .hero {
@@ -478,13 +514,13 @@ export default {
   padding: 40px;
   background: linear-gradient(to right, #f8d1d1, #fce6e6);
   flex-wrap: wrap;
-  animation: fadeIn 1s ease-in-out; /* Fade-in animation for hero section */
+  animation: fadeIn 1s ease-in-out;
 }
 
 .hero-text {
   max-width: 50%;
   padding: 20px;
-  animation: slideInRight 1s ease-out; /* Slide-in right animation */
+  animation: slideInRight 1s ease-out;
 }
 
 .hero-text h1 {
@@ -497,7 +533,7 @@ export default {
   margin-top: 10px;
   font-size: 1.2em;
   color: #5e5e5e;
-  animation: fadeIn 1s ease-in-out 0.5s; /* Delay for paragraph */
+  animation: fadeIn 1s ease-in-out 0.5s;
 }
 
 .get-now-btn,
@@ -512,14 +548,14 @@ export default {
   margin-right: 10px;
   border-radius: 5px;
   transition: all 0.3s ease;
-  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1); /* Box shadow */
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
 }
 
 .get-now-btn:hover,
 .play-video-btn:hover {
   background-color: #e0763d;
-  transform: scale(1.05); /* Button scaling effect */
-  box-shadow: 0 6px 12px rgba(0, 0, 0, 0.2); /* Hover box shadow */
+  transform: scale(1.05);
+  box-shadow: 0 6px 12px rgba(0, 0, 0, 0.2);
 }
 
 .hero-image {
@@ -530,12 +566,12 @@ export default {
   max-width: 100%;
   height: auto;
   border-radius: 10px;
-  animation: fadeIn 1s ease-in-out 0.8s; /* Fade-in with delay */
+  animation: fadeIn 1s ease-in-out 0.8s;
   transition: transform 0.3s ease;
 }
 
 .hero-image img:hover {
-  transform: scale(1.05); /* Slight zoom on hover */
+  transform: scale(1.05);
 }
 
 /* About Us Section */
@@ -543,9 +579,9 @@ export default {
   background-color: #fce6e6;
   padding: 40px;
   text-align: center;
-  animation: fadeIn 1s ease-in-out 1s; /* About section fade-in */
+  animation: fadeIn 1s ease-in-out 1s;
   border-radius: 15px;
-  box-shadow: 0 10px 20px rgba(0, 0, 0, 0.1); /* Card-like shadow */
+  box-shadow: 0 10px 20px rgba(0, 0, 0, 0.1);
 }
 
 .about-us h2 {
@@ -592,12 +628,20 @@ export default {
 }
 
 .newsletter button {
-  background-color: black;
+  background: #3b2a2a;
   color: white;
-  border: none;
+  border: 1px solid #2a1f1f;
   padding: 10px 20px;
   cursor: pointer;
   font-size: 1.2em;
+  border-radius: 5px;
+  transition: all 0.3s ease;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.newsletter button:hover {
+  background: #2a1f1f;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
 }
 
 .contact-content {
@@ -718,7 +762,7 @@ export default {
 
 .social-icon img:hover {
   transform: scale(1.1);
-  filter: brightness(1.3); /* Brighten on hover */
+  filter: brightness(1.3);
 }
 
 /* Footer */
@@ -929,7 +973,7 @@ export default {
 }
 
 .error {
-  background-color: #f44336;
+  background-color: #ff4444;
 }
 
 @keyframes slideIn {
@@ -954,5 +998,98 @@ export default {
 .pagination button:disabled {
   opacity: 0.5;
   cursor: not-allowed;
+}
+
+/* Video Modal Styles */
+.video-modal {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-color: rgba(0, 0, 0, 0.9);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 1000;
+  padding: 0;
+}
+
+.video-container {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  max-width: 500px;
+  margin: 0 auto;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.video-container video {
+  width: 100%;
+  height: auto;
+  max-height: 90vh;
+  object-fit: contain;
+  background: #000;
+}
+
+.close-video {
+  position: absolute;
+  top: 20px;
+  right: 20px;
+  background-color: rgba(0, 0, 0, 0.5);
+  border: none;
+  color: white;
+  font-size: 24px;
+  cursor: pointer;
+  border-radius: 50%;
+  width: 40px;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1001;
+}
+
+.close-video:hover {
+  opacity: 0.8;
+}
+
+@media (max-width: 768px) {
+  .video-modal {
+    background-color: #000;
+  }
+  
+  .video-container {
+    width: 100%;
+    max-width: none;
+    padding: 0 20px;
+  }
+  
+  .video-container video {
+    width: 100%;
+    height: auto;
+    max-height: 80vh;
+    object-fit: contain;
+  }
+}
+
+.cafe-logo {
+ 
+  height: 50px;
+  margin-right: 10px;
+  vertical-align: middle;
+  box-shadow: none;
+  transition: transform 0.3s ease;
+}
+
+.hero-logo {
+  height: 100px;
+  margin-top: 20px;
+  margin-left: 20px;
+  vertical-align: middle;
+  box-shadow: none;
+  transition: transform 0.3s ease;
 }
 </style>

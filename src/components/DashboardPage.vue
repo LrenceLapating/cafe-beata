@@ -113,7 +113,7 @@
       <div class="top-bar">
         <div class="logo-time-container">
           <div class="logo-container">
-            <img src="@/assets/cafe-logo.png" alt="University Logo" class="logo" />
+            <img src="@/assets/cafe-logo1.png" alt="University Logo" class="logo logo-light" />
           </div>
           <div class="live-time">
             <p>{{ currentTime }}</p>
@@ -595,7 +595,7 @@ beforeUnmount() {
   right: -5px;
   background-color: red;
   color: white;
-  border-radius: 50%; /* This ensures it’s fully circular */
+  border-radius: 50%; /* This ensures it's fully circular */
   font-size: 12px;
   width: 20px; /* Set a fixed width */
   height: 20px; /* Set a fixed height to ensure it's circular */
@@ -934,7 +934,7 @@ beforeUnmount() {
   right: -8px;
   background-color: red;
   color: white;
-  border-radius: 50%; /* This ensures it’s fully circular */
+  border-radius: 50%; /* This ensures it's fully circular */
   font-size: 11px;
   min-width: 15px;
   height: 15px;
@@ -1149,6 +1149,13 @@ beforeUnmount() {
 
 .logo-container img {
   width: 80px;
+  filter: none; /* Ensure no filter is applied */
+  background-color: transparent; /* Ensure background is transparent */
+}
+
+.logo-light {
+  filter: none; /* Ensure no filter is applied */
+  background-color: transparent; /* Ensure background is transparent */
 }
 
 .content {
