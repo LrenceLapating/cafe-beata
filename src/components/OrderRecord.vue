@@ -47,21 +47,16 @@
           <th>Order No. (ID)</th>
           <th>Order Date</th>
           <th>Bill Name</th>
-          <th>Total</th>
-          <th>Item Details</th>
+          <th>Actions</th>
         </tr>
       </thead>
       <tbody>
         <tr v-for="order in filteredOrders" :key="order.id">
           <td>{{ order.id }}</td>
-          <td>{{ formatDate(order.created_at) }}</td>
+          <td v-html="formatDate(order.created_at)"></td>
           <td>{{ order.customer_name }}</td>
-          <td>{{ calculateTotal(order.items) }}</td>
           <td>
-            <span v-if="order.items.length">
-              {{ formatItems(order.items) }}
-            </span>
-            <span v-else>No items found</span>
+            <button @click="viewOrderDetails(order)" class="view-details-btn">View Details</button>
           </td>
         </tr>
       </tbody>
@@ -115,6 +110,59 @@
         </div>
       </div>
     </div>
+
+    <!-- Order Details Modal -->
+    <div class="modal" v-if="showOrderDetailsModal">
+      <div class="modal-content order-details-modal">
+        <span class="close" @click="showOrderDetailsModal = false">&times;</span>
+        <h2>Order Details</h2>
+        
+        <div class="order-info" v-if="selectedOrder">
+          <div class="order-header">
+            <div class="order-header-item">
+              <span class="label">Order ID:</span>
+              <span class="value">{{ selectedOrder.id }}</span>
+            </div>
+            <div class="order-header-item">
+              <span class="label">Customer:</span>
+              <span class="value">{{ selectedOrder.customer_name }}</span>
+            </div>
+            <div class="order-header-item">
+              <span class="label">Date:</span>
+              <span class="value" v-html="formatDate(selectedOrder.created_at)"></span>
+            </div>
+          </div>
+          
+          <div class="order-items-list">
+            <h3>Items</h3>
+            <table class="items-table">
+              <thead>
+                <tr>
+                  <th>Item</th>
+                  <th>Quantity</th>
+                  <th>Price</th>
+                  <th>Subtotal</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr v-for="(item, index) in selectedOrder.items" :key="index">
+                  <td>{{ item.name }}</td>
+                  <td>{{ item.quantity }}</td>
+                  <td>₱{{ item.price.toFixed(2) }}</td>
+                  <td>₱{{ (item.price * item.quantity).toFixed(2) }}</td>
+                </tr>
+              </tbody>
+              <tfoot>
+                <tr>
+                  <td colspan="3" class="total-label">Total</td>
+                  <td class="total-value">{{ calculateTotal(selectedOrder.items) }}</td>
+                </tr>
+              </tfoot>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
   </div>
 </template>
 
@@ -135,7 +183,9 @@ export default {
         total: 0,
         orderCount: 0,
         orders: []
-      }
+      },
+      showOrderDetailsModal: false,
+      selectedOrder: null
     };
   },
   methods: {
@@ -187,22 +237,30 @@ export default {
     // Method to format the order date
     formatDate(dateString) {
       const date = new Date(dateString);
+      const month = (date.getMonth() + 1).toString().padStart(2, '0');
+      const day = date.getDate().toString().padStart(2, '0');
+      const year = date.getFullYear();
       const hours = date.getHours();
-      const minutes = date.getMinutes();
-      const seconds = date.getSeconds();
+      const minutes = date.getMinutes().toString().padStart(2, '0');
       const period = hours >= 12 ? 'PM' : 'AM';
-      const formattedDate = `${date.getFullYear()}-${(date.getMonth() + 1).toString().padStart(2, '0')}-${date.getDate().toString().padStart(2, '0')} ${period}${(hours % 12 || 12)}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
-      return formattedDate;
+      const hour12 = (hours % 12 || 12).toString().padStart(2, '0');
+      
+      // Format date and time separately
+      const datePart = `${month}-${day}-${year}`;
+      const timePart = `${hour12}:${minutes} ${period}`;
+      
+      return `${datePart} <span class="highlighted-time">${timePart}</span>`;
     },
 
     formatDateForDisplay(date) {
       if (!date) return '';
-      return date.toLocaleDateString('en-US', { 
-        weekday: 'long', 
-        year: 'numeric', 
-        month: 'long', 
-        day: 'numeric' 
-      });
+      
+      // Format date as MM-DD-YYYY
+      const month = (date.getMonth() + 1).toString().padStart(2, '0');
+      const day = date.getDate().toString().padStart(2, '0');
+      const year = date.getFullYear();
+      
+      return `${month}-${day}-${year}`;
     },
 
     formatDateForInput(date) {
@@ -276,8 +334,14 @@ export default {
       const month = (d.getMonth() + 1).toString().padStart(2, '0');
       const day = d.getDate().toString().padStart(2, '0');
       const year = d.getFullYear();
-      return `${month}/${day}/${year}`;
+      return `${month}-${day}-${year}`;
     },
+
+    // New method to view order details
+    viewOrderDetails(order) {
+      this.selectedOrder = order;
+      this.showOrderDetailsModal = true;
+    }
   },
   mounted() {
     this.fetchOrders();
@@ -550,5 +614,120 @@ h2 {
 
 .dark-mode .calendar-icon img {
   filter: invert(1);
+}
+
+/* View Details Button Styles */
+.view-details-btn {
+  background-color: #d12f7a;
+  color: white;
+  border: none;
+  padding: 6px 12px;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: background-color 0.3s;
+}
+
+.view-details-btn:hover {
+  background-color: #a82563;
+}
+
+/* Order Details Modal Styles */
+.order-details-modal {
+  max-width: 600px;
+}
+
+.order-header {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  margin-bottom: 20px;
+  padding: 10px;
+  background-color: #f8f8f8;
+  border-radius: 5px;
+}
+
+.order-header-item {
+  margin: 5px 10px;
+}
+
+.label {
+  font-weight: bold;
+  color: #666;
+  margin-right: 5px;
+}
+
+.value {
+  color: #d12f7a;
+}
+
+.order-items-list {
+  margin-top: 20px;
+}
+
+.items-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 10px;
+}
+
+.items-table th,
+.items-table td {
+  padding: 10px;
+  border: 1px solid #ddd;
+  text-align: left;
+}
+
+.items-table th {
+  background-color: #f8d2e4;
+  color: #d12f7a;
+}
+
+.total-label {
+  text-align: right;
+  font-weight: bold;
+}
+
+.total-value {
+  font-weight: bold;
+  color: #d12f7a;
+}
+
+/* Dark mode adjustments for order details */
+.dark-mode .order-header {
+  background-color: #3d3d3d;
+}
+
+.dark-mode .label {
+  color: #bbb;
+}
+
+.dark-mode .value {
+  color: #f8d2e4;
+}
+
+.dark-mode .items-table th {
+  background-color: #444;
+}
+
+.dark-mode .items-table td {
+  border-color: #444;
+}
+
+.dark-mode .total-value {
+  color: #f8d2e4;
+}
+
+/* Add this at the end of your style section */
+.highlighted-time {
+  color: #d12f7a;
+  font-weight: bold;
+  background-color: #f8d2e4;
+  padding: 2px 6px;
+  border-radius: 4px;
+  margin-left: 4px;
+}
+
+.dark-mode .highlighted-time {
+  color: #f8d2e4;
 }
 </style>

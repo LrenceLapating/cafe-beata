@@ -171,7 +171,7 @@ export default {
       isDarkMode: localStorage.getItem("darkMode") === "enabled",
       currentCategory: 'Ice Coffee', // Default category
       currentTime: new Date().toLocaleTimeString(),
-      isSidebarOpen: false, // Sidebar starts closed
+      isSidebarOpen: localStorage.getItem('sidebarOpen') === 'true', // Initialize from localStorage
       iceCoffees: [
         { name: 'Ice Peppermint Latte', price: 115.00, image: 'peppermint-latte.png' },
         { name: 'Ice Matcha Cafe Latte', price: 115.00, image: 'matcha-cafe-latte.png' },
@@ -286,21 +286,25 @@ beforeUnmount() {
   },
   
   async mounted() {
-   
-
-
      this.$watch(
       () => eventBus.notificationsCount,
       (newCount) => {
         this.unreadNotificationsCount = newCount;
       }
     );
-    this.filterCategory('Drinks');
+    
+    // Check if there's a category in the route query
+    if (this.$route.query.category) {
+      this.currentCategory = this.$route.query.category;
+      this.filterItems(); // Apply the filter after setting the category
+    } else {
+      this.filterCategory('Drinks');
+    }
+    
     this.updateTime();
     this.applyDarkMode(this.isDarkMode);
     this.startPollingForNewNotifications();
     await this.loadUserProfile();
-     
   },
     
  
@@ -378,6 +382,11 @@ beforeUnmount() {
     filterCategory(category) {
       this.currentCategory = category;
       this.filterItems();
+      
+      // Close sidebar on mobile after selecting a category
+      if (window.innerWidth <= 768) {
+        this.closeSidebar();
+      }
     },
 
     getImagePath(image) {
@@ -421,6 +430,9 @@ beforeUnmount() {
     },
 
    navigateToConfirmOrder(item) {
+      // Save the current category to localStorage
+      localStorage.setItem('lastCategory', this.currentCategory);
+      
       this.$router.push({
         name: "ConfirmOrder",
         query: {
@@ -442,11 +454,11 @@ beforeUnmount() {
     },
     toggleSidebar() {
       this.isSidebarOpen = !this.isSidebarOpen; // Toggle sidebar open/close
+      localStorage.setItem('sidebarOpen', this.isSidebarOpen.toString());
     },
     closeSidebar() {
-      if (window.innerWidth <= 768) {
-        this.isSidebarOpen = false; // Close sidebar when clicking outside on mobile
-      }
+      this.isSidebarOpen = false;
+      localStorage.setItem('sidebarOpen', this.isSidebarOpen.toString());
     },
   },
   watch: {

@@ -204,11 +204,16 @@ export default {
     // Method to format the order date in the required format
     formatDate(dateString) {
       const date = new Date(dateString);
+      const month = (date.getMonth() + 1).toString().padStart(2, '0');
+      const day = date.getDate().toString().padStart(2, '0');
+      const year = date.getFullYear();
       const hours = date.getHours();
-      const minutes = date.getMinutes();
-      const seconds = date.getSeconds();
+      const minutes = date.getMinutes().toString().padStart(2, '0');
       const period = hours >= 12 ? 'PM' : 'AM';
-      const formattedDate = `${date.getFullYear()}-${(date.getMonth() + 1).toString().padStart(2, '0')}-${date.getDate().toString().padStart(2, '0')} ${period}${(hours % 12 || 12)}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+      const hour12 = (hours % 12 || 12).toString().padStart(2, '0');
+      
+      // Format: MM-DD-YYYY with highlighted time
+      const formattedDate = `${month}-${day}-${year} <span class="highlighted-time">${hour12}:${minutes} ${period}</span>`;
       return formattedDate;
     },
 
@@ -892,5 +897,15 @@ textarea {
 
 p {
   text-align: center;
+}
+
+/* Add this at the end of your style section */
+.highlighted-time {
+  color: #d12f7a;
+  font-weight: bold;
+}
+
+.dark-mode .highlighted-time {
+  color: #f8d2e4;
 }
 </style>

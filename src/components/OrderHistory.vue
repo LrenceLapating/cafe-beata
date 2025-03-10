@@ -29,7 +29,7 @@
       <tbody>
         <tr v-for="order in filteredOrders" :key="order.id">
           <td>{{ order.id }}</td>
-          <td>{{ formatDate(order.created_at) }}</td> <!-- Format Order Date -->
+          <td v-html="formatDate(order.created_at)"></td>
           <td>{{ order.customer_name }}</td>
           
           <td>
@@ -111,12 +111,19 @@ export default {
     // Method to format the order date
     formatDate(dateString) {
       const date = new Date(dateString);
+      const month = (date.getMonth() + 1).toString().padStart(2, '0');
+      const day = date.getDate().toString().padStart(2, '0');
+      const year = date.getFullYear();
       const hours = date.getHours();
-      const minutes = date.getMinutes();
-      const seconds = date.getSeconds();
+      const minutes = date.getMinutes().toString().padStart(2, '0');
       const period = hours >= 12 ? 'PM' : 'AM';
-      const formattedDate = `${date.getFullYear()}-${(date.getMonth() + 1).toString().padStart(2, '0')}-${date.getDate().toString().padStart(2, '0')} ${period}${(hours % 12 || 12)}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
-      return formattedDate;
+      const hour12 = (hours % 12 || 12).toString().padStart(2, '0');
+      
+      // Format date and time separately
+      const datePart = `${month}-${day}-${year}`;
+      const timePart = `${hour12}:${minutes} ${period}`;
+      
+      return `${datePart} <span class="highlighted-time">${timePart}</span>`;
     },
 
     viewOrderDetails(order) {
@@ -401,5 +408,20 @@ h1 {
   .order-table td button {
     font-size: 12px;
   }
+}
+
+/* Add this at the end of your style section */
+.highlighted-time {
+  color: #d12f7a;
+  font-weight: bold;
+  background-color: #f8d2e4;
+  padding: 2px 6px;
+  border-radius: 4px;
+  margin-left: 4px;
+}
+
+.dark-mode .highlighted-time {
+  color: #f8d2e4;
+  background-color: #d12f7a;
 }
 </style>
