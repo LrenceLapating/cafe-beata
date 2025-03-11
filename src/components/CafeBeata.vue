@@ -2,126 +2,342 @@
   <div class="coffee-container">
     <header class="header">
       <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
-      <div class="logo" @click="scrollToTop">
+      <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" rel="stylesheet">
+      <div class="logo" @click="showMainContent">
         <img src="@/assets/cafe-logo.png" alt="Cafe Logo" class="cafe-logo" />
-        
       </div>
       <nav class="nav-links">
-        <a href="javascript:void(0);" @click="scrollToSection('contact-us')">Contact Us</a>       
-        <a href="javascript:void(0);" @click="scrollToSection('about-us')">About Us</a>
+        <a href="javascript:void(0);" @click="showMainContent">Home</a>
+        <a href="javascript:void(0);" @click="showContactContent">Contact Us</a>       
+        <a href="javascript:void(0);" @click="showAboutContent">About Us</a>
         <a href="javascript:void(0);" @click="goToPage('/create-account')">Sign up</a>
       </nav>
     </header>
 
-    <section class="hero" id="home">
-      <div class="hero-text">
-        <h1>Enjoy Your Morning Coffee in UIC Café Beàta</h1>
-        <p>Boost your productivity and build your mood with a glass of coffee in the morning.</p>
-        <button class="get-now-btn" @click="goToPage('/login')">Get your Coffee now!</button>
-        <button class="play-video-btn" @click="toggleVideo">Watch Video</button>
-      </div>
-      <div class="hero-image">
-        <img :src="require('@/assets/pink-cafe.png')" alt="Coffee Cup" />
-      </div>
-    </section>
+    <!-- Main Content -->
+    <div v-if="currentView === 'main'">
+      <section class="hero" id="home">
+        <div class="hero-text">
+          <h1>Enjoy Your Morning Coffee in UIC Café Beàta</h1>
+          <p>Boost your productivity and build your mood with a glass of coffee in the morning.</p>
+          <button class="get-now-btn" @click="goToPage('/login')">Get your Coffee now!</button>
+          <button class="play-video-btn" @click="toggleVideo">Watch Video</button>
+        </div>
+        <div class="hero-image">
+          <img :src="require('@/assets/pink-cafe.png')" alt="Coffee Cup" />
+        </div>
+      </section>
 
-    <!-- Video Modal -->
-    <div v-if="showVideo" class="video-modal" @click="toggleVideo">
-      <div class="video-container" @click.stop>
-        <video ref="videoPlayer" controls>
-          <source :src="require('@/assets/Uic Cafe Video.mp4')" type="video/mp4">
-          Your browser does not support the video tag.
-        </video>
-        <button class="close-video" @click="toggleVideo">&times;</button>
+      <!-- Video Modal -->
+      <div v-if="showVideo" class="video-modal" @click="toggleVideo">
+        <div class="video-container" @click.stop>
+          <video ref="videoPlayer" controls>
+            <source :src="require('@/assets/Uic Cafe Video.mp4')" type="video/mp4">
+            Your browser does not support the video tag.
+          </video>
+          <button class="close-video" @click="toggleVideo">&times;</button>
+        </div>
       </div>
+
+      <!-- Best Selling Item Section -->
+      <section class="best-selling" id="best-selling">
+        <h2>Best Selling Item</h2>
+        <p class="description">UIC Café Beata – Since 2020 Our top-selling item stands out for its exceptional quality and taste. Crafted with the finest ingredients, it has been a customer favorite since we first opened our doors. Experience the perfect blend of flavor and tradition with every bite.</p>
+        
+        <div class="filter-menu">
+          <span 
+            v-for="category in ['All', 'Americano', 'Espresso', 'Latte']" 
+            :key="category"
+            :class="{ active: selectedCategory === category }"
+            @click="filterByCategory(category)"
+          >
+            {{ category }}
+          </span>
+        </div>
+
+        <div class="coffee-items">
+          <transition-group name="coffee-list">
+            <div v-for="item in displayedItems" :key="item.name" class="coffee-card">
+              <div class="coffee-img-container">
+                <img :src="require(`@/assets/${item.image}`)" :alt="item.name" />
+              </div>
+              <h3>{{ item.name }}</h3>
+              <p class="category">{{ item.category }}</p>
+              <button class="order-now-btn" @click="goToPage('/login')">Order Now</button>
+            </div>
+          </transition-group>
+        </div>
+
+        <div class="pagination">
+          <button class="prev-btn" @click="prevItem" :disabled="currentIndex === 0">⬅</button>
+          <button class="next-btn" @click="nextItem" :disabled="currentIndex >= filteredItems.length - 3">➞</button>
+        </div>
+      </section>
+
+      <!-- Footer Section -->
+      <footer>
+        <div class="footer-content">
+          <div class="footer-section">
+            <h3>UIC Café Beàta</h3>
+            <p>Making your coffee experience delightful, one cup at a time.</p>
+          </div>
+          <div class="footer-section">
+            <h3>Quick Links</h3>
+            <ul>
+              <li><a href="javascript:void(0);" @click="showMainContent">Home</a></li>
+              <li><a href="javascript:void(0);" @click="scrollToSection('best-selling')">Menu</a></li>
+              <li><a href="javascript:void(0);" @click="showAboutContent">About Us</a></li>
+              <li><a href="javascript:void(0);" @click="showContactContent">Contact</a></li>
+            </ul>
+          </div>
+          <div class="footer-section">
+            <h3>Contact Us</h3>
+            <p><i class="fas fa-map-marker-alt"></i> Fr Selga, Davao City, Philippines</p>
+            <p><i class="fas fa-phone"></i> (321) 562 – 57420</p>
+            <p><i class="fas fa-envelope"></i> cafebeata2020@gmail.com</p>
+          </div>
+          <div class="footer-section">
+            <h3>Follow Us</h3>
+            <div class="social-icons">
+              <a href="https://www.facebook.com/profile.php?id=61573775720122" target="_blank">
+                <i class="fab fa-facebook"></i>
+              </a>
+              <a href="https://www.instagram.com/uic_ph/" target="_blank">
+                <i class="fab fa-instagram"></i>
+              </a>
+            </div>
+          </div>
+        </div>
+        <div class="footer-bottom">
+          <p>&copy; 2025 UIC Café Beàta. All rights reserved.</p>
+        </div>
+      </footer>
     </div>
 
-    <!-- About Us Section -->
-    <section class="about-us" id="about-us">
-      <h2>About Us</h2>
-      <p>Established in 2020, UIC Café Beata serves as a welcoming space for students, faculty, and staff at the University of the Immaculate Conception. Committed to providing high-quality and affordable food and beverages, our café has become a central hub for the campus community. With a focus on freshness, sustainability, and customer satisfaction, we strive to create a comfortable and engaging environment where everyone can connect and enjoy great food.</p>
-    </section>
-
-    <!-- Best Selling Item Section -->
-    <section class="best-selling" id="best-selling">
-      <h2>Best Selling Item</h2>
-      <p class="description">UIC Café Beata – Since 2020 Our top-selling item stands out for its exceptional quality and taste. Crafted with the finest ingredients, it has been a customer favorite since we first opened our doors. Experience the perfect blend of flavor and tradition with every bite.</p>
-      
-      <div class="filter-menu">
-        <span 
-          v-for="category in ['All', 'Americano', 'Espresso', 'Latte']" 
-          :key="category"
-          :class="{ active: selectedCategory === category }"
-          @click="filterByCategory(category)"
-        >
-          {{ category }}
-        </span>
-      </div>
-
-      <div class="coffee-items">
-        <transition-group name="coffee-list">
-          <div v-for="item in displayedItems" :key="item.name" class="coffee-card">
-            <div class="coffee-img-container">
-              <img :src="require(`@/assets/${item.image}`)" :alt="item.name" />
+    <!-- About Content -->
+    <div v-if="currentView === 'about'" class="about-page">
+      <div class="about-container">
+        <div class="about-header">
+          <h2>Our Story</h2>
+          <p>Discover the passion behind UIC Café Beàta</p>
+        </div>
+        
+        <div class="about-story">
+          <div class="about-image">
+            <img :src="require('@/assets/cafe-beatas.png')" alt="Cafe Interior">
+          </div>
+          <div class="about-text">
+            <h3>How It All Began</h3>
+            <p>UIC Café Beàta was founded in 2020 as a welcoming space for students, faculty, and staff at the University of the Immaculate Conception. What started as a small campus café has grown into a beloved community gathering place.</p>
+            <p>Our mission has always been simple: serve exceptional coffee in a warm, welcoming environment while building meaningful connections with our campus community.</p>
+            <p>Over the years, we've expanded our menu to include a variety of specialty coffees, teas, and freshly baked goods, but our commitment to quality and service remains unchanged.</p>
+            <p>In 2025, we launched our pre-order system to make your coffee experience even more convenient, allowing you to skip the line and pick up your favorite items at your convenience.</p>
+          </div>
+        </div>
+        
+        <div class="about-values">
+          <h3>Our Values</h3>
+          <div class="values-container">
+            <div class="value-card">
+              <i class="fas fa-coffee"></i>
+              <h4>Quality</h4>
+              <p>We source only the finest beans and ingredients, ensuring every cup and bite exceeds expectations.</p>
             </div>
-            <h3>{{ item.name }}</h3>
-            <p class="category">{{ item.category }}</p>
-            <button class="order-now-btn" @click="goToPage('/login')">Order Now</button>
+            <div class="value-card">
+              <i class="fas fa-handshake"></i>
+              <h4>Community</h4>
+              <p>We believe in building strong relationships with our customers, suppliers, and campus community.</p>
+            </div>
+            <div class="value-card">
+              <i class="fas fa-leaf"></i>
+              <h4>Sustainability</h4>
+              <p>We're committed to environmentally responsible practices in all aspects of our business.</p>
+            </div>
+            <div class="value-card">
+              <i class="fas fa-heart"></i>
+              <h4>Passion</h4>
+              <p>Our love for coffee drives us to continuously improve and innovate our offerings.</p>
+            </div>
           </div>
-        </transition-group>
-      </div>
-
-      <div class="pagination">
-        <button class="prev-btn" @click="prevItem" :disabled="currentIndex === 0">⬅</button>
-        <button class="next-btn" @click="nextItem" :disabled="currentIndex >= filteredItems.length - 3">➞</button>
-      </div>
-    </section>
-
-    <!-- Contact Us Section -->
-    <section class="contact-us" id="contact-us">
-      <div class="contact-header">
-        <h2>Stay Up To Date On<br>All News And Offers.</h2>
-        <p>Be The First To Know About New Collections, Special Events, And What's Going On At UIC Café Beàta.</p>
-        <div class="newsletter">
-          <input 
-            type="email" 
-            v-model="email" 
-            placeholder="Enter Your Email Address"
-            @keyup.enter="subscribeNewsletter"
-          >
-          <button @click="subscribeNewsletter">➞</button>
         </div>
-      </div>
-
-      <div class="contact-content">
-        <div class="contact-box">
-          <h3 class="contact-title">UIC Café Beàta</h3>
-          <p>Enjoy better and better quality coffee with UIC Café Beàta.</p>
-        </div>
-
-        <div class="contact-box">
-          <h3 class="contact-title">Contact Us</h3>
-          <p>Email: cafebeata2020@gmail.com</p>
-          <p>Call Us: (321) 562 – 57420</p>
-          <p>Text Us: (321) 562 – 57420</p>
-          <p>Fr Selga, Davao City, Philippines</p>
-        </div>
-
-        <div class="contact-box">
-          <h3 class="contact-title">Follow Us</h3>
-          <div class="social-icons">
-            <a href="https://www.facebook.com/profile.php?id=61573775720122" target="_blank">
-              <img src="@/assets/facebook-icon.png" alt="Facebook">
-            </a>
-            <a href="https://www.instagram.com/uic_ph/" target="_blank">
-              <img src="@/assets/instagram.png" alt="Instagram">
-            </a>
+        
+        <!-- Team Section -->
+        <div class="team-section">
+          <h3>Meet Our Team</h3>
+          <div class="team-grid">
+            <div class="team-member">
+              <img :src="require('@/assets/sanji.png')" alt="Team Member 1">
+              <h4>Leynard Librando</h4>
+              <p class="role">Programmer</p>
+              <p class="description">Leading our team with passion and dedication.</p>
+            </div>
+            <div class="team-member">
+              <img :src="require('@/assets/luffy.png')" alt="Team Member 2">
+              <h4>Marc Laurence Lapating</h4>
+              <p class="role">Analyst</p>
+              <p class="description">Bringing technical expertise and innovation.</p>
+            </div>
+            <div class="team-member">
+              <img :src="require('@/assets/zoroo.png')" alt="Team Member 3">
+              <h4>Gi Linghon</h4>
+              <p class="role">Project Manager</p>
+              <p class="description">Creating beautiful and intuitive experiences.</p>
+            </div>
           </div>
         </div>
       </div>
+      <!-- Footer Section -->
+      <footer>
+        <div class="footer-content">
+          <div class="footer-section">
+            <h3>UIC Café Beàta</h3>
+            <p>Making your coffee experience delightful, one cup at a time.</p>
+          </div>
+          <div class="footer-section">
+            <h3>Quick Links</h3>
+            <ul>
+              <li><a href="javascript:void(0);" @click="showMainContent">Home</a></li>
+              <li><a href="javascript:void(0);" @click="scrollToSection('best-selling')">Menu</a></li>
+              <li><a href="javascript:void(0);" @click="showAboutContent">About Us</a></li>
+              <li><a href="javascript:void(0);" @click="showContactContent">Contact</a></li>
+            </ul>
+          </div>
+          <div class="footer-section">
+            <h3>Contact Us</h3>
+            <p><i class="fas fa-map-marker-alt"></i> Fr Selga, Davao City, Philippines</p>
+            <p><i class="fas fa-phone"></i> (321) 562 – 57420</p>
+            <p><i class="fas fa-envelope"></i> cafebeata2020@gmail.com</p>
+          </div>
+          <div class="footer-section">
+            <h3>Follow Us</h3>
+            <div class="social-icons">
+              <a href="https://www.facebook.com/profile.php?id=61573775720122" target="_blank">
+                <i class="fab fa-facebook"></i>
+              </a>
+              <a href="https://www.instagram.com/uic_ph/" target="_blank">
+                <i class="fab fa-instagram"></i>
+              </a>
+            </div>
+          </div>
+        </div>
+        <div class="footer-bottom">
+          <p>&copy; 2025 UIC Café Beàta. All rights reserved.</p>
+        </div>
+      </footer>
+    </div>
 
-      <p class="copyright">Copyright: 2023 UIC Café Beàta</p>
-    </section>
+    <!-- Contact Content -->
+    <div v-if="currentView === 'contact'" class="contact-page">
+      <div class="contact-container">
+        <div class="contact-header">
+          <h2>Contact Us</h2>
+          <p>We'd love to hear from you! Reach out with any questions or feedback.</p>
+        </div>
+        
+        <div class="contact-content">
+          <div class="contact-info-card">
+            <div class="icon-circle">
+              <i class="fas fa-map-marker-alt"></i>
+            </div>
+            <h3>Visit Us</h3>
+            <p>Fr Selga, Davao City</p>
+            <p>Philippines</p>
+          </div>
+          
+          <div class="contact-info-card">
+            <div class="icon-circle">
+              <i class="fas fa-phone-alt"></i>
+            </div>
+            <h3>Call Us</h3>
+            <p>(321) 562 – 57420</p>
+            <p>Mon-Fri: 7am - 7pm</p>
+          </div>
+          
+          <div class="contact-info-card">
+            <div class="icon-circle">
+              <i class="fas fa-envelope"></i>
+            </div>
+            <h3>Email Us</h3>
+            <p>cafebeata2020@gmail.com</p>
+            <p>We'll respond within 24 hours</p>
+          </div>
+
+          <div class="contact-info-card">
+            <div class="icon-circle">
+              <i class="fas fa-clock"></i>
+            </div>
+            <h3>Opening Hours</h3>
+            <p>Monday - Saturday: 6am - 9pm</p>
+            <p>Weekends: Closed</p>
+          </div>
+          
+          <div class="contact-form-container">
+            <h3>Send Us a Message</h3>
+            <form @submit.prevent="handleContactSubmit" class="contact-form">
+              <div class="form-group">
+                <label for="name">Your Name</label>
+                <input type="text" id="name" v-model="contactForm.name" required>
+              </div>
+              
+              <div class="form-group">
+                <label for="email">Your Email</label>
+                <input type="email" id="email" v-model="contactForm.email" required>
+              </div>
+              
+              <div class="form-group">
+                <label for="subject">Subject</label>
+                <input type="text" id="subject" v-model="contactForm.subject" required>
+              </div>
+              
+              <div class="form-group">
+                <label for="message">Message</label>
+                <textarea id="message" v-model="contactForm.message" rows="5" required></textarea>
+              </div>
+              
+              <button type="submit" class="btn btn-primary">Send Message</button>
+            </form>
+          </div>
+        </div>
+      </div>
+      <!-- Footer Section -->
+      <footer>
+        <div class="footer-content">
+          <div class="footer-section">
+            <h3>UIC Café Beàta</h3>
+            <p>Making your coffee experience delightful, one cup at a time.</p>
+          </div>
+          <div class="footer-section">
+            <h3>Quick Links</h3>
+            <ul>
+              <li><a href="javascript:void(0);" @click="showMainContent">Home</a></li>
+              <li><a href="javascript:void(0);" @click="scrollToSection('best-selling')">Menu</a></li>
+              <li><a href="javascript:void(0);" @click="showAboutContent">About Us</a></li>
+              <li><a href="javascript:void(0);" @click="showContactContent">Contact</a></li>
+            </ul>
+          </div>
+          <div class="footer-section">
+            <h3>Contact Us</h3>
+            <p><i class="fas fa-map-marker-alt"></i> Fr Selga, Davao City, Philippines</p>
+            <p><i class="fas fa-phone"></i> (321) 562 – 57420</p>
+            <p><i class="fas fa-envelope"></i> cafebeata2020@gmail.com</p>
+          </div>
+          <div class="footer-section">
+            <h3>Follow Us</h3>
+            <div class="social-icons">
+              <a href="https://www.facebook.com/profile.php?id=61573775720122" target="_blank">
+                <i class="fab fa-facebook"></i>
+              </a>
+              <a href="https://www.instagram.com/uic_ph/" target="_blank">
+                <i class="fab fa-instagram"></i>
+              </a>
+            </div>
+          </div>
+        </div>
+        <div class="footer-bottom">
+          <p>&copy; 2025 UIC Café Beàta. All rights reserved.</p>
+        </div>
+      </footer>
+    </div>
   </div>
 
   <!-- Notification Component -->
@@ -136,6 +352,7 @@
 export default {
   data() {
     return {
+      currentView: 'main',
       items: [
         { name: 'Cappuccino', image: 'cappuccino.png', category: 'Latte' },
         { name: 'Americano', image: 'americano.png', category: 'Americano' },
@@ -149,7 +366,13 @@ export default {
       showNotification: false,
       notificationMessage: '',
       notificationType: 'success',
-      showVideo: false
+      showVideo: false,
+      contactForm: {
+        name: '',
+        email: '',
+        subject: '',
+        message: ''
+      }
     };
   },
   computed: {
@@ -164,6 +387,18 @@ export default {
     }
   },
   methods: {
+    showMainContent() {
+      this.currentView = 'main';
+      this.scrollToTop();
+    },
+    showAboutContent() {
+      this.currentView = 'about';
+      this.scrollToTop();
+    },
+    showContactContent() {
+      this.currentView = 'contact';
+      this.scrollToTop();
+    },
     prevItem() {
       if (this.currentIndex > 0) {
         this.currentIndex--;
@@ -209,28 +444,29 @@ export default {
         }
       }
     },
-    subscribeNewsletter() {
-      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-      if (!this.email) {
-        this.showNotification = true;
-        this.notificationMessage = 'Please enter your email address';
-        this.notificationType = 'error';
-        return;
-      }
-      if (!emailRegex.test(this.email)) {
-        this.showNotification = true;
-        this.notificationMessage = 'Please enter a valid email address';
-        this.notificationType = 'error';
-        return;
-      }
-
-      // Here you would typically make an API call to subscribe the email
-      // For now, we'll just show a success message
+    handleContactSubmit() {
+      // Store message in localStorage
+      const messages = JSON.parse(localStorage.getItem('contactMessages')) || [];
+      messages.push({
+        ...this.contactForm,
+        date: new Date().toISOString()
+      });
+      localStorage.setItem('contactMessages', JSON.stringify(messages));
+      
+      // Show success notification
       this.showNotification = true;
-      this.notificationMessage = 'Thank you for subscribing to our newsletter!';
+      this.notificationMessage = 'Your message has been sent successfully! We\'ll get back to you soon.';
       this.notificationType = 'success';
-      this.email = '';
-
+      
+      // Reset form
+      this.contactForm = {
+        name: '',
+        email: '',
+        subject: '',
+        message: ''
+      };
+      
+      // Hide notification after 3 seconds
       setTimeout(() => {
         this.showNotification = false;
       }, 3000);
@@ -301,8 +537,6 @@ export default {
     padding: 20px;
   }
 
- 
-
   .filter-menu {
     flex-direction: column;
     text-align: center;
@@ -334,23 +568,21 @@ export default {
   }
 }
 
-
 /* Best Selling Section */
 .best-selling {
-      background-color:rgb(233, 177, 177);
+  background-color:rgb(233, 177, 177);
   padding: 50px;
   text-align: center;
   border-radius: 15px;
   margin: 40px auto;
   max-width: 1000px;
+  border: 1px solid black;
 }
 
 .best-selling h2 {
   font-size: 2.5em;
   color: #3b2a2a;
 }
-
-
 
 .filter-menu {
   display: flex;
@@ -602,6 +834,7 @@ export default {
   color: white;
   padding: 50px 20px;
   text-align: center;
+}
 
 .contact-header h2 {
   font-size: 2.5em;
@@ -645,12 +878,12 @@ export default {
 }
 
 .contact-content {
-  display: flex;
-  justify-content: space-around;
-  margin-top: 40px;
-  flex-wrap: wrap;
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 2rem;
+  margin: 0 auto;
+  max-width: 1200px;
 }
-
 
 .contact-box {
   background-color: #f8d1d1;
@@ -674,7 +907,6 @@ export default {
 
 .social-icons {
   display: flex;
-  justify-content: center;
   gap: 10px;
   margin-top: 10px;
 }
@@ -734,63 +966,93 @@ export default {
   }
 }
 
-
-
-}
-.contact-us h2 {
-  font-size: 2.5em;
-  color: #3b2a2a;
-}
-
-.contact-us p {
-  font-size: 1.2em;
-  color: #5e5e5e;
+.about-page {
+  padding: 2rem;
+  max-width: 1200px;
+  margin: 0 auto;
+  background-color: #fce6e6;
+  min-height: calc(100vh - 80px); /* Adjust based on your header height */
 }
 
-.social-icons {
-  display: flex;
-  justify-content: center;
-  gap: 20px;
-  margin-top: 20px;
+.about-container {
+  background-color: #fff;
+  border-radius: 10px;
+  padding: 2rem;
 }
 
-.social-icon img {
-  width: 40px;
-  height: 40px;
-  transition: transform 0.3s ease, filter 0.3s ease;
-}
-
-.social-icon img:hover {
-  transform: scale(1.1);
-  filter: brightness(1.3);
-}
-
-/* Footer */
-.footer {
-  background-color: #f8d1d1;
-  padding: 40px;
+.about-header {
   text-align: center;
+  margin-bottom: 3rem;
 }
 
-.footer-info {
+.about-header h2 {
+  font-size: 2.5rem;
+  color: #333;
+  margin-bottom: 1rem;
+}
+
+.about-story {
   display: flex;
-  justify-content: space-around;
-  gap: 20px;
-  flex-wrap: wrap;
+  gap: 2rem;
+  margin-bottom: 3rem;
 }
 
-.footer-info div {
+.about-image {
+  flex: 1;
+}
+
+.about-image img {
+  width: 100%;
+  border-radius: 10px;
+  object-fit: cover;
+}
+
+.about-text {
+  flex: 1;
+}
+
+.about-text h3 {
+  color: #333;
+  margin-bottom: 1rem;
+}
+
+.about-values {
+  margin-bottom: 3rem;
+}
+
+.values-container {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  gap: 2rem;
+  margin-top: 2rem;
+}
+
+.value-card {
   text-align: center;
+  padding: 2rem;
+  background-color: #f8f9fa;
+  border-radius: 10px;
+  transition: transform 0.3s ease;
 }
 
-.footer-info h4 {
-  font-size: 2em;
-  color: #3b2a2a;
+.value-card:hover {
+  transform: translateY(-5px);
 }
 
-.footer-info p {
-  font-size: 1.2em;
-  color: #5e5e5e;
+.value-card i {
+  font-size: 2rem;
+  color: #ff69b4;
+  margin-bottom: 1rem;
+}
+
+@media (max-width: 768px) {
+  .about-story {
+    flex-direction: column;
+  }
+  
+  .values-container {
+    grid-template-columns: 1fr;
+  }
 }
 
 /* Animations */
@@ -1076,7 +1338,6 @@ export default {
 }
 
 .cafe-logo {
- 
   height: 50px;
   margin-right: 10px;
   vertical-align: middle;
@@ -1091,5 +1352,480 @@ export default {
   vertical-align: middle;
   box-shadow: none;
   transition: transform 0.3s ease;
+}
+
+/* Footer Styles */
+footer {
+  background-color: #fce6e6;
+  color: #3b2a2a;
+  padding: 40px 0 20px;
+  width: 100%;
+  margin-top: auto;
+  animation: fadeInUp 0.8s ease-out;
+}
+
+.footer-content {
+  max-width: 1200px;
+  margin: 0 auto;
+  display: flex;
+  justify-content: space-between;
+  padding: 0 20px;
+  flex-wrap: wrap;
+  gap: 30px;
+}
+
+.footer-section {
+  flex: 1;
+  min-width: 200px;
+  margin-bottom: 20px;
+  padding: 0 15px;
+  animation: fadeInUp 0.8s ease-out;
+  animation-fill-mode: both;
+}
+
+.footer-section:nth-child(1) {
+  animation-delay: 0.1s;
+}
+
+.footer-section:nth-child(2) {
+  animation-delay: 0.3s;
+}
+
+.footer-section:nth-child(3) {
+  animation-delay: 0.5s;
+}
+
+.footer-section:nth-child(4) {
+  animation-delay: 0.7s;
+}
+
+.footer-section h3 {
+  color: #d88e8e;
+  margin-bottom: 15px;
+  font-size: 1.1rem;
+  font-weight: 600;
+  position: relative;
+  display: inline-block;
+}
+
+.footer-section h3::after {
+  content: '';
+  position: absolute;
+  width: 0;
+  height: 2px;
+  bottom: -4px;
+  left: 0;
+  background-color: #d88e8e;
+  transition: width 0.3s ease;
+}
+
+.footer-section:hover h3::after {
+  width: 100%;
+}
+
+.footer-section p {
+  margin-bottom: 8px;
+  line-height: 1.5;
+  font-size: 0.95rem;
+  color: #666;
+  transition: transform 0.3s ease;
+}
+
+.footer-section p:hover {
+  transform: translateX(5px);
+}
+
+.footer-section ul {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.footer-section ul li {
+  margin-bottom: 8px;
+  transition: transform 0.3s ease;
+}
+
+.footer-section ul li:hover {
+  transform: translateX(5px);
+}
+
+.footer-section ul li a {
+  color: #666;
+  text-decoration: none;
+  transition: all 0.3s ease;
+  cursor: pointer;
+  font-size: 0.95rem;
+  position: relative;
+  display: inline-block;
+}
+
+.footer-section i {
+  margin-right: 8px;
+  color: #d88e8e;
+  width: 16px;
+  transition: transform 0.3s ease;
+}
+
+.footer-section p:hover i {
+  transform: scale(1.2);
+}
+
+.social-icons {
+  display: flex;
+  justify-content: flex-start;
+  align-items: center;
+  gap: 15px;
+  margin-top: 10px;
+}
+
+.social-icons a {
+  color: #666;
+  font-size: 1.5rem;
+  transition: all 0.3s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+}
+
+.social-icons a:hover {
+  color: #d88e8e;
+  transform: translateY(-3px);
+}
+
+.social-icons a::after {
+  content: '';
+  position: absolute;
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  background-color: #d88e8e;
+  opacity: 0.2;
+  transform: scale(0);
+  transition: transform 0.3s ease;
+}
+
+.social-icons a:hover::after {
+  transform: scale(1.5);
+}
+
+.footer-bottom {
+  text-align: center;
+  padding-top: 20px;
+  margin-top: 30px;
+  border-top: 1px solid rgba(59, 42, 42, 0.1);
+  animation: fadeIn 1s ease-out 1s both;
+}
+
+.footer-bottom p {
+  font-size: 0.85rem;
+  color: #666;
+}
+
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@media screen and (max-width: 768px) {
+  .footer-content {
+    flex-direction: column;
+    text-align: center;
+    gap: 20px;
+  }
+  
+  .footer-section {
+    margin-bottom: 20px;
+    min-width: 100%;
+  }
+  
+  .social-icons {
+    justify-content: center;
+  }
+
+  .footer-section ul li {
+    margin-bottom: 6px;
+  }
+
+  .footer-section h3::after {
+    left: 50%;
+    transform: translateX(-50%);
+  }
+
+  .footer-section p:hover,
+  .footer-section ul li:hover {
+    transform: translateY(-3px);
+  }
+}
+
+@media screen and (max-width: 480px) {
+  footer {
+    padding: 30px 0 15px;
+  }
+
+  .footer-section h3 {
+    font-size: 1rem;
+  }
+
+  .footer-section p,
+  .footer-section ul li a {
+    font-size: 0.9rem;
+  }
+
+  .social-icons a {
+    font-size: 1.3rem;
+  }
+}
+
+/* Add these styles before the @media queries */
+.team-section {
+  margin-top: 4rem;
+  text-align: center;
+}
+
+.team-section h3 {
+  color: #333;
+  margin-bottom: 2rem;
+  font-size: 2rem;
+}
+
+.team-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  gap: 2rem;
+  padding: 1rem;
+}
+
+.team-member {
+  background-color: #fce6e6;
+  border-radius: 10px;
+  padding: 1.5rem;
+  text-align: center;
+  transition: transform 0.3s ease;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+}
+
+.team-member:hover {
+  transform: translateY(-5px);
+}
+
+.team-member img {
+  width: 150px;
+  height: 150px;
+  border-radius: 50%;
+  object-fit: cover;
+  margin-bottom: 1rem;
+  border: 4px solid #fff;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+}
+
+.team-member h4 {
+  color: #333;
+  margin-bottom: 0.5rem;
+  font-size: 1.2rem;
+}
+
+.team-member .role {
+  color: #d88e8e;
+  font-weight: bold;
+  margin-bottom: 0.5rem;
+}
+
+.team-member .description {
+  color: #666;
+  font-size: 0.9rem;
+  line-height: 1.4;
+}
+
+@media (max-width: 768px) {
+  .team-grid {
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  }
+  
+  .team-member img {
+    width: 120px;
+    height: 120px;
+  }
+}
+
+.contact-page {
+  padding: 2rem;
+  max-width: 1400px;
+  margin: 0 auto;
+  background-color: #fff5f5;
+}
+
+.contact-container {
+  background-color: #fff;
+  border-radius: 10px;
+  padding: 3rem;
+}
+
+.contact-header {
+  text-align: center;
+  margin-bottom: 3rem;
+}
+
+.contact-header h2 {
+  font-size: 2.5rem;
+  color: #333;
+  margin-bottom: 1rem;
+}
+
+.contact-header p {
+  color: #666;
+  font-size: 1.1rem;
+}
+
+.contact-content {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 2rem;
+  margin: 0 auto;
+  max-width: 1200px;
+}
+
+.contact-info-card {
+  background-color: #fff;
+  padding: 2rem;
+  text-align: center;
+  border-radius: 12px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+  transition: transform 0.3s ease;
+}
+
+.contact-info-card:hover {
+  transform: translateY(-5px);
+}
+
+.icon-circle {
+  width: 80px;
+  height: 80px;
+  background-color: #fff2f2;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0 auto 1.5rem;
+  transition: all 0.3s ease;
+}
+
+.icon-circle i {
+  font-size: 2rem;
+  color: #e57373;
+  transition: all 0.3s ease;
+}
+
+.contact-info-card:hover .icon-circle {
+  background-color: #e57373;
+}
+
+.contact-info-card:hover .icon-circle i {
+  color: #fff;
+  transform: rotate(360deg);
+}
+
+.contact-info-card h3 {
+  color: #333;
+  margin-bottom: 1rem;
+  font-size: 1.2rem;
+  font-weight: 600;
+}
+
+.contact-info-card p {
+  color: #666;
+  margin: 0.5rem 0;
+  font-size: 0.95rem;
+  line-height: 1.6;
+}
+
+.contact-form-container {
+  grid-column: 1 / -1;
+  background-color: #fff;
+  padding: 2rem;
+  border-radius: 8px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  margin-top: 2rem;
+}
+
+.contact-form-container h3 {
+  color: #333;
+  margin-bottom: 1.5rem;
+  font-size: 1.2rem;
+}
+
+.contact-form .form-group {
+  margin-bottom: 1rem;
+}
+
+.contact-form label {
+  display: block;
+  margin-bottom: 0.5rem;
+  color: #333;
+  font-size: 0.9rem;
+}
+
+.contact-form input,
+.contact-form textarea {
+  width: 100%;
+  padding: 0.75rem;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  font-size: 1rem;
+  background-color: #fff;
+}
+
+.contact-form textarea {
+  resize: vertical;
+  min-height: 120px;
+}
+
+.btn-primary {
+  background-color: #d88e8e;
+  color: white;
+  padding: 0.75rem 1.5rem;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 1rem;
+  width: 100%;
+  transition: background-color 0.3s ease;
+  margin-top: 1rem;
+}
+
+.btn-primary:hover {
+  background-color: #c27b7b;
+}
+
+@media (max-width: 1200px) {
+  .contact-content {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (max-width: 768px) {
+  .contact-content {
+    grid-template-columns: 1fr;
+  }
+  
+  .contact-container {
+    padding: 1.5rem;
+  }
 }
 </style>

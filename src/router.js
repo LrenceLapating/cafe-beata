@@ -136,7 +136,7 @@ const routes = [
     path: '/privacy-policy', 
     name: 'PrivacyPolicy',
     component: PrivacyAndPolicy,
-  },
+  }
 ];
 
 const router = createRouter({
