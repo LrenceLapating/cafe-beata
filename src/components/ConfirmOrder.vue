@@ -88,6 +88,7 @@ export default {
       showOrderClosedMessage: false,
       progressInterval: null, // Store the interval reference
       isItemAdded: false, // New flag to track if item has been added
+      isCafeOpen: true, // Add this line to define isCafeOpen
       // Map of product names to their image paths
       productImages: {
         // Ice Coffees
@@ -199,8 +200,6 @@ export default {
     const savedCafeStatus = localStorage.getItem('isCafeOpen');
     if (savedCafeStatus !== null) {
       this.isCafeOpen = JSON.parse(savedCafeStatus);
-    } else {
-      this.isCafeOpen = true;
     }
     
     // Load existing cart first
@@ -268,11 +267,22 @@ export default {
         quantity: 1
       };
       
-      // Set image path - use provided image or lookup from product mapping
+      // Set image path - use provided image from URL parameters
       if (this.$route.query.image) {
         newItem.image = this.$route.query.image;
+        
+        // If the image is a backend path without the full URL, ensure it's properly formatted
+        if (newItem.image.startsWith('/uploads')) {
+          // The image path is already in the correct format for getImagePath to handle
+          console.log('Using backend image path:', newItem.image);
+        }
       } else if (this.productImages[itemName]) {
+        // Fallback to the product mapping for predefined items
         newItem.image = this.productImages[itemName];
+      } else {
+        // If no image is provided and no mapping exists, set a flag to use default image
+        console.log('No image found for item:', itemName);
+        newItem.image = 'default.png';
       }
 
       // Check if item exists in cart
@@ -383,7 +393,8 @@ export default {
         items: this.cart.map(item => ({
           name: item.name,
           quantity: item.quantity,
-          price: item.price
+          price: item.price,
+          image: item.image // Include the image path
         })),
         status: 'pending'
       };
@@ -441,31 +452,25 @@ export default {
     },
 
     getImagePath(item) {
-      // If item is a string (just the name), use it directly
-      const name = typeof item === 'object' ? item.name : item;
-      const imagePath = typeof item === 'object' ? item.image : null;
-      
-      // If we have a direct image path and it's a URL, use it
-      if (imagePath && (imagePath.startsWith('http://') || imagePath.startsWith('https://'))) {
-        return imagePath;
-      }
-      
-      // If we have a direct image path that's not a URL, try to load it from assets
-      if (imagePath) {
+      // If item has a direct image path and it's a URL or starts with /uploads, use it directly
+      if (item.image) {
+        if (item.image.startsWith('http://') || item.image.startsWith('https://') || item.image.startsWith('/uploads')) {
+          return item.image;
+        }
+        // Try to load the image from assets using the direct path
         try {
-          return require(`@/assets/${imagePath}`);
+          return require(`@/assets/${item.image}`);
         } catch (error) {
-          console.log(`Failed to load direct image path: ${imagePath}, trying product map...`);
-          // If direct path fails, continue to try the product map
+          console.log(`Failed to load direct image path: ${item.image}, trying product map...`);
         }
       }
       
-      // If no direct path or it failed, try to find the image by product name
-      if (name && this.productImages[name]) {
+      // Try to find the image by product name in the productImages map
+      if (this.productImages[item.name]) {
         try {
-          return require(`@/assets/${this.productImages[name]}`);
+          return require(`@/assets/${this.productImages[item.name]}`);
         } catch (error) {
-          console.error(`Failed to load mapped image for: ${name}`, error);
+          console.error(`Failed to load mapped image for: ${item.name}`, error);
         }
       }
       

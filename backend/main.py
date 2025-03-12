@@ -8,6 +8,7 @@ import shutil
 import os
 from fastapi import Path, File
 from typing import Optional
+from fastapi.staticfiles import StaticFiles
 app = FastAPI()
 from fastapi import Form
 from fastapi import Form, File, UploadFile
@@ -30,9 +31,17 @@ from fastapi.responses import RedirectResponse
 from fastapi import FastAPI, HTTPException, Path
 import uuid
 from fastapi import BackgroundTasks
+from werkzeug.utils import secure_filename
 
 load_dotenv()
 
+# Create uploads directory and its subdirectories
+UPLOAD_DIR = "uploads"
+AVATARS_DIR = os.path.join(UPLOAD_DIR, "avatars")
+os.makedirs(AVATARS_DIR, exist_ok=True)
+
+# Mount the uploads directory for static file serving
+app.mount("/uploads", StaticFiles(directory=UPLOAD_DIR), name="uploads")
 
 SMTP_SERVER = os.getenv("SMTP_SERVER")
 SMTP_PORT = os.getenv("SMTP_PORT")
@@ -380,7 +389,7 @@ async def update_profile(
 async def upload_avatar(email: str, avatar: UploadFile = File(...)):
     # Define the file path
     avatar_filename = f"{email}_{avatar.filename}"
-    avatar_path = os.path.join(UPLOAD_DIR, avatar_filename)
+    avatar_path = os.path.join(AVATARS_DIR, avatar_filename)
     
     try:
         with open(avatar_path, "wb") as file:
@@ -391,15 +400,12 @@ async def upload_avatar(email: str, avatar: UploadFile = File(...)):
     # Return the URL to access the uploaded avatar
     avatar_url = f"/uploads/avatars/{avatar_filename}"
     
-    # You would save this URL in the database, assuming you have a users table with an avatar column.
-    # Here's a placeholder for saving the avatar URL in your DB (not implemented here)
-    
     return {"message": "Avatar uploaded successfully", "avatar_url": avatar_url}
 
 
 @app.get("/uploads/avatars/{filename}")
 async def get_avatar(filename: str):
-    file_path = os.path.join(UPLOAD_DIR, filename)
+    file_path = os.path.join(AVATARS_DIR, filename)
     if os.path.exists(file_path):
         return FileResponse(file_path)
     raise HTTPException(status_code=404, detail="Avatar not found")
@@ -413,6 +419,7 @@ class OrderItem(BaseModel):
     name: str
     quantity: int
     price: float
+    image: Optional[str] = None  # Add image field with default None
 
 
 class Order(BaseModel):
@@ -498,7 +505,8 @@ async def create_order(order: Order):
             items_json = json.dumps([{
                 "name": item.name,
                 "quantity": item.quantity,
-                "price": item.price
+                "price": item.price,
+                "image": item.image if hasattr(item, 'image') else None  # Include image path if it exists
             } for item in order.items])
         except Exception as e:
             raise HTTPException(status_code=400, detail="Error processing items: " + str(e))
@@ -540,3 +548,127 @@ async def get_order_details(order_id: int):
         return order
     else:
         raise HTTPException(status_code=404, detail="Order not found")
+
+# Item Management Endpoints
+@app.get('/api/items')
+async def get_items():
+    try:
+        connection = get_db_connection()
+        cursor = connection.cursor(dictionary=True)
+        cursor.execute("SELECT * FROM items")
+        items = cursor.fetchall()
+        cursor.close()
+        connection.close()
+        return {"items": items}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.post('/api/items')
+async def add_item(name: str = Form(...), price: float = Form(...), category: str = Form(None), image: UploadFile = File(...)):
+    try:
+        # Save image file
+        filename = secure_filename(image.filename)
+        timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+        filename = f"{timestamp}_{filename}"
+        
+        # Ensure upload directory exists
+        os.makedirs(UPLOAD_DIR, exist_ok=True)
+        
+        file_path = os.path.join(UPLOAD_DIR, filename)
+        with open(file_path, "wb") as buffer:
+            shutil.copyfileobj(image.file, buffer)
+        
+        image_path = f"/uploads/avatars/{filename}"
+        
+        connection = get_db_connection()
+        cursor = connection.cursor()
+        cursor.execute(
+            "INSERT INTO items (name, price, image, category) VALUES (%s, %s, %s, %s)",
+            (name, price, image_path, category)
+        )
+        
+        # Get the ID of the newly inserted item
+        item_id = cursor.lastrowid
+        
+        connection.commit()
+        cursor.close()
+        connection.close()
+        
+        return {"message": "Item added successfully", "image_path": image_path, "id": item_id}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.put('/api/items/{item_id}')
+async def update_item(
+    item_id: int,
+    name: str = Form(...),
+    price: float = Form(...),
+    category: str = Form(None),
+    image: UploadFile = File(None)
+):
+    try:
+        connection = get_db_connection()
+        cursor = connection.cursor()
+        
+        if image:
+            # Save new image
+            filename = secure_filename(image.filename)
+            timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+            filename = f"{timestamp}_{filename}"
+            
+            file_path = os.path.join(UPLOAD_DIR, filename)
+            with open(file_path, "wb") as buffer:
+                shutil.copyfileobj(image.file, buffer)
+            
+            image_path = f"/uploads/avatars/{filename}"
+            
+            # Delete old image if exists
+            cursor.execute("SELECT image FROM items WHERE id = %s", (item_id,))
+            old_image = cursor.fetchone()
+            if old_image and old_image[0]:
+                old_path = os.path.join(UPLOAD_DIR, os.path.basename(old_image[0]))
+                if os.path.exists(old_path):
+                    os.remove(old_path)
+            
+            cursor.execute(
+                "UPDATE items SET name = %s, price = %s, category = %s, image = %s WHERE id = %s",
+                (name, price, category, image_path, item_id)
+            )
+        else:
+            cursor.execute(
+                "UPDATE items SET name = %s, price = %s, category = %s WHERE id = %s",
+                (name, price, category, item_id)
+            )
+        
+        connection.commit()
+        cursor.close()
+        connection.close()
+        
+        return {"message": "Item updated successfully"}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.delete('/api/items/{item_id}')
+async def delete_item(item_id: int):
+    try:
+        connection = get_db_connection()
+        cursor = connection.cursor()
+        
+        # Get the image path before deleting
+        cursor.execute("SELECT image FROM items WHERE id = %s", (item_id,))
+        item = cursor.fetchone()
+        
+        if item and item[0]:
+            # Remove the image file
+            image_path = os.path.join(UPLOAD_DIR, os.path.basename(item[0]))
+            if os.path.exists(image_path):
+                os.remove(image_path)
+        
+        cursor.execute("DELETE FROM items WHERE id = %s", (item_id,))
+        connection.commit()
+        cursor.close()
+        connection.close()
+        
+        return {"message": "Item deleted successfully"}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))

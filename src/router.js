@@ -9,8 +9,8 @@ import UserProfileCafe from './components/UserProfileCafe.vue'; // Import the re
 import CreateAccountPage from './components/CreateAccountPage.vue'; 
 import ForgotPassword from '@/components/ForgotPassword.vue'; // Make sure the path is correct
 import PrivacyAndPolicy from './components/PrivacyAndPolicy.vue'; // Import PrivacyAndPolicy component
-import AdminPage from './components/AdminPage.vue'; 
-import NotificationsPage from './components/NotificationsPage.vue';
+import AdminPage from './admin/AdminPage.vue'; 
+import NotificationsPage from './admin/NotificationsPage.vue';
 import ChangePassword from './components/ChangePassword.vue';
 import OrderRecord from './components/OrderRecord.vue';  // Ensure this is correctly imported
 import UserNotifications from './components/UserNotifications.vue';

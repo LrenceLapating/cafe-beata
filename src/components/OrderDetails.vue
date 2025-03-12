@@ -63,111 +63,13 @@
 
 <script>
 export default {
+  name: 'OrderDetails',
   data() {
     return {
       items: this.parseItems(this.$route.query.items),
       orderId: this.$route.query.orderId,
       customerName: this.$route.query.customerName,
-      showSuccessMessage: false,
-      // Map of product names to their image paths
-      productImages: {
-        // Ice Coffees
-        'Ice Peppermint Latte': 'peppermint-latte.png',
-        'Ice Matcha Cafe Latte': 'matcha-cafe-latte.png',
-        'Ice Cafe Latte': 'ice-cafe-latte.png',
-        'Ice Caramel Macchiato': 'caramel-macchiato.png',
-        'Ice Angel Affogato': 'angel-affogato.png',
-        'Ice Spanish Latte': 'spanish-latte.png',
-        'Ice Cappuccino': 'ice-cappuccino.png',
-        'Ice Cafe Mocha': 'cafe-mocha.png',
-        'Ice Salted Caramel Macchiato': 'salted-caramel-macchiato.png',
-        'Ice White Choco Mocha': 'white-choco-mocha.png',
-        'Ice Vanilla Latte': 'vanilla-latte.png',
-        'Ice Hazelnut Latte': 'hazelnut-latte.png',
-        'Ice Cafe Frizzy': 'cafe-frizzy.png',
-        'Ice Americano Lemon': 'americano-lemon.png',
-        'Ice Cafe Americano': 'ice-cafe-americano.png',
-        
-        // Hot Coffees
-        'Hot Cafe Americano': 'cafe-americano.png',
-        'Hot Peppermint Latte': 'hot-peppermint-latte.png',
-        'Hot Matcha Cafe Latte': 'hot-matcha-cafe-latte.png',
-        'Hot Cafe Latte': 'cafe-latte.png',
-        'Hot Cafe Latte Macchiato': 'hot-cafelattemacc.png',
-        'Hot Caramel Macchiato': 'hot-caramel-macchiato.png',
-        'Hot Spanish Latte': 'hot-spanish-latte.png',
-        'Hot Cappuccino': 'hot-cappuccino.png',
-        'Hot Cafe Mocha': 'hot-cafe-mocha.png',
-        'Hot Salted Caramel Macchiato': 'hot-salted-caramel-macchiato.png',
-        'Hot Vanilla Latte': 'hot-vanilla-latte.png',
-        'Hot Hazelnut Latte': 'hot-hazelnut-latte.png',
-        'Hot Tea Pot': 'hotea-pot.png',
-        
-        // Juice Drinks
-        'Apple Juice': 'apple.png',
-        'Carrot Juice': 'carrot.png',
-        'Mango Juice': 'mango.png',
-        'Orange Juice': 'orange.png',
-        'Fresh Lemon Juice': 'fresh-lemon.png',
-        'Strawberry Lemonade': 'strawberry-lemonade.png',
-        'Yakult Lemonade': 'yakult-lemonade.png',
-        'Yakult Honey Lemonade': 'yakult-honey-lemonade.png',
-        'Yakult Apple Lemonade': 'yakult-apple-lemonade.png',
-        'Yakult Orange Lemonade': 'yakult-orange-lemonade.png',
-        'Yakult Sprite Lemonade': 'yakult-sprite-lemonade.png',
-        'Yakult Mango Lemonade': 'yakult-mango-lemonade.png',
-        'Yakult Caramel Lemonade': 'yakult-caramel-lemonade.png',
-        'Yakult Strawberry Lemonade': 'yakult-strawberry-lemonade.png',
-        'Strawberry Mango Blue Lemonade': 'strawberry-mango-blue-lemonade.png',
-        'Strawberry Orange Blue Lemonade': 'strawberry-orange-blue-lemonade.png',
-        'Strawberry Apple Lemonade': 'strawberry-apple-lemonade.png',
-        'Apple Carrot Juice': 'apple-carrot.png',
-        'Mogu-Mogu Yakult': 'mogu-mogu-yakult.png',
-        'Mogu-Mogu Yakult w/ Lemon': 'mogu-mogu-yakult-with-lemon.png',
-        'Mogu-Mogu Yakult with Honey': 'mogu-mogu-yakult-with-honey.png',
-        'Mango Matcha Latte': 'mango-matcha-latte.png',
-        'Mango Strawberry Latte': 'mango-strawberry-latte.png',
-        
-        // Milkteas
-        'Avocado Milktea': 'avocado-milktea.png',
-        'Wintermelon Milktea': 'wintermelon-milktea.png',
-        'Okinawa Milktea': 'okinawa-milktea.png',
-        'Mango Milktea': 'mango-milktea.png',
-        'Oreo Milktea': 'oreo-milktea.png',
-        'Caramel Milktea': 'caramel-milktea.png',
-        'Chocolate Milktea': 'chocolate-milktea.png',
-        'Mocha Milktea': 'mocha-milktea.png',
-        'Matcha Milktea': 'matcha-milktea.png',
-        'Taro Milktea': 'taro-milktea.png',
-        'Red Velvet Milktea': 'red-velvet-milktea.png',
-        'Ube Milktea': 'ube-milktea.png',
-        'Pandan Milktea': 'pandan-milktea.png',
-        'Strawberry Milktea': 'strawberry-milktea.png',
-        'Melon Milktea': 'melon-milktea.png',
-        'Ube Taro Milktea': 'ube-taro-milktea.png',
-        
-        // Chocolate Drinks
-        'Hot Chocolate': 'hot-chocolate.png',
-        'Cold Chocolate': 'cold-chocolate.png',
-        
-        // Blended Frappes
-        'Cookies & Cream Frappe': 'cookies-and-cream.png',
-        'Ube Frappe': 'ube.png',
-        'Mocha Frappe': 'mocha.png',
-        'Matcha Frappe': 'matcha.png',
-        'Mango Frappe': 'mango-frappe.png',
-        'Chocolate Frappe': 'chocolate.png',
-        'Strawberry Frappe': 'strawberry.png',
-        'Pandan Frappe': 'pandan.png',
-        'Avocado Frappe': 'avocado.png',
-        'Melon Frappe': 'melon.png',
-        'Cookies & Coffee Frappe': 'cookies-and-coffee.png',
-        
-        // Pasta and Dishes
-        'Carbonara': 'carbonara.png',
-        'Baked Mac': 'bakemac.png',
-        'Tuna Pasta': 'tunapasta.png'
-      }
+      showSuccessMessage: false
     };
   },
   methods: {
@@ -190,36 +92,34 @@ export default {
     },
 
     getImagePath(item) {
-      // If item is a string (just the name), use it directly
-      const name = typeof item === 'object' ? item.name : item;
-      const imagePath = typeof item === 'object' ? item.image : null;
-      
-      // If we have a direct image path and it's a URL, use it
-      if (imagePath && (imagePath.startsWith('http://') || imagePath.startsWith('https://'))) {
-        return imagePath;
-      }
-      
-      // If we have a direct image path that's not a URL, try to load it from assets
-      if (imagePath) {
-        try {
-          return require(`@/assets/${imagePath}`);
-        } catch (error) {
-          console.log(`Failed to load direct image path: ${imagePath}, trying product map...`);
-          // If direct path fails, continue to try the product map
+      try {
+        // If no item or no image path, return default image
+        if (!item || !item.image) {
+          return require('@/assets/default.png');
         }
-      }
-      
-      // If no direct path or it failed, try to find the image by product name
-      if (name && this.productImages[name]) {
-        try {
-          return require(`@/assets/${this.productImages[name]}`);
-        } catch (error) {
-          console.error(`Failed to load mapped image for: ${name}`, error);
+
+        // If it's already a full URL (including localhost:8000)
+        if (item.image.startsWith('http://') || item.image.startsWith('https://')) {
+          return item.image;
         }
+
+        // If it's a backend upload path
+        if (item.image.startsWith('/uploads/')) {
+          return `http://localhost:8000${item.image}`;
+        }
+
+        // If it's just a filename, try to load from assets
+        try {
+          return require(`@/assets/${item.image}`);
+        } catch (error) {
+          console.error('Failed to load image from assets:', error);
+          // If not found in assets, try backend uploads
+          return `http://localhost:8000/uploads/avatars/${item.image}`;
+        }
+      } catch (error) {
+        console.error('Error in getImagePath:', error);
+        return require('@/assets/default.png');
       }
-      
-      // If all else fails, return the default image
-      return require('@/assets/default.png');
     },
 
     orderAgain() {

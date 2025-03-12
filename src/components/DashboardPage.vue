@@ -134,22 +134,32 @@
       <h1 class="dashboard-title">Cafe Beata</h1>
 
       <!-- Display category title dynamically -->
-      <h2>{{ currentCategory }}</h2>
+      <div class="category-header">
+        <h2>{{ currentCategory === 'All Drinks' ? 'Menu' : currentCategory }}</h2>
+      </div>
+
+      <!-- Loading indicator -->
+      <div v-if="isLoading" class="loading-indicator">
+        <p>Loading menu items...</p>
+      </div>
 
       <!-- Display filtered items based on the current category -->
-      <div v-if="filteredItems.length" class="items">
+      <div v-else-if="filteredItems.length" class="items">
         <div
           v-for="item in filteredItems"
-          :key="item.name"
+          :key="item.id || item.name"
           class="item"
           @click="navigateToConfirmOrder(item)"
         >
           <img :src="getImagePath(item.image)" :alt="item.name" />
           <div class="item-details">
             <span>{{ item.name }}</span>
-            <span class="item-price">₱{{ item.price.toFixed(2) }}</span> <!-- Display price with Peso sign -->
+            <span class="item-price">₱{{ Number(item.price).toFixed(2) }}</span> <!-- Display price with Peso sign -->
           </div>
         </div>
+      </div>
+      <div v-else class="no-items">
+        <p>No items found in this category.</p>
       </div>
     </div>
   </div>
@@ -162,114 +172,22 @@ import { eventBus } from "@/utils/eventBus"; // Correct the path if needed
 export default {
   data() {
     return {
-        userName: '',
+      userName: '',
       userProfileImage: '',
       userEmail: localStorage.getItem('userEmail'),
       unreadNotificationsCount: 0,   
       refreshInterval: null,  
+      itemsRefreshInterval: null,
       searchQuery: '',
       isDarkMode: localStorage.getItem("darkMode") === "enabled",
-      currentCategory: 'Ice Coffee', // Default category
+      currentCategory: 'All Drinks',
       currentTime: new Date().toLocaleTimeString(),
-      isSidebarOpen: localStorage.getItem('sidebarOpen') === 'true', // Initialize from localStorage
-      iceCoffees: [
-        { name: 'Ice Peppermint Latte', price: 115.00, image: 'peppermint-latte.png' },
-        { name: 'Ice Matcha Cafe Latte', price: 115.00, image: 'matcha-cafe-latte.png' },
-        { name: 'Ice Cafe Latte', price: 80.00, image: 'ice-cafe-latte.png' },
-        { name: 'Ice Caramel Macchiato', price: 115.00, image: 'caramel-macchiato.png' },
-        { name: 'Ice Angel Affogato', price: 115.00, image: 'angel-affogato.png' },
-        { name: 'Ice Spanish Latte', price: 115.00, image: 'spanish-latte.png' },
-        { name: 'Ice Cappuccino', price: 115.00, image: 'ice-cappuccino.png' },
-        { name: 'Ice Cafe Mocha', price: 115.00, image: 'cafe-mocha.png' },
-        { name: 'Ice Salted Caramel Macchiato', price: 115.00, image: 'salted-caramel-macchiato.png' },
-        { name: 'Ice White Choco Mocha', price: 115.00, image: 'white-choco-mocha.png' },
-        { name: 'Ice Vanilla Latte', price: 115.00, image: 'vanilla-latte.png' },
-        { name: 'Ice Hazelnut Latte', price: 115.00, image: 'hazelnut-latte.png' },
-        { name: 'Ice Cafe Frizzy', price: 80.00, image: 'cafe-frizzy.png' },
-        { name: 'Ice Americano Lemon', price: 90.00, image: 'americano-lemon.png' },
-        { name: 'Ice Cafe Americano', price: 75.00, image: 'ice-cafe-americano.png' }
-      ],
-      hotCoffees: [
-        { name: 'Hot Cafe Americano', price: 70.00, image: 'cafe-americano.png' },
-        { name: 'Hot Peppermint Latte', price: 90.00, image: 'hot-peppermint-latte.png' },
-        { name: 'Hot Matcha Cafe Latte', price: 90.00, image: 'hot-matcha-cafe-latte.png' },
-        { name: 'Hot Cafe Latte', price: 85.00, image: 'cafe-latte.png' },
-        { name: 'Hot Cafe Latte Macchiato', price: 85.00, image: 'hot-cafelattemacc.png' },
-        { name: 'Hot Caramel Macchiato', price: 90.00, image: 'hot-caramel-macchiato.png' },
-        { name: 'Hot Spanish Latte', price: 90.00, image: 'hot-spanish-latte.png' },
-        { name: 'Hot Cappuccino', price: 75.00, image: 'hot-cappuccino.png' },
-        { name: 'Hot Cafe Mocha', price: 90.00, image: 'hot-cafe-mocha.png' },
-        { name: 'Hot Salted Caramel Macchiato', price: 90.00, image: 'hot-salted-caramel-macchiato.png' },
-        { name: 'Hot Vanilla Latte', price: 90.00, image: 'hot-vanilla-latte.png' },
-        { name: 'Hot Hazelnut Latte', price: 90.00, image: 'hot-hazelnut-latte.png' },
-        { name: 'Hot Tea Pot', price: 60.00, image: 'hotea-pot.png' }
-      ],
-      juiceDrinks: [
-        { name: 'Apple Juice', price: 55.00, image: 'apple.png' },
-        { name: 'Carrot Juice', price: 60.00, image: 'carrot.png' },
-        { name: 'Mango Juice', price: 55.00, image: 'mango.png' },
-        { name: 'Yakult Lemonade', price: 55.00, image: 'yakult-lemonade.png' },
-        { name: 'Yakult Honey Lemonade', price: 75.00, image: 'yakult-honey-lemonade.png' },
-        { name: 'Yakult Apple Lemonade', price: 75.00, image: 'yakult-apple-lemonade.png' },
-        { name: 'Yakult Orange Lemonade', price: 75.00, image: 'yakult-orange-lemonade.png' },
-        { name: 'Yakult Sprite Lemonade', price: 75.00, image: 'yakult-sprite-lemonade.png' },
-        { name: 'Yakult Mango Lemonade', price: 75.00, image: 'yakult-mango-lemonade.png' },
-        { name: 'Yakult Caramel Lemonade', price: 75.00, image: 'yakult-caramel-lemonade.png' },
-        { name: 'Yakult Strawberry Lemonade', price: 75.00, image: 'yakult-strawberry-lemonade.png' },
-        { name: 'Strawberry Lemonade', price: 75.00, image: 'strawberry-lemonade.png' },
-        { name: 'Strawberry Mango Blue Lemonade', price: 75.00, image: 'strawberry-mango-blue-lemonade.png' },
-        { name: 'Strawberry Orange Blue Lemonade', price: 75.00, image: 'strawberry-orange-blue-lemonade.png' },
-        { name: 'Strawberry Apple Lemonade', price: 75.00, image: 'strawberry-apple-lemonade.png' },
-        { name: 'Orange Juice', price: 75.00, image: 'orange.png' },
-        { name: 'Apple Carrot Juice', price: 75.00, image: 'apple-carrot.png' },
-        { name: 'Fresh Lemon Juice', price: 60.00, image: 'fresh-lemon.png' },
-        { name: 'Mogu-Mogu Yakult', price: 55.00, image: 'mogu-mogu-yakult.png' },
-        { name: 'Mogu-Mogu Yakult w/ Lemon', price: 55.00, image: 'mogu-mogu-yakult-with-lemon.png' },
-        { name: 'Mogu-Mogu Yakult with Honey', price: 75.00, image: 'mogu-mogu-yakult-with-honey.png' },
-        { name: 'Mango Matcha Latte', price: 75.00, image: 'mango-matcha-latte.png' },
-        { name: 'Mango Strawberry Latte', price: 75.00, image: 'mango-strawberry-latte.png' }
-      ],
-      milkteas: [
-        { name: 'Avocado Milktea', price: 60.00, image: 'avocado-milktea.png' },
-        { name: 'Wintermelon Milktea', price: 60.00, image: 'wintermelon-milktea.png' },
-        { name: 'Okinawa Milktea', price: 60.00, image: 'okinawa-milktea.png' },
-        { name: 'Mango Milktea', price: 60.00, image: 'mango-milktea.png' },
-        { name: 'Oreo Milktea', price: 60.00, image: 'oreo-milktea.png' },
-        { name: 'Caramel Milktea', price: 60.00, image: 'caramel-milktea.png' },
-        { name: 'Chocolate Milktea', price: 60.00, image: 'chocolate-milktea.png' },
-        { name: 'Mocha Milktea', price: 60.00, image: 'mocha-milktea.png' },
-        { name: 'Matcha Milktea', price: 60.00, image: 'matcha-milktea.png' },
-        { name: 'Taro Milktea', price: 60.00, image: 'taro-milktea.png' },
-        { name: 'Red Velvet Milktea', price: 60.00, image: 'red-velvet-milktea.png' },
-        { name: 'Ube Milktea', price: 60.00, image: 'ube-milktea.png' },
-        { name: 'Pandan Milktea', price: 60.00, image: 'pandan-milktea.png' },
-        { name: 'Strawberry Milktea', price: 60.00, image: 'strawberry-milktea.png' },
-        { name: 'Melon Milktea', price: 60.00, image: 'melon-milktea.png' },
-        { name: 'Ube Taro Milktea', price: 60.00, image: 'ube-taro-milktea.png' }
-      ],
-      chocolateDrinks: [
-        { name: 'Hot Chocolate', price: 75.00, image: 'hot-chocolate.png' },
-        { name: 'Cold Chocolate', price: 85.00, image: 'cold-chocolate.png' },
-      ],
-      blendedFrappes: [
-        { name: 'Cookies & Cream Frappe', price: 90.00, image: 'cookies-and-cream.png' },
-        { name: 'Ube Frappe', price: 90.00, image: 'ube.png' },
-        { name: 'Mocha Frappe', price: 135.00, image: 'mocha.png' },
-        { name: 'Matcha Frappe', price: 90.00, image: 'matcha.png' },
-        { name: 'Mango Frappe', price: 90.00, image: 'mango-frappe.png' },
-        { name: 'Chocolate Frappe', price: 90.00, image: 'chocolate.png' },
-        { name: 'Strawberry Frappe', price: 90.00, image: 'strawberry.png' },
-        { name: 'Pandan Frappe', price: 90.00, image: 'pandan.png' },
-        { name: 'Avocado Frappe', price: 90.00, image: 'avocado.png' },
-        { name: 'Melon Frappe', price: 90.00, image: 'melon.png' },
-        { name: 'Cookies & Coffee Frappe', price: 135.00, image: 'cookies-and-coffee.png' }
-      ],
-      pastaAndDishes: [
-        { name: 'Carbonara', price: 70.00, image: 'carbonara.png' },
-        { name: 'Baked Mac', price: 70.00, image: 'bakemac.png' },
-        { name: 'Tuna Pasta', price: 70.00, image: 'tunapasta.png' },
-      ],
-      filteredItems: [], // List to display filtered items
+      isSidebarOpen: localStorage.getItem('sidebarOpen') === 'true',
+      isLoading: false,
+      // Store API items
+      apiItems: [],
+      // Store filtered items
+      filteredItems: []
     };
   },
 
@@ -278,11 +196,14 @@ export default {
   created() {
       this.updateNotificationCount();
     window.addEventListener("notificationUpdated", this.updateNotificationCount); // Listen for changes
-   this.startPollingForNewNotifications();
+    window.addEventListener("items-updated", this.handleItemsUpdated); // Listen for item updates
+    this.startPollingForNewNotifications();
   },
 beforeUnmount() {
       window.removeEventListener("notificationUpdated", this.updateNotificationCount);
-       this.stopPollingForNewNotifications();
+      window.removeEventListener("items-updated", this.handleItemsUpdated);
+      this.stopPollingForNewNotifications();
+      this.stopPollingForItems(); // Stop polling for items when component is unmounted
   },
   
   async mounted() {
@@ -296,22 +217,115 @@ beforeUnmount() {
     // Check if there's a category in the route query
     if (this.$route.query.category) {
       this.currentCategory = this.$route.query.category;
-      this.filterItems(); // Apply the filter after setting the category
-    } else {
-      this.filterCategory('Drinks');
     }
     
     this.updateTime();
     this.applyDarkMode(this.isDarkMode);
     this.startPollingForNewNotifications();
     await this.loadUserProfile();
+    
+    // Fetch items from API
+    await this.fetchItems();
+    
+    // Start polling for new items
+    this.startPollingForItems();
+    
+    // Apply the filter after fetching items
+    this.filterItems();
   },
     
  
   methods: {
+    // Handle item updates from ItemEditor
+    handleItemsUpdated(event) {
+      console.log('Items updated event received:', event.detail);
+      
+      // Silently refresh items without showing loading indicators
+      try {
+        fetch('http://localhost:8000/api/items')
+          .then(response => response.json())
+          .then(data => {
+            if (data.items) {
+              this.apiItems = data.items;
+              this.filterItems();
+            }
+          });
+      } catch (error) {
+        console.error('Error refreshing items after update:', error);
+      }
+      
+      // Only switch to the category if the user is not on the "All Drinks" view
+      // This way, new items will appear in the All Drinks view without changing the user's context
+      if (this.currentCategory !== 'All Drinks' && event.detail.action !== 'deleted' && 
+          event.detail.category && event.detail.category !== this.currentCategory) {
+        this.currentCategory = event.detail.category;
+      }
+    },
+    
+    // New method to manually refresh items
+    async refreshItems() {
+      this.isLoading = true;
+      await this.fetchItems();
+      this.filterItems();
+      this.isLoading = false;
+    },
+    
+    // New method to start polling for items
+    startPollingForItems() {
+      this.itemsRefreshInterval = setInterval(async () => {
+        // Fetch items silently in the background without showing loading indicators
+        try {
+          const response = await fetch('http://localhost:8000/api/items');
+          const data = await response.json();
+          if (data.items) {
+            this.apiItems = data.items;
+            // Update filtered items without changing the loading state
+            this.filterItems();
+          }
+        } catch (error) {
+          console.error('Error fetching items during background refresh:', error);
+        }
+      }, 10000); // Check for new items every 10 seconds
+    },
+    
+    // New method to stop polling for items
+    stopPollingForItems() {
+      if (this.itemsRefreshInterval) {
+        clearInterval(this.itemsRefreshInterval);
+      }
+    },
+    
+    // New method to fetch items from API
+    async fetchItems() {
+      // Store the previous loading state
+      const wasLoading = this.isLoading;
+      
+      try {
+        // Only show loading indicator on initial load, not during background refreshes
+        // For background refreshes (when wasLoading is false), don't change isLoading
+        
+        const response = await fetch('http://localhost:8000/api/items');
+        const data = await response.json();
+        if (data.items) {
+          this.apiItems = data.items;
+          console.log('Fetched items from API:', this.apiItems);
+          
+          // After fetching, update the filtered items without showing loading state
+          if (!wasLoading) {
+            this.filterItems();
+          }
+        }
+      } catch (error) {
+        console.error('Error fetching items:', error);
+      } finally {
+        // Only reset loading state if it was initially set to true
+        if (wasLoading) {
+          this.isLoading = false;
+        }
+      }
+    },
 
-
- async loadUserProfile() {
+    async loadUserProfile() {
       try {
         if (!this.userEmail) return;
         
@@ -390,55 +404,52 @@ beforeUnmount() {
     },
 
     getImagePath(image) {
+      // Check if the image is a full URL or a backend path
+      if (image && (image.startsWith('http') || image.startsWith('/uploads'))) {
+        return image.startsWith('/uploads') ? `http://localhost:8000${image}` : image;
+      }
+      // Otherwise, use the asset path
       return require(`@/assets/${image}`);
     },
 
     filterItems() {
       const query = this.searchQuery.toLowerCase();
-
-      if (this.currentCategory === 'Drinks') {
-        this.filteredItems = [
-          ...this.iceCoffees,
-          ...this.hotCoffees,
-          ...this.juiceDrinks,
-          ...this.milkteas,
-          ...this.chocolateDrinks,
-          ...this.blendedFrappes,
-        ];
-      } else if (this.currentCategory === 'Ice Coffee') {
-        this.filteredItems = this.iceCoffees;
-      } else if (this.currentCategory === 'Hot Coffee') {
-        this.filteredItems = this.hotCoffees;
-      } else if (this.currentCategory === 'Juice Drinks') {
-        this.filteredItems = this.juiceDrinks;
-      } else if (this.currentCategory === 'Milkteas') {
-        this.filteredItems = this.milkteas;
-      } else if (this.currentCategory === 'Chocolate Drinks') {
-        this.filteredItems = this.chocolateDrinks;
-      } else if (this.currentCategory === 'Blended Frappes') {
-        this.filteredItems = this.blendedFrappes;
-      } else if (this.currentCategory === 'Pasta & Dishes') {
-        this.filteredItems = this.pastaAndDishes;
+      
+      // Filter API items based on category and search query
+      if (this.currentCategory === 'All Drinks') {
+        // For "All Drinks", get all items that are drink categories
+        this.filteredItems = this.apiItems.filter(item => 
+          item.category !== 'Pasta & Dishes' && // Exclude non-drink categories
+          item.name.toLowerCase().includes(query)
+        );
       } else {
-        this.filteredItems = [];
+        // For specific categories, filter by category and search query
+        this.filteredItems = this.apiItems.filter(item => 
+          item.category === this.currentCategory &&
+          item.name.toLowerCase().includes(query)
+        );
       }
-
-      // Apply search filtering
-      this.filteredItems = this.filteredItems.filter(item =>
-        item.name.toLowerCase().includes(query)
-      );
+      
+      // Log the filtered items for debugging
+      console.log(`Filtered ${this.filteredItems.length} items for category: ${this.currentCategory}`);
     },
 
    navigateToConfirmOrder(item) {
       // Save the current category to localStorage
       localStorage.setItem('lastCategory', this.currentCategory);
       
+      // For backend items, ensure the image path is properly formatted
+      let imagePath = item.image;
+      if (imagePath.startsWith('/uploads')) {
+        imagePath = `http://localhost:8000${imagePath}`;
+      }
+      
       this.$router.push({
         name: "ConfirmOrder",
         query: {
           name: item.name,
-          price: item.price || "N/A", // Avoid errors if price is missing
-          image: item.image,
+          price: item.price,
+          image: imagePath,
         },
       });
     },
@@ -478,6 +489,21 @@ beforeUnmount() {
 
 
 <style scoped>
+/* Add loading indicator styles */
+.loading-indicator {
+  text-align: center;
+  padding: 20px;
+  font-size: 18px;
+  color: #d12f7a;
+}
+
+.no-items {
+  text-align: center;
+  padding: 20px;
+  font-size: 18px;
+  color: #666;
+}
+
 .utility-divider {
   border: none;
   height: 1px;
@@ -493,9 +519,6 @@ beforeUnmount() {
   gap: 10px;
   margin-bottom: 20px;
 }
-
-
-
 
 .profile-image {
   width: 80px;
@@ -1488,6 +1511,39 @@ beforeUnmount() {
      font-size: 10px;
     padding: 5px 8px;
   }
+}
+
+.category-header {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  margin-bottom: 20px;
+}
+
+.category-header h2 {
+  font-size: 24px;
+  color:rgb(0, 0, 0);
+  text-align: center;
+  margin: 0;
+  padding: 0;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+
+/* Dark mode styles for category header */
+.dark-mode .category-header h2 {
+  color: #f8c6d0;
+}
+
+/* Remove refresh button styles that are no longer needed */
+.refresh-button,
+.refresh-button:hover,
+.refresh-button:disabled,
+.fa-spin,
+@keyframes fa-spin {
+  /* These styles will be removed */
 }
 
 </style>

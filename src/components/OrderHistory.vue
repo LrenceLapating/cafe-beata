@@ -127,12 +127,38 @@ export default {
     },
 
     viewOrderDetails(order) {
+      // Ensure each item has its image path preserved
+      const itemsWithImages = order.items.map(item => {
+        let imagePath = item.image;
+        
+        // If the item has an image from the backend
+        if (imagePath) {
+          // If it's already a full URL
+          if (imagePath.startsWith('http://') || imagePath.startsWith('https://')) {
+            // Keep the URL as is
+          }
+          // If it's a backend upload path (starting with /uploads)
+          else if (imagePath.startsWith('/uploads/')) {
+            imagePath = `http://localhost:8000${imagePath}`;
+          }
+          // If it's just a filename, assume it's in uploads/avatars
+          else if (!imagePath.includes('/')) {
+            imagePath = `http://localhost:8000/uploads/avatars/${imagePath}`;
+          }
+        }
+
+        return {
+          ...item,
+          image: imagePath // Keep the image path as is, don't set to null
+        };
+      });
+
       this.$router.push({
         name: "OrderDetails",
         query: {
           orderId: order.id,
           customerName: order.customer_name,
-          items: JSON.stringify(order.items) 
+          items: JSON.stringify(itemsWithImages)
         },
       });
     },

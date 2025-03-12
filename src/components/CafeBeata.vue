@@ -56,21 +56,33 @@
         </div>
 
         <div class="coffee-items">
-          <transition-group name="coffee-list">
-            <div v-for="item in displayedItems" :key="item.name" class="coffee-card">
-              <div class="coffee-img-container">
-                <img :src="require(`@/assets/${item.image}`)" :alt="item.name" />
-              </div>
-              <h3>{{ item.name }}</h3>
-              <p class="category">{{ item.category }}</p>
-              <button class="order-now-btn" @click="goToPage('/login')">Order Now</button>
+          <div v-for="item in displayedItems" :key="item.name" class="coffee-card">
+            <div class="coffee-img-container">
+              <img :src="require(`@/assets/${item.image}`)" :alt="item.name" />
             </div>
-          </transition-group>
+            <h3>{{ item.name }}</h3>
+            <p class="category">{{ item.category }}</p>
+            <button class="order-now-btn" @click="goToPage('/login')">Order Now</button>
+          </div>
         </div>
 
         <div class="pagination">
-          <button class="prev-btn" @click="prevItem" :disabled="currentIndex === 0">⬅</button>
-          <button class="next-btn" @click="nextItem" :disabled="currentIndex >= filteredItems.length - 3">➞</button>
+          <button class="prev-btn" @click="prevItem">
+            <i class="fas fa-chevron-left"></i>
+          </button>
+          
+          <div class="pagination-indicators">
+            <span 
+              v-for="(_, index) in filteredItems" 
+              :key="index" 
+              :class="{ active: index === currentIndex }"
+              @click="currentIndex = index"
+            ></span>
+          </div>
+          
+          <button class="next-btn" @click="nextItem">
+            <i class="fas fa-chevron-right"></i>
+          </button>
         </div>
       </section>
 
@@ -372,7 +384,8 @@ export default {
         email: '',
         subject: '',
         message: ''
-      }
+      },
+      windowWidth: window.innerWidth
     };
   },
   computed: {
@@ -383,10 +396,32 @@ export default {
       return this.items.filter(item => item.category === this.selectedCategory);
     },
     displayedItems() {
+      // For mobile view (less than 768px), show only 1 item
+      if (this.isMobileView) {
+        return this.filteredItems.slice(this.currentIndex, this.currentIndex + 1);
+      }
+      // For desktop view, show 3 items
       return this.filteredItems.slice(this.currentIndex, this.currentIndex + 3);
+    },
+    isMobileView() {
+      return this.windowWidth <= 768;
     }
   },
+  mounted() {
+    // Add event listener for window resize
+    window.addEventListener('resize', this.handleResize);
+  },
+  beforeUnmount() {
+    // Remove event listener when component is destroyed
+    window.removeEventListener('resize', this.handleResize);
+  },
   methods: {
+    handleResize() {
+      // Update window width
+      this.windowWidth = window.innerWidth;
+      // Force re-evaluation of computed properties
+      this.$forceUpdate();
+    },
     showMainContent() {
       this.currentView = 'main';
       this.scrollToTop();
@@ -400,16 +435,20 @@ export default {
       this.scrollToTop();
     },
     prevItem() {
+      const itemsPerPage = this.isMobileView ? 1 : 3;
       if (this.currentIndex > 0) {
         this.currentIndex--;
       } else {
-        this.currentIndex = Math.max(0, this.filteredItems.length - 3);
+        // Go to the last possible index
+        this.currentIndex = Math.max(0, this.filteredItems.length - itemsPerPage);
       }
     },
     nextItem() {
-      if (this.currentIndex < this.filteredItems.length - 3) {
+      const itemsPerPage = this.isMobileView ? 1 : 3;
+      if (this.currentIndex < this.filteredItems.length - itemsPerPage) {
         this.currentIndex++;
       } else {
+        // Go back to the beginning
         this.currentIndex = 0;
       }
     },
@@ -480,6 +519,11 @@ export default {
 @media (max-width: 768px) {
   .best-selling {
     padding: 30px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    width: 100%;
+    box-sizing: border-box;
   }
 
   .best-selling h2 {
@@ -501,34 +545,93 @@ export default {
   .coffee-items {
     flex-direction: column;
     align-items: center;
+    width: 100%;
+    position: relative;
+    display: flex;
+    justify-content: center;
+    padding: 0;
   }
 
   .coffee-card {
-    max-width: 200px;
-    padding: 10px;
+    max-width: 280px;
+    width: 100%;
+    padding: 0;
+    margin: 0 auto;
+    border-width: 3px;
+    overflow: hidden;
+  }
+
+  .coffee-img-container {
+    height: 250px;
+    width: 100%;
+    background-color: #332621;
+    border-radius: 8px 8px 0 0;
+    overflow: hidden;
+    padding: 0;
+    margin: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
   }
 
   .coffee-card img {
-    width: 100px;
-    height: 100px;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    object-position: center;
+    margin: 0;
   }
-
+  
   .coffee-card h3 {
-    font-size: 1.2em;
+    font-size: 1.5em;
+    margin-top: 15px;
+    padding: 0 15px;
+  }
+  
+  .coffee-card p.category {
+    padding: 0 15px;
   }
 
   .coffee-card button {
-    font-size: 0.9em;
-    padding: 8px;
+    font-size: 1.1em;
+    padding: 12px;
+    margin: 15px;
+    width: calc(100% - 30px);
   }
 
   .pagination {
-    margin-top: 15px;
+    margin-top: 20px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    width: 280px;
+    margin-left: auto;
+    margin-right: auto;
+    gap: 10px;
+    padding: 0;
+    box-sizing: border-box;
+  }
+
+  .pagination-indicators {
+    display: flex;
+    gap: 8px;
+    flex: 1;
+    justify-content: center;
+    margin: 0 5px;
   }
 
   .pagination button {
-    font-size: 1em;
-    padding: 6px 12px;
+    font-size: 1.2em;
+    padding: 10px;
+    width: 45px;
+    height: 45px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    margin: 0;
+    background-color: #3b2a2a;
   }
 }
 
@@ -538,33 +641,62 @@ export default {
   }
 
   .filter-menu {
-    flex-direction: column;
-    text-align: center;
+    flex-direction: row;
+    flex-wrap: wrap;
+    justify-content: center;
     gap: 8px;
   }
 
   .coffee-card {
-    max-width: 180px;
-    padding: 8px;
+    max-width: 260px;
+    width: 100%;
+    padding: 0;
+    border-width: 2px;
+  }
+
+  .coffee-img-container {
+    height: 220px;
+    padding: 0;
   }
 
   .coffee-card img {
-    width: 80px;
-    height: 80px;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    object-position: center;
   }
-
+  
   .coffee-card h3 {
-    font-size: 1em;
+    font-size: 1.3em;
+    padding: 0 10px;
+    margin-top: 10px;
+  }
+  
+  .coffee-card p.category {
+    padding: 0 10px;
   }
 
   .coffee-card button {
-    font-size: 0.8em;
-    padding: 6px;
+    font-size: 1em;
+    padding: 10px;
+    margin: 10px;
+    width: calc(100% - 20px);
+  }
+
+  .pagination {
+    width: 260px;
+    gap: 5px;
+  }
+
+  .pagination-indicators {
+    gap: 6px;
   }
 
   .pagination button {
-    font-size: 0.9em;
-    padding: 5px 10px;
+    font-size: 1.1em;
+    width: 40px;
+    height: 40px;
+    padding: 8px;
   }
 }
 
@@ -607,36 +739,73 @@ export default {
   justify-content: center;
   gap: 30px;
   flex-wrap: wrap;
+  width: 100%;
+  margin: 0 auto;
+ 
 }
 
 .coffee-card {
   background-color: #332621;
-  padding: 15px;
+  padding: 0;
   border-radius: 10px;
   text-align: center;
-  max-width: 250px;
+  width: 300px;
+  flex: 0 0 auto;
   box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
   border: 4px solid black;
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
+  overflow: hidden;
+  margin: 0;
+}
+
+.coffee-card:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 8px 16px rgba(0, 0, 0, 0.4);
 }
 
 .coffee-img-container {
-  background-color: #f5f5f5;
-  padding: 5px;
-  border-radius: 5px;
-  margin-bottom: 10px;
+  background-color: #332621;
+  padding: 0;
+  border-radius: 0;
+  margin-bottom: 0;
+  height: 200px;
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  position: relative;
 }
 
 .coffee-card img {
-  width: 120px;
-  height: 120px;
+  width: 100%;
+  height: 100%;
   object-fit: cover;
-  border-radius: 5px;
+  object-position: center;
+  border-radius: 0;
+  transition: transform 0.3s ease;
+  position: absolute;
+  top: 0;
+  left: 0;
+}
+
+.coffee-card:hover img {
+  transform: scale(1.05);
 }
 
 .coffee-card h3 {
   font-size: 1.5em;
   color: white;
   font-weight: bold;
+  margin-top: 15px;
+  padding: 0 15px;
+}
+
+.coffee-card p.category {
+  color: #d4a76a;
+  font-size: 0.9em;
+  margin-bottom: 10px;
+  padding: 0 15px;
 }
 
 .coffee-card button {
@@ -646,9 +815,9 @@ export default {
   padding: 10px;
   font-size: 1em;
   cursor: pointer;
-  margin-top: 10px;
+  margin: 10px 15px 15px;
   border-radius: 5px;
-  width: 100%;
+  width: calc(100% - 30px);
   font-weight: bold;
 }
 
@@ -658,6 +827,38 @@ export default {
 
 .pagination {
   margin-top: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 15px;
+  width: 100%;
+  max-width: 400px;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+.pagination-indicators {
+  display: flex;
+  gap: 8px;
+  flex: 1;
+  justify-content: center;
+  margin: 0 10px;
+}
+
+.pagination-indicators span {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background-color: #d2a679;
+  opacity: 0.5;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.pagination-indicators span.active {
+  opacity: 1;
+  transform: scale(1.2);
+  background-color: #3b2a2a;
 }
 
 .pagination button {
@@ -671,11 +872,41 @@ export default {
   border-radius: 5px;
   transition: all 0.3s ease;
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  flex-shrink: 0;
 }
 
 .pagination button:hover {
   background: #2a1f1f;
   box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+  transform: translateY(-2px);
+}
+
+.pagination button:active {
+  transform: translateY(0);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.prev-btn, .next-btn {
+  width: 45px;
+  height: 45px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50% !important;
+  padding: 0 !important;
+}
+
+.prev-btn i, .next-btn i {
+  font-size: 1.2em;
+  transition: transform 0.3s ease;
+}
+
+.prev-btn:hover i {
+  transform: translateX(-2px);
+}
+
+.next-btn:hover i {
+  transform: translateX(2px);
 }
 
 .coffee-container {
