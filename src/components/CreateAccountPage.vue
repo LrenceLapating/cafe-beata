@@ -27,12 +27,22 @@
 
         <!-- Password Field -->
         <div class="input-container">
-          <input 
-            type="password" 
-            v-model="password" 
-            placeholder="Password" 
-            required 
-          />
+          <div class="password-container">
+            <input 
+              :type="showPassword ? 'text' : 'password'" 
+              v-model="password" 
+              placeholder="Password" 
+              required 
+            />
+            <button 
+              type="button" 
+              class="show-password-btn" 
+              @click="togglePassword"
+              v-show="password.length > 0"
+            >
+              <i :class="showPassword ? 'fas fa-eye-slash' : 'fas fa-eye'"></i>
+            </button>
+          </div>
         </div>
 
         
@@ -76,6 +86,7 @@ export default {
       errorMessage: "",
       showSuccessPopup: false,
       agreeToTerms: false, // Checkbox value
+      showPassword: false, // Add this for password visibility toggle
     };
   },
 
@@ -85,79 +96,78 @@ export default {
   },
 
   methods: {
-  async handleSignUp() {
-  if (!this.agreeToTerms) {
-    this.errorMessage = "You must agree to the Privacy Policy to continue.";
-    return;
-  }
+    togglePassword() {
+      this.showPassword = !this.showPassword;
+    },
+    async handleSignUp() {
+      if (!this.agreeToTerms) {
+        this.errorMessage = "You must agree to the Privacy Policy to continue.";
+        return;
+      }
 
-  const emailRegex = /^[a-zA-Z0-9]+(_\d{12})?@uic\.edu\.ph$/;
-  if (!emailRegex.test(this.email)) {
-    this.errorMessage = "Email must be a valid UIC Email.";
-    return;
-  }
+      const emailRegex = /^[a-zA-Z0-9]+(_\d{12})?@uic\.edu\.ph$/;
+      if (!emailRegex.test(this.email)) {
+        this.errorMessage = "Email must be a valid UIC Email.";
+        return;
+      }
 
-  const username = this.name.trim();
+      const username = this.name.trim();
 
-  try {
-    // First, check if the username already exists in the backend
-    const usernameCheckResponse = await fetch("http://127.0.0.1:8000/check-username", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        username: username,
-      }),
-    });
+      try {
+        // First, check if the username already exists in the backend
+        const usernameCheckResponse = await fetch("http://127.0.0.1:8000/check-username", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            username: username,
+          }),
+        });
 
-    const usernameCheckData = await usernameCheckResponse.json();
-    if (usernameCheckResponse.ok && usernameCheckData.exists) {
-      this.errorMessage = "Username already exists. Please choose a different one.";
-      return;
-    }
+        const usernameCheckData = await usernameCheckResponse.json();
+        if (usernameCheckResponse.ok && usernameCheckData.exists) {
+          this.errorMessage = "Username already exists. Please choose a different one.";
+          return;
+        }
 
-    // If the username doesn't exist, proceed with account creation
-    const response = await fetch("http://127.0.0.1:8000/register", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        email: this.email,
-        password: this.password,
-        username: username,
-      }),
-    });
+        // If the username doesn't exist, proceed with account creation
+        const response = await fetch("http://127.0.0.1:8000/register", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            email: this.email,
+            password: this.password,
+            username: username,
+          }),
+        });
 
-    const data = await response.json();
-    if (response.ok) {
-      this.showSuccessPopup = true;
-      localStorage.setItem('userName', username);  
-      localStorage.setItem('userEmail', this.email);
-      setTimeout(() => {
-        this.$router.push({ name: "Login" });
-      }, 2000);
-    } else {
-      console.error("Error response data:", data);
-      this.errorMessage = data.detail;
-    }
-  } catch (error) {
-    console.error("Error during account creation:", error);
-    this.errorMessage = "An error occurred. Please try again.";
-    }
-  },
+        const data = await response.json();
+        if (response.ok) {
+          this.showSuccessPopup = true;
+          localStorage.setItem('userName', username);  
+          localStorage.setItem('userEmail', this.email);
+          setTimeout(() => {
+            this.$router.push({ name: "Login" });
+          }, 2000);
+        } else {
+          console.error("Error response data:", data);
+          this.errorMessage = data.detail;
+        }
+      } catch (error) {
+        console.error("Error during account creation:", error);
+        this.errorMessage = "An error occurred. Please try again.";
+      }
+    },
 
-  goToLogin() {
-    this.$router.push({ name: "Login" });
+    goToLogin() {
+      this.$router.push({ name: "Login" });
     },
   },
 };
 </script>
-
-
-
-
 
 <style scoped>
 /* Styling for Create Account Page */
@@ -231,8 +241,46 @@ h1 {
   margin-bottom: 20px;
 }
 
+.password-container {
+  position: relative;
+  width: 84%;
+  max-width: 320px;
+  display: flex;
+  align-items: center;
+  margin: 0 auto;
+}
+
+.password-container input {
+  width: 100%;
+  padding-right: 40px; /* Make space for the button */
+}
+
+.show-password-btn {
+  position: absolute;
+  right: 10px;
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 0;
+  width: auto;
+  box-shadow: none;
+  color: #888;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 20%;
+}
+
+.show-password-btn:hover {
+  color: #ff1493;
+}
+
+.show-password-btn i {
+  font-size: 14px;
+}
+
 input, select {
-  width: 85%;
+  width: 74%;
   padding: 12px;
   font-size: 16px;
   border: 2px solid #ff69b4;

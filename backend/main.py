@@ -175,7 +175,7 @@ def get_db_connection():
         "host": "127.0.0.1",  # Your MySQL host
         "user": "root",        # Your MySQL user
         "password": "Warweapons19",  # Your MySQL password
-        "database": "cafe_preorder",  # Your database name
+        "database": "cafe_preorders",  # Your database name
     }
 
     try:
@@ -672,3 +672,151 @@ async def delete_item(item_id: int):
         return {"message": "Item deleted successfully"}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
+# Category Management Endpoints
+@app.get('/api/categories')
+async def get_categories():
+    try:
+        connection = get_db_connection()
+        cursor = connection.cursor(dictionary=True)
+        cursor.execute("SELECT id, name, type, icon, created_at FROM categories ORDER BY name")
+        categories = cursor.fetchall()
+        cursor.close()
+        connection.close()
+        return {"categories": categories}
+    except Exception as e:
+        print(f"Error getting categories: {e}")
+        raise HTTPException(status_code=500, detail="Failed to get categories")
+
+@app.post('/api/categories')
+async def add_category(
+    name: str = Form(...),
+    type: str = Form(...),
+    icon: str = Form(...)
+):
+    try:
+        connection = get_db_connection()
+        cursor = connection.cursor()
+        
+        # Check if category already exists
+        cursor.execute("SELECT id FROM categories WHERE name = %s", (name,))
+        if cursor.fetchone():
+            cursor.close()
+            raise HTTPException(status_code=400, detail="Category already exists")
+        
+        # Validate type
+        if type not in ['drinks', 'food']:
+            cursor.close()
+            raise HTTPException(status_code=400, detail="Invalid category type")
+        
+        # Insert new category
+        cursor.execute(
+            "INSERT INTO categories (name, type, icon) VALUES (%s, %s, %s)",
+            (name, type, icon)
+        )
+        connection.commit()
+        
+        new_category_id = cursor.lastrowid
+        cursor.close()
+        
+        return {
+            "id": new_category_id,
+            "name": name,
+            "type": type,
+            "icon": icon,
+            "message": "Category added successfully"
+        }
+    except HTTPException as he:
+        raise he
+    except Exception as e:
+        print(f"Error adding category: {e}")
+        raise HTTPException(status_code=500, detail="Failed to add category")
+
+@app.delete('/api/categories/{category_id}')
+async def delete_category(category_id: int):
+    try:
+        connection = get_db_connection()
+        cursor = connection.cursor()
+        
+        # Check if category exists
+        cursor.execute("SELECT id FROM categories WHERE id = %s", (category_id,))
+        if not cursor.fetchone():
+            cursor.close()
+            raise HTTPException(status_code=404, detail="Category not found")
+        
+        # Check if category is in use
+        cursor.execute("SELECT id FROM items WHERE category = (SELECT name FROM categories WHERE id = %s)", (category_id,))
+        if cursor.fetchone():
+            cursor.close()
+            raise HTTPException(status_code=400, detail="Cannot delete category that has items")
+        
+        # Delete category
+        cursor.execute("DELETE FROM categories WHERE id = %s", (category_id,))
+        connection.commit()
+        cursor.close()
+        
+        return {"message": "Category deleted successfully"}
+    except HTTPException as he:
+        raise he
+    except Exception as e:
+        print(f"Error deleting category: {e}")
+        raise HTTPException(status_code=500, detail="Failed to delete category")
+
+@app.put('/api/categories/{category_id}')
+async def update_category(
+    category_id: int,
+    name: str = Form(...),
+    type: str = Form(...),
+    icon: str = Form(...)
+):
+    try:
+        connection = get_db_connection()
+        cursor = connection.cursor()
+        
+        # Check if category exists
+        cursor.execute("SELECT name FROM categories WHERE id = %s", (category_id,))
+        category = cursor.fetchone()
+        if not category:
+            cursor.close()
+            raise HTTPException(status_code=404, detail="Category not found")
+            
+        old_name = category[0]
+        
+        # Check if new name already exists (excluding current category)
+        cursor.execute("SELECT id FROM categories WHERE name = %s AND id != %s", (name, category_id))
+        if cursor.fetchone():
+            cursor.close()
+            raise HTTPException(status_code=400, detail="Category name already exists")
+        
+        # Validate type
+        if type not in ['drinks', 'food']:
+            cursor.close()
+            raise HTTPException(status_code=400, detail="Invalid category type")
+        
+        # Update category
+        cursor.execute(
+            "UPDATE categories SET name = %s, type = %s, icon = %s WHERE id = %s",
+            (name, type, icon, category_id)
+        )
+        
+        # Update items with old category name
+        cursor.execute(
+            "UPDATE items SET category = %s WHERE category = %s",
+            (name, old_name)
+        )
+        
+        connection.commit()
+        cursor.close()
+        
+        return {
+            "id": category_id,
+            "name": name,
+            "type": type,
+            "icon": icon,
+            "message": "Category updated successfully"
+        }
+    except HTTPException as he:
+        raise he
+    except Exception as e:
+        print(f"Error updating category: {e}")
+        raise HTTPException(status_code=500, detail="Failed to update category")

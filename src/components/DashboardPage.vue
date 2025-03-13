@@ -63,37 +63,27 @@
       <div class="menu-section">
         <h3>Drinks</h3>
         <div class="menu-items">
-          <button class="menu-item" @click="filterCategory('Ice Coffee')">
-            <i class="fas fa-coffee"></i>
-            <span>Ice Coffees</span>
-          </button>
-          <button class="menu-item" @click="filterCategory('Hot Coffee')">
-            <i class="fas fa-mug-hot"></i>
-            <span>Hot Coffees</span>
-          </button>
-          <button class="menu-item" @click="filterCategory('Juice Drinks')">
-            <i class="fas fa-glass-martini"></i>
-            <span>Juice Drinks</span>
-          </button>
-          <button class="menu-item" @click="filterCategory('Milkteas')">
-            <i class="fas fa-glass-whiskey"></i>
-            <span>Milkteas</span>
-          </button>
-          <button class="menu-item" @click="filterCategory('Chocolate Drinks')">
-            <i class="fas fa-circle"></i>
-            <span>Chocolate Drinks</span>
-          </button>
-          <button class="menu-item" @click="filterCategory('Blended Frappes')">
-            <i class="fas fa-blender"></i>
-            <span>Blended Frappes</span>
+          <button 
+            v-for="category in drinkCategories" 
+            :key="category"
+            class="menu-item" 
+            @click="filterCategory(category)"
+          >
+            <i :class="getCategoryIcon(category)"></i>
+            <span>{{ category }}</span>
           </button>
         </div>
 
         <h3>Food</h3>
         <div class="menu-items">
-          <button class="menu-item" @click="filterCategory('Pasta & Dishes')">
-            <i class="fas fa-utensils"></i>
-            <span>Pasta & Dishes</span>
+          <button 
+            v-for="category in foodCategories" 
+            :key="category"
+            class="menu-item" 
+            @click="filterCategory(category)"
+          >
+            <i :class="getCategoryIcon(category)"></i>
+            <span>{{ category }}</span>
           </button>
         </div>
       </div>
@@ -187,7 +177,8 @@ export default {
       // Store API items
       apiItems: [],
       // Store filtered items
-      filteredItems: []
+      filteredItems: [],
+      categories: [],
     };
   },
 
@@ -202,8 +193,9 @@ export default {
 beforeUnmount() {
       window.removeEventListener("notificationUpdated", this.updateNotificationCount);
       window.removeEventListener("items-updated", this.handleItemsUpdated);
+      window.removeEventListener('categories-updated', this.handleCategoriesUpdated);
       this.stopPollingForNewNotifications();
-      this.stopPollingForItems(); // Stop polling for items when component is unmounted
+      this.stopPollingForItems();
   },
   
   async mounted() {
@@ -230,8 +222,11 @@ beforeUnmount() {
     // Start polling for new items
     this.startPollingForItems();
     
-    // Apply the filter after fetching items
-    this.filterItems();
+    // Load initial categories
+    this.loadCategories();
+    
+    // Listen for category updates
+    window.addEventListener('categories-updated', this.handleCategoriesUpdated);
   },
     
  
@@ -419,7 +414,7 @@ beforeUnmount() {
       if (this.currentCategory === 'All Drinks') {
         // For "All Drinks", get all items that are drink categories
         this.filteredItems = this.apiItems.filter(item => 
-          item.category !== 'Pasta & Dishes' && // Exclude non-drink categories
+          !this.foodCategories.includes(item.category) && // Exclude food categories
           item.name.toLowerCase().includes(query)
         );
       } else {
@@ -471,6 +466,25 @@ beforeUnmount() {
       this.isSidebarOpen = false;
       localStorage.setItem('sidebarOpen', this.isSidebarOpen.toString());
     },
+    getCategoryIcon(category) {
+      const foundCategory = this.categories.find(cat => cat.name === category);
+      return foundCategory ? foundCategory.icon : 'fas fa-utensils';
+    },
+    async loadCategories() {
+      try {
+        const response = await fetch('http://localhost:8000/api/categories');
+        const data = await response.json();
+        if (data.categories) {
+          this.categories = data.categories;
+        }
+      } catch (error) {
+        console.error('Error loading categories:', error);
+      }
+    },
+    handleCategoriesUpdated() {
+      // Reload categories from the backend
+      this.loadCategories();
+    },
   },
   watch: {
     isDarkMode: {
@@ -482,6 +496,19 @@ beforeUnmount() {
         }
       },
       immediate: true
+    }
+  },
+  computed: {
+    drinkCategories() {
+      return this.categories
+        .filter(cat => cat.type === 'drinks')
+        .map(cat => cat.name);
+    },
+    
+    foodCategories() {
+      return this.categories
+        .filter(cat => cat.type === 'food')
+        .map(cat => cat.name);
     }
   },
 };

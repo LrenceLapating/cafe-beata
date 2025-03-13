@@ -20,13 +20,23 @@
         </div>
         <div class="input-container">
           <label for="password"></label>
-          <input 
-            type="password" 
-            v-model="password" 
-            id="password" 
-            placeholder="Password" 
-            required 
-          />
+          <div class="password-container">
+            <input 
+              :type="showPassword ? 'text' : 'password'" 
+              v-model="password" 
+              id="password" 
+              placeholder="Password" 
+              required 
+            />
+            <button 
+              type="button" 
+              class="show-password-btn" 
+              @click="togglePassword"
+              v-show="password.length > 0"
+            >
+              <i :class="showPassword ? 'fas fa-eye-slash' : 'fas fa-eye'"></i>
+            </button>
+          </div>
         </div>
         <button type="submit" class="login-button">Login</button>
         <p v-if="errorMessage" class="error">{{ errorMessage }}</p>
@@ -50,6 +60,7 @@ export default {
       username: "",
       password: "",
       errorMessage: "",
+      showPassword: false,
     };
   },
 
@@ -60,6 +71,9 @@ export default {
 
 
   methods: {
+    togglePassword() {
+      this.showPassword = !this.showPassword;
+    },
     // Handle regular user login
    async handleLogin() {
   const emailRegex = /^[a-zA-Z0-9]+(_\d{12})?@uic\.edu\.ph$/;
@@ -204,14 +218,54 @@ export default {
   margin-bottom: 15px;
 }
 
-input {
+.password-container {
+  position: relative;
   width: 120%;
+  max-width: 320px;
+  display: flex;
+  align-items: center;
+}
+
+.password-container input {
+  width: 100%;
+  padding-right: 40px; /* Make space for the button */
+  text-align: left;
+  padding-left: 12px;
+}
+
+.show-password-btn {
+  position: absolute;
+  right: 10px;
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 0;
+  width: auto;
+  box-shadow: none;
+  color: #888;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 20%;
+}
+
+.show-password-btn:hover {
+  color: #ff1493;
+}
+
+.show-password-btn i {
+  font-size: 14px;
+}
+
+input {
+  width: 110%;
   max-width: 320px;
   padding: 12px;
   margin-top: 5px;
   border: 2px solid #ff1493;
   border-radius: 8px;
-  text-align: center;
+  text-align: left;
+  padding-left: 12px;
   font-size: 16px;
   transition: all 0.3s ease;
 }

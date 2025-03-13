@@ -1,122 +1,154 @@
 <template>
   <div class="notifications-page">
-    <div class="header">
-      <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css">
-      <button @click="goToOrderRecord" class="order-record-button">View Order Record</button>
-      <div class="header-buttons">
-        <button @click="toggleMenuEditor" class="menu-editor-button">
-          <i class="fa-solid fa-utensils"></i> Menu Editor
+    <!-- Sidebar Toggle Button (For Mobile) -->
+    <button class="menu-button" @click="toggleSidebar">
+      <div class="menu-icon-container">
+        <i class="fa fa-bars"></i>
+      </div>
+    </button>
+
+    <div v-if="isSidebarOpen" class="overlay" @click="closeSidebar"></div>
+    
+    <!-- Sidebar -->
+    <div :class="['sidebar', { 'open': isSidebarOpen }]" @click.stop>
+      <button class="close-sidebar" @click="toggleSidebar">
+        <i class="fa fa-times"></i>
+      </button>
+      
+      <!-- Admin Profile Section -->
+      <div class="user-profile-section">
+        <h3><i class="fa fa-user-circle"></i> Admin Dashboard</h3>
+      </div>
+
+      <hr class="utility-divider">
+
+      <!-- Utility Buttons -->
+      <div class="utility-section">
+        <button @click="goToOrderRecord" class="utility-button">
+          <i class="fa fa-history"></i>
+          <span>View Order Record</span>
+        </button>
+
+        <button @click="toggleMenuEditor" class="utility-button">
+          <i class="fa fa-utensils"></i>
+          <span>Menu Editor</span>
+        </button>
+
+        <button @click="logout" class="utility-button logout">
+          <i class="fa fa-sign-out"></i>
+          <span>Logout</span>
         </button>
       </div>
-      <h1>Admin Dashboard</h1>
-      <button @click="logout" class="logout-button">
-        <i class="fa-solid fa-right-from-bracket"></i>
-      </button>
+
+      <!-- Cafe Status Section -->
+      <div class="cafe-status-section">
+        <button @click="toggleCafeStatus" :class="{'open-btn': isCafeOpen, 'closed-btn': !isCafeOpen}" class="cafe-toggle-btn">
+          <i :class="isCafeOpen ? 'fa fa-check-circle' : 'fa fa-times-circle'"></i>
+          {{ isCafeOpen ? 'Set Cafe Closed' : 'Set Cafe Open' }}
+        </button>
+      </div>
     </div>
 
-    <div class="admin-cafe-status">
-      <button @click="toggleCafeStatus" :class="{'open-btn': isCafeOpen, 'closed-btn': !isCafeOpen}" class="cafe-toggle-btn">
-        {{ isCafeOpen ? 'Set Cafe Closed' : 'Set Cafe Open' }}
-      </button>
-    </div>
+    <!-- Main Content -->
+    <div :class="['content', { 'shifted': isSidebarOpen }]">
+      <div v-if="notificationVisible" :class="['notification-popup', notificationClass]">
+        <p>{{ notificationMessage }}</p>
+      </div>
 
-  <div v-if="notificationVisible" :class="['notification-popup', notificationClass]">
-      <p>{{ notificationMessage }}</p>
-    </div>
+      <!-- Search Bar -->
+      <div class="search-bar">
+        <input 
+          type="text" 
+          v-model="searchQuery" 
+          placeholder="Search orders by ID, customer name..." 
+          class="search-input"
+        />
+      </div>
 
-    <!-- Search Bar -->
-    <div class="search-bar">
-      <input 
-        type="text" 
-        v-model="searchQuery" 
-        placeholder="Search orders by ID, customer name..." 
-        class="search-input"
-      />
-    </div>
+      <div v-if="isLoading" class="loading">Loading...</div>
 
-    <div v-if="isLoading" class="loading">Loading...</div>
+      <div v-if="filteredOrders.length && !isLoading" class="orders-container">
+        <h2>Pending Orders</h2>
+        <div class="orders-list">
+          <div class="order-item" v-for="order in filteredOrders" :key="order.id">
+            <div class="order-details">
+              <h3>Order ID: {{ order.id }}</h3>
+              <p><strong>Customer:</strong> {{ order.customer_name }}</p>
+              <p><strong>Status:</strong> {{ order.status }}</p>
+              <p><strong>Time Order: </strong> {{ timeAgo(order.created_at) }}</p> <!-- Time Ago Display -->
 
-    <div v-if="filteredOrders.length && !isLoading" class="orders-container">
-      <h2>Pending Orders</h2>
-      <div class="orders-list">
-        <div class="order-item" v-for="order in filteredOrders" :key="order.id">
-          <div class="order-details">
-            <h3>Order ID: {{ order.id }}</h3>
-            <p><strong>Customer:</strong> {{ order.customer_name }}</p>
-            <p><strong>Status:</strong> {{ order.status }}</p>
-            <p><strong>Time Order: </strong> {{ timeAgo(order.created_at) }}</p> <!-- Time Ago Display -->
+              <div class="items-section">
+                <strong>Items:</strong>
+                <ul>
+                  <li v-for="item in order.items" :key="item.name">
+                    {{ item.name }} - ₱{{ item.price }} x {{ item.quantity }}
+                  </li>
+                </ul>
+              </div>
 
-            <div class="items-section">
-              <strong>Items:</strong>
-              <ul>
-                <li v-for="item in order.items" :key="item.name">
-                  {{ item.name }} - ₱{{ item.price }} x {{ item.quantity }}
-                </li>
-              </ul>
+              <!-- Total Amount below items -->
+              <div class="order-total">
+                <p><strong>Total Amount: ₱{{ calculateOrderTotal(order.items) }}</strong></p>
+              </div>
             </div>
 
-            <!-- Total Amount below items -->
-            <div class="order-total">
-              <p><strong>Total Amount: ₱{{ calculateOrderTotal(order.items) }}</strong></p>
+            <div class="order-actions">
+              <!-- Mark as Completed button -->
+              <button @click="markAsCompleted(order.id, order.customer_name, order.items)" class="mark-completed-btn small-btn">
+                Mark as Completed
+              </button>
+
+              <!-- Order Ready button -->
+              <button @click="sendOrderReadyNotification(order.id, order.customer_name, order.items)" class="order-ready-btn small-btn">
+                Order Ready  🔔
+              </button>
+
+              <!-- Decline button -->
+              <button @click="openDeclineDialog(order)" class="decline-btn">
+                Decline
+              </button>
             </div>
-          </div>
 
-          <div class="order-actions">
-            <!-- Mark as Completed button -->
-            <button @click="markAsCompleted(order.id, order.customer_name, order.items)" class="mark-completed-btn small-btn">
-              Mark as Completed
-            </button>
-
-            <!-- Order Ready button -->
-            <button @click="sendOrderReadyNotification(order.id, order.customer_name, order.items)" class="order-ready-btn small-btn">
-              Order Ready  🔔
-            </button>
-
-            <!-- Decline button -->
-            <button @click="openDeclineDialog(order)" class="decline-btn">
-              Decline
-            </button>
-          </div>
-
-          <!-- Custom message input for decline -->
-          <div v-if="order.id === activeDeclineOrderId" class="decline-container">
-            <textarea v-model="customDeclineMessage" placeholder="Customize your message here..." rows="3" ref="declineText"></textarea>
-            
-            <!-- Button Container -->
-            <div class="decline-buttons">
-              <button @click="declineOrder(order.id, order.customer_name, order.items)" class="decline-submit-btn">
-                Submit
-              </button>
-              <button @click="activeDeclineOrderId = null" class="decline-cancel-btn">
-                Cancel
-              </button>
+            <!-- Custom message input for decline -->
+            <div v-if="order.id === activeDeclineOrderId" class="decline-container">
+              <textarea v-model="customDeclineMessage" placeholder="Customize your message here..." rows="3" ref="declineText"></textarea>
+              
+              <!-- Button Container -->
+              <div class="decline-buttons">
+                <button @click="declineOrder(order.id, order.customer_name, order.items)" class="decline-submit-btn">
+                  Submit
+                </button>
+                <button @click="activeDeclineOrderId = null" class="decline-cancel-btn">
+                  Cancel
+                </button>
+              </div>
             </div>
           </div>
         </div>
       </div>
-    </div>
 
-    <div v-else-if="!isLoading" class="no-orders">
-      <p>No pending orders at the moment.</p>
-    </div>
+      <div v-else-if="!isLoading" class="no-orders">
+        <p>No pending orders at the moment.</p>
+      </div>
 
-    <!-- Popup Notification Sent -->
-    <div v-if="notificationSent" class="notification-sent-popup">
-      <p>Notification Sent!</p>
-      <button @click="notificationSent = false" class="close-popup-btn">Close</button>
-    </div>
+      <!-- Popup Notification Sent -->
+      <div v-if="notificationSent" class="notification-sent-popup">
+        <p>Notification Sent!</p>
+        <button @click="notificationSent = false" class="close-popup-btn">Close</button>
+      </div>
 
-    <!-- Menu Editor Popup Modal -->
-    <div v-if="showMenuEditor" class="menu-editor-modal">
-      <div class="menu-editor-content">
-        <div class="menu-editor-header">
-          <h2>Menu Editor</h2>
-          <button @click="toggleMenuEditor" class="close-modal-btn">
-            <i class="fa-solid fa-times"></i>
-          </button>
-        </div>
-        <div class="menu-editor-body">
-          <ItemEditor />
+      <!-- Menu Editor Popup Modal -->
+      <div v-if="showMenuEditor" class="menu-editor-modal">
+        <div class="menu-editor-content">
+          <div class="menu-editor-header">
+            <h2>Menu Editor</h2>
+            <button @click="toggleMenuEditor" class="close-modal-btn">
+              <i class="fa-solid fa-times"></i>
+            </button>
+          </div>
+          <div class="menu-editor-body">
+            <ItemEditor />
+          </div>
         </div>
       </div>
     </div>
@@ -143,7 +175,8 @@ export default {
       notificationMessage: "",
       notificationClass: "", 
       notificationVisible: false,
-      showMenuEditor: false // Control visibility of menu editor popup
+      showMenuEditor: false, // Control visibility of menu editor popup
+      isSidebarOpen: localStorage.getItem('sidebarOpen') === 'true', // Control visibility of sidebar
     };
   },
   computed: {
@@ -466,24 +499,53 @@ export default {
         document.body.style.overflow = '';
       }
     },
+
+    // Toggle sidebar visibility
+    toggleSidebar() {
+      this.isSidebarOpen = !this.isSidebarOpen;
+      localStorage.setItem('sidebarOpen', this.isSidebarOpen.toString());
+      
+      // When opening the sidebar, prevent scrolling on the body
+      if (this.isSidebarOpen) {
+        document.body.style.overflow = 'hidden';
+      } else {
+        document.body.style.overflow = '';
+      }
+    },
+
+    // Close sidebar
+    closeSidebar() {
+      this.isSidebarOpen = false;
+      localStorage.setItem('sidebarOpen', this.isSidebarOpen.toString());
+      document.body.style.overflow = '';
+    },
+
+    // Handle clicks outside sidebar
+    handleOutsideClick(event) {
+      if (this.isSidebarOpen && 
+          !event.target.closest('.sidebar') && 
+          !event.target.closest('.menu-button')) {
+        this.closeSidebar();
+      }
+    },
   },
 
   mounted() {
-
-  const savedCafeStatus = localStorage.getItem('isCafeOpen');
+    const savedCafeStatus = localStorage.getItem('isCafeOpen');
     if (savedCafeStatus !== null) {
       this.isCafeOpen = JSON.parse(savedCafeStatus);
     }
     
-
     this.fetchOrders(); // Initial fetch when the page loads
     this.startAutoRefresh(); // Start auto-fetching every 5 seconds
+
+    // Add event listener for clicks outside sidebar
+    document.addEventListener('click', this.handleOutsideClick);
   },
 
   beforeUnmount() {
     this.stopAutoRefresh(); // Stop auto-fetching when leaving the page
-
-    
+    document.removeEventListener('click', this.handleOutsideClick);
   }
 };
 </script>
@@ -498,139 +560,278 @@ export default {
 <style scoped>
 /* Base styles for all screen sizes */
 .notifications-page {
-  padding: 20px;
-  max-width: 1200px;
-  margin: 0 auto;
-  box-sizing: border-box;
-}
-
-/* Header styles with improved responsiveness */
-.header {
   display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 20px;
-  gap: 10px;
-  flex-wrap: wrap;
+  min-height: 100vh;
+  background-color: #fce6e6;
 }
 
-.header-buttons {
+/* Menu Button */
+.menu-button {
+  position: fixed;
+  top: 15px;
+  left: 15px;
+  z-index: 300;
+  background: #d12f7a;
+  color: white;
+  padding: 12px 15px;
+  font-size: 20px;
+  border: none;
+  border-radius: 12px;
+  cursor: pointer;
+  transition: all 0.3s ease-in-out;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+}
+
+.menu-button:hover {
+  background: #b82d67;
+  transform: translateY(-2px);
+  box-shadow: 0 6px 8px rgba(0, 0, 0, 0.15);
+}
+
+.menu-icon-container {
+  position: relative;
+  display: inline-block;
+  font-size: 24px;
+}
+
+/* Sidebar */
+.sidebar {
+  position: fixed;
+  top: 0;
+  left: -300px;
+  height: 100vh;
+  width: 300px;
+  background: #f5f5f5;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  z-index: 1000;
   display: flex;
-  gap: 10px;
+  flex-direction: column;
+  padding: 20px 0;
+  box-shadow: 4px 0 15px rgba(0, 0, 0, 0.1);
+  color: #333;
 }
 
-h1 {
+.sidebar.open {
+  left: 0;
+}
+
+.close-sidebar {
+  position: absolute;
+  top: 15px;
+  right: 15px;
+  background: rgba(209, 47, 122, 0.1);
+  border: none;
+  font-size: 20px;
+  cursor: pointer;
   color: #d12f7a;
-  font-size: 28px;
-  margin: 0;
+  padding: 8px 12px;
+  border-radius: 50%;
+  transition: all 0.3s ease;
+}
+
+.close-sidebar:hover {
+  background: rgba(209, 47, 122, 0.2);
+  transform: rotate(90deg);
+}
+
+/* User Profile Section */
+.user-profile-section {
+  padding: 30px 20px;
   text-align: center;
-  flex-grow: 1;
+  margin-bottom: 20px;
+  background: rgba(209, 47, 122, 0.1);
+  border-radius: 15px;
+  margin: 0 15px 20px;
 }
 
-.logout-button {
-  background-color: #f8d2e4;
+.user-profile-section h3 {
   color: #d12f7a;
-  padding: 10px 20px;
-  border-radius: 10px;
-  cursor: pointer;
-  border: none;
+  margin: 0;
+  font-size: 28px;
+  font-weight: 600;
+  text-shadow: none;
 }
 
-.logout-button:hover {
-  background-color: #b82d67;
-  color: white;
+/* Utility Section */
+.utility-section {
+  padding: 15px;
+  margin: 0 15px;
+  background: white;
+  border-radius: 15px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
 }
 
-.logout-button i {
-  font-size: 18px;
-}
-
-.order-record-button {
-  background-color: #f8d2e4;
-  color: #d12f7a;
-  padding: 8px 20px;
-  border-radius: 5px;
-  cursor: pointer;
-  border: none;
-}
-
-.order-record-button:hover {
-  background-color: #d12f7a;
-  color: white;
-}
-
-.menu-editor-button {
-  background-color: #f8d2e4;
-  color: #d12f7a;
-  padding: 8px 20px;
-  border-radius: 5px;
-  cursor: pointer;
+.utility-button {
+  width: 100%;
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 12px;
+  padding: 14px 20px;
+  background: transparent;
   border: none;
+  cursor: pointer;
+  color: #333;
+  font-size: 16px;
+  text-decoration: none;
+  transition: all 0.3s ease;
+  border-radius: 10px;
+  margin-bottom: 8px;
+  position: relative;
+  overflow: hidden;
 }
 
-.menu-editor-button:hover {
-  background-color: #d12f7a;
+.utility-button:last-child {
+  margin-bottom: 0;
+}
+
+.utility-button:hover {
+  background: rgba(209, 47, 122, 0.1);
+  transform: translateX(5px);
+}
+
+.utility-button i {
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #d12f7a;
+  border-radius: 8px;
+  font-size: 16px;
   color: white;
+  transition: all 0.3s ease;
 }
 
-/* Container for the Cafe Status Toggle */
-.admin-cafe-status {
-  margin: 20px 0;
+.utility-button:hover i {
+  transform: rotate(10deg);
+}
+
+.utility-button span {
+  font-weight: 500;
+}
+
+.utility-button.logout {
+  background: rgba(244, 67, 54, 0.1);
+  color: #f44336;
+  margin-top: 8px;
+  border-top: 1px solid rgba(0, 0, 0, 0.05);
+}
+
+.utility-button.logout i {
+  background: #f44336;
+}
+
+.utility-button.logout:hover {
+  background: rgba(244, 67, 54, 0.15);
+}
+
+/* Cafe Status Section */
+.cafe-status-section {
+  padding: 20px;
   display: flex;
   justify-content: center;
-  align-items: center;
+  margin-top: 20px;
 }
 
 .cafe-toggle-btn {
   font-size: 16px;
-  padding: 10px 20px;
-  border: 2px solid black; /* Black border */
+  padding: 12px 24px;
+  border: 2px solid #d12f7a;
   cursor: pointer;
   border-radius: 30px;
-  transition: background-color 0.3s ease, transform 0.2s ease;
-  font-weight: bold;
-  width: 200px;
+  transition: all 0.3s ease;
+  font-weight: 600;
+  width: 100%;
+  background: white;
+  color: #d12f7a;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
 }
 
-/* Style for the button when Cafe is Open */
-.open-btn {
-  background-color: #28a745; /* Green */
-  color: white;
+.cafe-toggle-btn::before {
+  content: '🏪';
+  font-size: 20px;
 }
 
-.open-btn:hover {
-  background-color: #218838; /* Darker green on hover */
-  transform: scale(1.05); /* Slightly enlarge the button */
+.cafe-toggle-btn:hover {
+  background: rgba(209, 47, 122, 0.1);
+  transform: translateY(-2px);
 }
 
-/* Style for the button when Cafe is Closed */
-.closed-btn {
-  background-color: #dc3545; /* Red */
-  color: white;
+.cafe-toggle-btn.open-btn {
+  border-color: #4CAF50;
+  color: #4CAF50;
 }
 
-.closed-btn:hover {
-  background-color: #c82333; /* Darker red on hover */
-  transform: scale(1.05); /* Slightly enlarge the button */
+.cafe-toggle-btn.open-btn::before {
+  content: '✅';
 }
 
-/* Style for the search bar container */
+.cafe-toggle-btn.closed-btn {
+  border-color: #f44336;
+  color: #f44336;
+}
+
+.cafe-toggle-btn.closed-btn::before {
+  content: '🚫';
+}
+
+/* Utility Divider */
+.utility-divider {
+  border: none;
+  height: 1px;
+  background: rgba(0, 0, 0, 0.1);
+  margin: 15px;
+  border-radius: 1px;
+}
+
+/* Main Content Area */
+.content {
+  flex: 1;
+  margin-left: 0;
+  padding: 20px;
+  transition: margin-left 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.content.shifted {
+  margin-left: 300px;
+}
+
+/* Overlay */
+.overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.5);
+  backdrop-filter: blur(4px);
+  z-index: 999;
+  opacity: 0;
+  transition: opacity 0.3s ease;
+}
+
+.overlay.visible {
+  opacity: 1;
+}
+
+/* Search Bar */
 .search-bar {
   display: flex;
   justify-content: center;
   align-items: center;
   margin: 20px auto;
   width: 90%;
-  max-width: 400px; /* Limit the width for cleaner appearance */
+  max-width: 400px;
   background-color: transparent;
   border-radius: 30px;
-  border: 2px solid #d12f7a; /* Pink border */
+  border: 2px solid #d12f7a;
 }
 
-/* Input field inside the search bar */
 .search-input {
   width: 100%;
   padding: 10px 15px;
@@ -642,9 +843,11 @@ h1 {
   border-radius: 30px;
 }
 
-/* Orders container and list */
+/* Orders Container */
 .orders-container {
   width: 100%;
+  max-width: 1200px;
+  margin: 0 auto;
 }
 
 .orders-container h2 {
@@ -660,16 +863,16 @@ h1 {
   width: 100%;
 }
 
+/* Order Item */
 .order-item {
-  background-color: #f8d2e4; /* Light pink background */
+  background-color: #f8d2e4;
   padding: 15px;
   border-radius: 8px;
   box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
   display: flex;
   flex-direction: column;
   justify-content: space-between;
-  height: auto; /* Let height adjust based on content */
-  box-sizing: border-box;
+  height: auto;
 }
 
 .order-details h3 {
@@ -863,13 +1066,13 @@ button.decline-btn:hover {
   background-color: #f1f1f1;
 }
 
-.closed-notification {
-  background-color: red;
+.notification-popup.open-notification {
+  background-color: #4caf50;
   color: white;
 }
 
-.open-notification {
-  background-color: #4caf50;
+.notification-popup.closed-notification {
+  background-color: red;
   color: white;
 }
 
