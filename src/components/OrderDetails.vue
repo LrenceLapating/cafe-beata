@@ -123,8 +123,11 @@ export default {
     },
 
     orderAgain() {
+      const userName = localStorage.getItem('userName') || 'Guest';
+      const userCartKey = `cart_${userName}`;
+      
       // Get existing cart from localStorage or initialize empty array
-      let cart = JSON.parse(localStorage.getItem('cart') || '[]');
+      let cart = JSON.parse(localStorage.getItem(userCartKey) || '[]');
       
       // Add all items from this order to the cart
       this.items.forEach(item => {
@@ -143,8 +146,8 @@ export default {
         }
       });
       
-      // Save updated cart to localStorage
-      localStorage.setItem('cart', JSON.stringify(cart));
+      // Save updated cart to localStorage with user-specific key
+      localStorage.setItem(userCartKey, JSON.stringify(cart));
       
       // Show success message
       this.showSuccessMessage = true;

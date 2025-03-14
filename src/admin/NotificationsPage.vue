@@ -94,12 +94,20 @@
 
             <div class="order-actions">
               <!-- Mark as Completed button -->
-              <button @click="markAsCompleted(order.id, order.customer_name, order.items)" class="mark-completed-btn small-btn">
+              <button 
+                @click="markAsCompleted(order.id, order.customer_name, order.items)" 
+                class="mark-completed-btn small-btn"
+                :disabled="!orderReadyStatus[order.id]"
+                :class="{ 'disabled': !orderReadyStatus[order.id] }"
+              >
                 Mark as Completed
               </button>
 
               <!-- Order Ready button -->
-              <button @click="sendOrderReadyNotification(order.id, order.customer_name, order.items)" class="order-ready-btn small-btn">
+              <button 
+                @click="sendOrderReadyNotification(order.id, order.customer_name, order.items)" 
+                class="order-ready-btn small-btn"
+              >
                 Order Ready  🔔
               </button>
 
@@ -177,6 +185,7 @@ export default {
       notificationVisible: false,
       showMenuEditor: false, // Control visibility of menu editor popup
       isSidebarOpen: localStorage.getItem('sidebarOpen') === 'true', // Control visibility of sidebar
+      orderReadyStatus: {}, // Track which orders are ready
     };
   },
   computed: {
@@ -478,14 +487,19 @@ export default {
       notifications.push(notification);
       localStorage.setItem(userNotificationsKey, JSON.stringify(notifications));
 
+      // Set order as ready using direct assignment
+      this.orderReadyStatus[orderId] = true;
+      // Force reactivity update
+      this.orderReadyStatus = { ...this.orderReadyStatus };
+
       // Emit event to notify other components (optional)
       window.dispatchEvent(new Event("notificationUpdated"));
 
-       this.notificationSent = true;
+      this.notificationSent = true;
 
-         setTimeout(() => {
-      this.notificationSent = false;
-    }, 3000);  // Hide the popup after 3 seconds
+      setTimeout(() => {
+        this.notificationSent = false;
+      }, 3000);  // Hide the popup after 3 seconds
     },
 
     // Toggle menu editor popup visibility
@@ -918,9 +932,17 @@ button.mark-completed-btn {
   border-radius: 5px;
   cursor: pointer;
   width: 100%;
+  transition: all 0.3s ease;
 }
 
-button.mark-completed-btn:hover {
+button.mark-completed-btn:disabled,
+button.mark-completed-btn.disabled {
+  background-color: #cccccc;
+  cursor: not-allowed;
+  opacity: 0.7;
+}
+
+button.mark-completed-btn:not(:disabled):hover {
   background-color: #b82d67;
 }
 

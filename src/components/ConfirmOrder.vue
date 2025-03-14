@@ -248,7 +248,8 @@ export default {
     },
 
     loadCart() {
-      const storedCart = localStorage.getItem('cart');
+      const userCartKey = `cart_${this.userName}`; // Create user-specific cart key
+      const storedCart = localStorage.getItem(userCartKey);
       if (storedCart) {
         this.cart = JSON.parse(storedCart);
         // Check if we have items from URL in the cart
@@ -297,7 +298,8 @@ export default {
     },
 
     saveCart() {
-      localStorage.setItem('cart', JSON.stringify(this.cart));
+      const userCartKey = `cart_${this.userName}`; // Use the same user-specific cart key
+      localStorage.setItem(userCartKey, JSON.stringify(this.cart));
     },
 
     startProcessingOrder() {
@@ -421,8 +423,9 @@ export default {
           }
         });
 
-        // Clear cart data after the order is placed
-        localStorage.removeItem('cart');
+        // Clear cart data after the order is placed - use user-specific key
+        const userCartKey = `cart_${this.userName}`;
+        localStorage.removeItem(userCartKey);
         this.cart = [];
       })
       .catch(error => {

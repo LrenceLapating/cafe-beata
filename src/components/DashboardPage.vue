@@ -110,13 +110,19 @@
           </div>
         </div>
 
-        <div class="search-container">
-          <input
-            type="text"
-            v-model="searchQuery"
-            placeholder="Search our Drinks and Food"
-            @input="filterItems"
-          />
+        <div class="search-cart-container">
+          <div class="search-container">
+            <input
+              type="text"
+              v-model="searchQuery"
+              placeholder="Search our Drinks and Food"
+              @input="filterItems"
+            />
+          </div>
+          <div class="cart-icon-container" @click="goToCart">
+            <i class="fas fa-shopping-cart"></i>
+            <span v-if="cartItemCount > 0" class="cart-badge">{{ cartItemCount }}</span>
+          </div>
         </div>
       </div>
 
@@ -151,6 +157,30 @@
       <div v-else class="no-items">
         <p>No items found in this category.</p>
       </div>
+
+      <!-- Item Click Modal -->
+      <div v-if="showItemModal" class="item-modal">
+        <div class="modal-content">
+          <span class="close" @click="closeItemModal">&times;</span>
+          <div class="modal-item-details">
+            <img :src="selectedItem ? getImagePath(selectedItem.image) : require('@/assets/default.png')" :alt="selectedItem ? selectedItem.name : ''" />
+            <h3>{{ selectedItem ? selectedItem.name : '' }}</h3>
+            <p class="price">₱{{ selectedItem ? Number(selectedItem.price).toFixed(2) : '0.00' }}</p>
+            
+            <!-- Add quantity controls -->
+            <div class="modal-quantity-controls">
+              <button @click="decreaseModalQuantity" class="quantity-btn">-</button>
+              <span class="quantity-display">{{ modalQuantity }}</span>
+              <button @click="increaseModalQuantity" class="quantity-btn">+</button>
+            </div>
+            <p class="total-price">Total: ₱{{ selectedItem ? (Number(selectedItem.price) * modalQuantity).toFixed(2) : '0.00' }}</p>
+          </div>
+          <div class="modal-buttons">
+            <button @click="addToCart" class="add-cart-btn">Add to Cart</button>
+            <button @click="orderNow" class="order-now-btn">Order Now</button>
+          </div>
+        </div>
+      </div>
     </div>
   </div>
 </template>
@@ -174,11 +204,14 @@ export default {
       currentTime: new Date().toLocaleTimeString(),
       isSidebarOpen: localStorage.getItem('sidebarOpen') === 'true',
       isLoading: false,
-      // Store API items
       apiItems: [],
-      // Store filtered items
       filteredItems: [],
       categories: [],
+      showItemModal: false,
+      selectedItem: null,
+      cartItemCount: 0,
+      cart: [], // Array to store cart items
+      modalQuantity: 1,
     };
   },
 
@@ -196,18 +229,23 @@ beforeUnmount() {
       window.removeEventListener('categories-updated', this.handleCategoriesUpdated);
       this.stopPollingForNewNotifications();
       this.stopPollingForItems();
+      window.removeEventListener('storage', this.updateCartCount);
   },
   
   async mounted() {
-     this.$watch(
+    this.$watch(
       () => eventBus.notificationsCount,
       (newCount) => {
         this.unreadNotificationsCount = newCount;
       }
     );
     
-    // Check if there's a category in the route query
-    if (this.$route.query.category) {
+    // Check for last viewed category first
+    const lastViewedCategory = localStorage.getItem('lastViewedCategory');
+    if (lastViewedCategory) {
+      this.currentCategory = lastViewedCategory;
+    } else if (this.$route.query.category) {
+      // Only use route query if no last viewed category exists
       this.currentCategory = this.$route.query.category;
     }
     
@@ -215,18 +253,16 @@ beforeUnmount() {
     this.applyDarkMode(this.isDarkMode);
     this.startPollingForNewNotifications();
     await this.loadUserProfile();
-    
-    // Fetch items from API
     await this.fetchItems();
-    
-    // Start polling for new items
     this.startPollingForItems();
+    await this.loadCategories();
     
-    // Load initial categories
-    this.loadCategories();
+    // Filter items after loading everything
+    this.filterItems();
     
-    // Listen for category updates
     window.addEventListener('categories-updated', this.handleCategoriesUpdated);
+    this.updateCartCount();
+    window.addEventListener('storage', this.updateCartCount);
   },
     
  
@@ -390,6 +426,8 @@ beforeUnmount() {
 
     filterCategory(category) {
       this.currentCategory = category;
+      // Save the selected category
+      localStorage.setItem('lastViewedCategory', category);
       this.filterItems();
       
       // Close sidebar on mobile after selecting a category
@@ -399,12 +437,28 @@ beforeUnmount() {
     },
 
     getImagePath(image) {
-      // Check if the image is a full URL or a backend path
-      if (image && (image.startsWith('http') || image.startsWith('/uploads'))) {
-        return image.startsWith('/uploads') ? `http://localhost:8000${image}` : image;
+      // Handle cases where image is undefined or null
+      if (!image) {
+        return require('@/assets/default.png');
       }
-      // Otherwise, use the asset path
-      return require(`@/assets/${image}`);
+
+      // If it's already a full URL, return it as is
+      if (typeof image === 'string' && image.startsWith('http')) {
+        return image;
+      }
+
+      // If it's a backend path, prepend the backend URL
+      if (typeof image === 'string' && image.startsWith('/uploads')) {
+        return `http://localhost:8000${image}`;
+      }
+
+      // Try to load from assets
+      try {
+        return require(`@/assets/${image}`);
+      } catch (error) {
+        console.error(`Failed to load image: ${image}`, error);
+        return require('@/assets/default.png');
+      }
     },
 
     filterItems() {
@@ -430,23 +484,9 @@ beforeUnmount() {
     },
 
    navigateToConfirmOrder(item) {
-      // Save the current category to localStorage
-      localStorage.setItem('lastCategory', this.currentCategory);
-      
-      // For backend items, ensure the image path is properly formatted
-      let imagePath = item.image;
-      if (imagePath.startsWith('/uploads')) {
-        imagePath = `http://localhost:8000${imagePath}`;
-      }
-      
-      this.$router.push({
-        name: "ConfirmOrder",
-        query: {
-          name: item.name,
-          price: item.price,
-          image: imagePath,
-        },
-      });
+      // Always show modal first
+      this.showItemModal = true;
+      this.selectedItem = item;
     },
     handleLogout() {
       localStorage.removeItem('loggedIn');
@@ -484,6 +524,101 @@ beforeUnmount() {
     handleCategoriesUpdated() {
       // Reload categories from the backend
       this.loadCategories();
+    },
+    goToCart() {
+      // Navigate to confirm order page to view cart
+      this.$router.push({ name: "ConfirmOrder" });
+    },
+    closeItemModal() {
+      this.showItemModal = false;
+      this.selectedItem = null;
+      this.modalQuantity = 1; // Reset quantity when closing modal
+    },
+    addToCart() {
+      if (!this.selectedItem) return;
+
+      const userCartKey = `cart_${this.userName}`;
+      let cart = JSON.parse(localStorage.getItem(userCartKey)) || [];
+      
+      const imagePath = this.getImagePath(this.selectedItem.image);
+      
+      const existingItemIndex = cart.findIndex(item => item.name === this.selectedItem.name);
+      
+      if (existingItemIndex !== -1) {
+        cart[existingItemIndex].quantity += this.modalQuantity;
+      } else {
+        cart.push({
+          name: this.selectedItem.name,
+          price: this.selectedItem.price,
+          image: imagePath,
+          quantity: this.modalQuantity
+        });
+      }
+      
+      localStorage.setItem(userCartKey, JSON.stringify(cart));
+      this.updateCartCount();
+      
+      // Save current category before closing modal
+      localStorage.setItem('lastViewedCategory', this.currentCategory);
+      
+      this.closeItemModal();
+      this.showAddedToCartNotification();
+    },
+    showAddedToCartNotification() {
+      // Create a temporary div for the notification
+      const notification = document.createElement('div');
+      notification.className = 'added-to-cart-notification';
+      notification.textContent = '+1 Added to Cart';
+      document.body.appendChild(notification);
+
+      // Remove the notification after animation
+      setTimeout(() => {
+        notification.remove();
+      }, 1000);
+    },
+    orderNow() {
+      if (!this.selectedItem) return;
+      
+      const imagePath = this.getImagePath(this.selectedItem.image);
+      const userCartKey = `cart_${this.userName}`;
+      let cart = JSON.parse(localStorage.getItem(userCartKey)) || [];
+      
+      const existingItemIndex = cart.findIndex(item => item.name === this.selectedItem.name);
+      
+      if (existingItemIndex !== -1) {
+        cart[existingItemIndex].quantity += this.modalQuantity;
+      } else {
+        cart.push({
+          name: this.selectedItem.name,
+          price: this.selectedItem.price,
+          image: imagePath,
+          quantity: this.modalQuantity
+        });
+      }
+      
+      // Save current category before navigating
+      localStorage.setItem('lastViewedCategory', this.currentCategory);
+      
+      localStorage.setItem(userCartKey, JSON.stringify(cart));
+      this.updateCartCount();
+      
+      this.$router.push({
+        name: "ConfirmOrder"
+      });
+    },
+    updateCartCount() {
+      const userCartKey = `cart_${this.userName}`;
+      const cart = JSON.parse(localStorage.getItem(userCartKey)) || [];
+      // Count unique items instead of total quantities
+      this.cartItemCount = cart.length;
+    },
+    decreaseModalQuantity() {
+      if (this.modalQuantity > 1) {
+        this.modalQuantity -= 1;
+      }
+    },
+    increaseModalQuantity() {
+      this.modalQuantity += 1;
     },
   },
   watch: {
@@ -870,11 +1005,20 @@ beforeUnmount() {
 
 .dashboard {
   display: flex;
-  height: 100vh;
+  min-height: 100vh;
   flex-direction: column;
   background-color: #fce6e6;
+  width: 100%;
+  overflow-x: hidden;
+  position: relative;
 }
 
+html, body {
+  min-height: 100vh;
+  margin: 0;
+  padding: 0;
+  background-color: #fce6e6;
+}
 
 /* Sidebar */
 .sidebar {
@@ -1168,17 +1312,17 @@ beforeUnmount() {
 .logo-time-container {
   display: flex;
   align-items: center;
-  gap: 0px;
+  justify-content: center;
+  gap: 10px;
+  width: 100%;
 }
 
 .search-container { 
-
   display: flex;
   justify-content: center; 
   padding: 10px;
   border-radius: 15px;
-  width: 80%;
-  max-width: 300px;
+  width: 100%;
 } 
 
 /* Style for the live time text */
@@ -1186,151 +1330,116 @@ beforeUnmount() {
   font-weight: bold;
   font-size: 15px;
   color: #333;
-  margin-top: 0; 
-  font-style: italic; 
-  background: transparent; 
+  margin: 0;
   padding: 0;
-  margin:  20px 0 0 0;
+  display: flex;
+  align-items: center;
+}
+
+.live-time p {
+  margin: 0;
 }
 
 /* Add other necessary styling if needed */
 .top-bar {
   display: flex;
-   border-radius: 50px;
-  background-color:rgb(255, 239, 239);
+  border-radius: 50px;
+  background-color: rgb(255, 239, 239);
   flex-direction: column;
-  text-align: center;
-  justify-content: space-between;
+  justify-content: center;
   align-items: center;
-  padding: 10px 20px;
- 
+  padding: 15px 20px;
   box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
-  flex-wrap: nowrap; 
-  gap: 10px;
+  gap: 15px;
 }
 
-.logo-container img {
-  width: 80px;
-  filter: none; /* Ensure no filter is applied */
-  background-color: transparent; /* Ensure background is transparent */
-}
-
-.logo-light {
-  filter: none; /* Ensure no filter is applied */
-  background-color: transparent; /* Ensure background is transparent */
-}
-
-.content {
-  flex: 1;
-  margin-left: 0;
-  padding: 20px;
-  overflow-y: auto;
-  transition: margin-left 0.3s ease;
-}
-
-.content.shifted {
-  margin-left: 270px;
-}
-
-/* Menu button styles */
-.menu-button {
-  position: fixed;
-  top: 15px;
-  left: 15px;
-  z-index: 300;
-  background: rgb(255, 255, 255);
-  color: black;
-  padding: 10px 15px;
-  font-size: 18px;
-  border: none;
-  border-radius: 15px;
-  cursor: pointer;
-  transition: background 0.3s ease-in-out;
-  display: block; /* Always show the menu button */
-}
-
-/* Sidebar styles */
-.sidebar {
-  position: fixed;
-  top: 0;
-  left: -280px;
-  height: 100vh;
-  width: 280px;
-  background-color: white;
-  transition: all 0.3s ease;
-  z-index: 1000;
+.logo-container {
   display: flex;
-  flex-direction: column;
-  padding: 20px 0 20px 0; /* Add bottom padding */
-  box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+  align-items: center;
+  justify-content: center;
 }
-
-.sidebar.open {
-  left: 0;
-}
-
-@media (max-width: 768px) {
-  .sidebar {
-    position: fixed;
-    top: 0;
-    left: -250px; 
-    width: 250px;
-    height: 100vh;
-    background-color: #fce6e6;
-    transition: left 0.3s ease-in-out;
-    z-index: 1000;
-    box-shadow: 2px 0 5px rgba(0, 0, 0, 0.1);
-    overflow-y: auto; 
-  }
-
-  .sidebar.open {
-   left: 0; 
-
-  }
-
-  .content {
-    margin-left: 0; 
-  }
-}
-
-/* Dashboard Title */
-.dashboard-title {
-   font-size: 30px;
-  }
-
 
 .logo-container img {
   width: 80px;
+  height: auto;
+}
+
+.search-cart-container {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  width: 100%;
+  max-width: 400px;
 }
 
 .search-container input {
-  padding: 10px;
-  border-radius: 20px;
-  border: 1px solid #ccc;
   width: 100%;
   max-width: 300px;
-} 
-
-/* Top Bar Buttons */
-.top-bar-buttons {
-  display: flex;
-  gap: 5px;
-}
-
-.order-history-button,
-.logout-button {
-  background-color: rgb(77, 24, 48);
-  color: white;
-  padding: 8px 12px;
+  padding: 10px 15px;
+  border-radius: 20px;
+  border: 1px solid #ccc;
   font-size: 14px;
-  border: none;
-  border-radius: 5px;
-  cursor: pointer;
 }
 
-.order-history-button:hover,
-.logout-button:hover {
-  background-color: #b82d67;
+/* Live Time text styling */
+.live-time {
+  font-weight: bold;
+  font-size: 15px;
+  color: #333;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  align-items: center;
+}
+
+.live-time p {
+  margin: 0;
+}
+
+/* Logo container */
+.logo-container {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.logo-container img {
+  width: 80px;
+  height: auto;
+}
+
+/* Cart icon positioning */
+.cart-icon-container {
+  position: absolute;
+  right: -40px;
+  cursor: pointer;
+  padding: 10px;
+  font-size: 24px;
+  color: #d12f7a;
+  transition: color 0.3s ease;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+  .search-cart-container {
+    width: 90%;
+  }
+  
+  .cart-icon-container {
+    right: -35px;
+    font-size: 20px;
+  }
+}
+
+@media (min-width: 769px) {
+  .top-bar {
+    padding: 20px;
+  }
+  
+  .search-container {
+    max-width: 400px;
+  }
 }
 
 /* Dashboard Title */
@@ -1357,7 +1466,6 @@ beforeUnmount() {
   display: flex;
   align-items: center;
   justify-content: center;
-  margin-right: 10px;
 }
 
 /* Live Time container */
@@ -1372,7 +1480,6 @@ beforeUnmount() {
 
 /* Style the search bar */
 .search-container input {
-  padding: 12px;
   border-radius: 20px;
   border: 1px solid #ccc;
   width: 100%;
@@ -1573,4 +1680,321 @@ beforeUnmount() {
   /* These styles will be removed */
 }
 
+.search-cart-container {
+  display: flex;
+  align-items: center;
+  width: 80%;
+  max-width: 400px;
+  position: relative;
+}
+
+.search-container { 
+  display: flex;
+  justify-content: center; 
+  padding: 10px;
+  border-radius: 15px;
+  width: 100%;
+  max-width: 300px;
+} 
+
+.cart-icon-container {
+  position: absolute;
+  right: -40px;
+  cursor: pointer;
+  padding: 10px;
+  font-size: 24px;
+  color: #d12f7a;
+  transition: color 0.3s ease;
+}
+
+@media (max-width: 768px) {
+  .search-cart-container {
+    width: 90%;
+    max-width: none;
+    position: relative;
+  }
+  
+  .search-container {
+    width: 100%;
+    max-width: none;
+  }
+  
+  .cart-icon-container {
+    right: -35px;
+    font-size: 20px;
+  }
+  
+  .search-container input {
+    width: 100%;
+    max-width: none;
+  }
+}
+
+.cart-badge {
+  position: absolute;
+  top: -5px;
+  right: -5px;
+  background-color: red;
+  color: white;
+  border-radius: 50%;
+  padding: 2px 6px;
+  font-size: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.item-modal {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-color: rgba(0, 0, 0, 0.5);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 1000;
+}
+
+.modal-content {
+  background-color: #fce6e6;
+  padding: 30px;
+  border-radius: 15px;
+  text-align: center;
+  width: 90%;
+  max-width: 400px;
+  position: relative;
+}
+
+/* Update close button styles */
+.modal-content .close {
+  position: absolute;
+  top: 10px;
+  right: 15px;
+  font-size: 32px;
+  color: #333;
+  cursor: pointer;
+  width: 40px;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  transition: all 0.3s ease;
+  background: none;
+  border: none;
+  padding: 0;
+  line-height: 1;
+}
+
+.modal-content .close:hover {
+  color: #d12f7a;
+  transform: scale(1.1);
+}
+
+/* Dark mode styles for close button */
+.dark-mode .modal-content .close {
+  color: #fff;
+}
+
+.dark-mode .modal-content .close:hover {
+  color: #f8c6d0;
+}
+
+@media (max-width: 768px) {
+  .modal-content .close {
+    font-size: 28px;
+    width: 35px;
+    height: 35px;
+  }
+}
+
+.modal-item-details {
+  margin-bottom: 20px;
+}
+
+.modal-item-details img {
+  width: 150px;
+  height: 150px;
+  object-fit: contain;
+  margin-bottom: 15px;
+}
+
+.modal-item-details h3 {
+  color: #333;
+  margin: 10px 0;
+}
+
+.modal-item-details .price {
+  color: #d12f7a;
+  font-size: 20px;
+  font-weight: bold;
+}
+
+.modal-buttons {
+  display: flex;
+  justify-content: center;
+  gap: 15px;
+}
+
+.add-cart-btn, .order-now-btn {
+  padding: 10px 20px;
+  border: none;
+  border-radius: 5px;
+  cursor: pointer;
+  font-weight: bold;
+  transition: all 0.3s ease;
+}
+
+.add-cart-btn {
+  background-color: #333;
+  color: white;
+}
+
+.order-now-btn {
+  background-color: #d12f7a;
+  color: white;
+}
+
+.add-cart-btn:hover {
+  background-color: #444;
+}
+
+.order-now-btn:hover {
+  background-color: #b82d67;
+}
+
+/* Dark mode styles */
+.dark-mode .modal-content {
+  background-color: #333;
+  color: white;
+}
+
+.dark-mode .modal-item-details h3 {
+  color: white;
+}
+
+.dark-mode .cart-icon-container {
+  color: #f8c6d0;
+}
+
+.dark-mode .cart-icon-container:hover {
+  color: #f8a1b2;
+}
+
+@media (max-width: 768px) {
+  .search-cart-container {
+    max-width: 300px;
+  }
+  
+  .cart-icon-container {
+    font-size: 20px;
+  }
+  
+  .modal-content {
+    width: 85%;
+    padding: 20px;
+  }
+  
+  .modal-item-details img {
+    width: 120px;
+    height: 120px;
+  }
+}
+
+/* Add this to your existing styles */
+.added-to-cart-notification {
+  position: fixed;
+  top: 20px;
+  right: 20px;
+  background-color: #4CAF50;
+  color: white;
+  padding: 10px 20px;
+  border-radius: 5px;
+  z-index: 2000;
+  animation: slideIn 0.3s ease-out, fadeOut 0.3s ease-out 0.7s;
+}
+
+@keyframes slideIn {
+  from {
+    transform: translateX(100%);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+
+@keyframes fadeOut {
+  from {
+    opacity: 1;
+  }
+  to {
+    opacity: 0;
+  }
+}
+
+/* Dark mode support */
+.dark-mode .added-to-cart-notification {
+  background-color: #45a049;
+}
+
+/* Modal Quantity Controls */
+.modal-quantity-controls {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 15px;
+  margin: 20px 0;
+}
+
+.quantity-btn {
+  width: 35px;
+  height: 35px;
+  border: none;
+  border-radius: 50%;
+  background-color: #d12f7a;
+  color: white;
+  font-size: 20px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.3s ease;
+}
+
+.quantity-btn:hover {
+  background-color: #b82d67;
+  transform: scale(1.1);
+}
+
+.quantity-display {
+  font-size: 24px;
+  font-weight: bold;
+  color: #333;
+  min-width: 40px;
+  text-align: center;
+}
+
+.total-price {
+  font-size: 20px;
+  font-weight: bold;
+  color: #d12f7a;
+  margin-top: 10px;
+}
+
+/* Dark mode styles for quantity controls */
+.dark-mode .quantity-display {
+  color: #fff;
+}
+
+.dark-mode .quantity-btn {
+  background-color: #444;
+}
+
+.dark-mode .quantity-btn:hover {
+  background-color: #555;
+}
 </style>
