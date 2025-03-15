@@ -13,17 +13,26 @@
       <h2>Sales by Date</h2>
       <div class="calendar-container">
         <div class="date-field">
-          <div class="date-input-wrapper" @click="focusDateInput">
+          <div class="date-input-wrapper">
             <input 
-              type="date" 
-              :value="formatDateForInput(selectedDate)" 
-              @input="handleDateChange"
+              type="text"
+              v-model="manualDateInput"
+              @input="handleManualDateInput"
+              @focus="handleInputFocus"
+              placeholder="MM-DD-YYYY"
               class="date-input"
               ref="dateInput"
             >
-            <div class="calendar-icon">
+            <div class="calendar-icon" @click="openCalendarPicker">
               <img src="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIxNiIgaGVpZ2h0PSIxNiIgdmlld0JveD0iMCAwIDE2IDE2Ij48cGF0aCBmaWxsPSIjNjY2IiBkPSJNNSAyVjFoMnYxaDJ2MEg1ek0xMyAzdjEwSDNWM2gxMHpNMyAyYTEgMSAwIDAwLTEgMXYxMGExIDEgMCAwMDEgMWgxMGExIDEgMCAwMDEtMVYzYTEgMSAwIDAwLTEtMWgtMVYxYTEgMSAwIDAwLTEtMUg1YTEgMSAwIDAwLTEgMXYxSDNhMSAxIDAgMDAtMSAxeiIvPjwvc3ZnPg==" alt="calendar" />
             </div>
+            <input 
+              type="date" 
+              :value="formatDateForInput(selectedDate)"
+              @input="handleDateChange"
+              class="calendar-picker"
+              ref="calendarPicker"
+            >
           </div>
         </div>
       </div>
@@ -178,6 +187,7 @@ export default {
       filteredOrders: [], // This will store filtered results
       searchQuery: "", // Search input field
       selectedDate: new Date(), // Default to today
+      manualDateInput: "", // For manual date input
       showSalesModal: false,
       dailySales: {
         total: 0,
@@ -215,23 +225,50 @@ export default {
     filterOrders() {
       if (this.searchQuery === '') {
         this.filteredOrders = this.orders;
-      } else {
-        const query = this.searchQuery.toLowerCase();
+        return;
+      }
+
+      const query = this.searchQuery.trim();
+      
+      // Check if the search query matches the date format MM-DD-YYYY
+      const isDateSearch = /^\d{2}-\d{2}-\d{4}$/.test(query);
+
+      this.filteredOrders = this.orders.filter(order => {
+        // For date search
+        if (isDateSearch) {
+          const orderDate = this.formatDateMMDDYYYY(new Date(order.created_at));
+          return orderDate === query;
+        }
+
+        // For Order ID search (exact match)
+        if (!isNaN(query)) {
+          return order.id.toString() === query;
+        }
+
+        // For customer name search (exact match)
+        return order.customer_name === query;
+      });
+
+      // If no exact matches found and it's not a date search, try partial matches for names only
+      if (this.filteredOrders.length === 0 && !isDateSearch && isNaN(query)) {
         this.filteredOrders = this.orders.filter(order => {
-          return (
-            order.id.toString().includes(query) || 
-            order.customer_name.toLowerCase().includes(query) ||
-            order.created_at.toLowerCase().includes(query)
-          );
-        }).sort((a, b) => {
-          // Prioritize orders that start with the search query
-          const aStartsWith = a.id.toString().startsWith(query) ? 1 : 0;
-          const bStartsWith = b.id.toString().startsWith(query) ? 1 : 0;
-          const aIncludes = a.id.toString().includes(query) ? 1 : 0;
-          const bIncludes = b.id.toString().includes(query) ? 1 : 0;
-          return (bStartsWith - aStartsWith) || (bIncludes - aIncludes) || (a.id - b.id);
+          return order.customer_name.toLowerCase().includes(query.toLowerCase());
         });
       }
+
+      // Sort results
+      this.filteredOrders.sort((a, b) => {
+        // If searching by ID, prioritize exact matches
+        if (!isNaN(query)) {
+          const aExact = a.id.toString() === query;
+          const bExact = b.id.toString() === query;
+          if (aExact && !bExact) return -1;
+          if (!aExact && bExact) return 1;
+        }
+        
+        // Default sort by date (newest first)
+        return new Date(b.created_at) - new Date(a.created_at);
+      });
     },
 
     // Method to format the order date
@@ -282,15 +319,22 @@ export default {
       return "₱" + items.reduce((sum, item) => sum + item.price * item.quantity, 0).toFixed(2);
     },
 
-    focusDateInput() {
-      this.$refs.dateInput.showPicker();
+    handleInputFocus(event) {
+      // If user clicks directly on the text input, don't show the calendar
+      event.preventDefault();
+      event.stopPropagation();
+    },
+
+    openCalendarPicker() {
+      this.$refs.calendarPicker.showPicker();
     },
     
     handleDateChange(event) {
-      const newDate = new Date(event.target.value + 'T00:00:00');
-      if (!isNaN(newDate.getTime())) {
-        this.selectedDate = newDate;
-        this.fetchSalesForDate();
+      const date = new Date(event.target.value);
+      if (!isNaN(date.getTime())) {  // Check if date is valid
+        this.selectedDate = date;
+        this.manualDateInput = this.formatDateForManualInput(date);
+        this.updateSalesData();
       }
     },
     
@@ -341,10 +385,65 @@ export default {
     viewOrderDetails(order) {
       this.selectedOrder = order;
       this.showOrderDetailsModal = true;
+    },
+
+    // Format date for manual input display
+    formatDateForManualInput(date) {
+      const month = (date.getMonth() + 1).toString().padStart(2, '0');
+      const day = date.getDate().toString().padStart(2, '0');
+      const year = date.getFullYear();
+      return `${month}-${day}-${year}`;
+    },
+
+    // Handle manual date input
+    handleManualDateInput(event) {
+      const input = event.target.value;
+      
+      // Auto-format as user types
+      let formatted = input.replace(/\D/g, ''); // Remove non-digits
+      if (formatted.length >= 2) {
+        formatted = formatted.slice(0, 2) + (formatted.length > 2 ? '-' : '') + formatted.slice(2);
+      }
+      if (formatted.length >= 5) {
+        formatted = formatted.slice(0, 5) + (formatted.length > 5 ? '-' : '') + formatted.slice(5);
+      }
+      if (formatted.length > 10) {
+        formatted = formatted.slice(0, 10);
+      }
+      
+      this.manualDateInput = formatted;
+
+      // Only process if we have a complete date
+      if (formatted.length === 10) {
+        const [month, day, year] = formatted.split('-').map(num => parseInt(num, 10));
+        const date = new Date(year, month - 1, day);
+        
+        // Validate date
+        if (
+          date.getFullYear() === year &&
+          date.getMonth() === month - 1 &&
+          date.getDate() === day &&
+          year >= 1900 && 
+          year <= 2100
+        ) {
+          this.selectedDate = date;
+          this.updateSalesData();
+        }
+      }
+    },
+
+    // Initialize manual date input
+    initializeManualDateInput() {
+      this.manualDateInput = this.formatDateForManualInput(this.selectedDate);
+    },
+
+    updateSalesData() {
+      this.fetchSalesForDate();
     }
   },
   mounted() {
     this.fetchOrders();
+    this.initializeManualDateInput();
   },
   watch: {
     isDarkMode(newValue) {
@@ -424,51 +523,128 @@ h2 {
 
 /* Calendar Section Styles */
 .calendar-section {
-  margin: 20px 0;
+  margin: 20px auto;
+  max-width: 600px;
+  padding: 20px;
 }
 
 .calendar-container {
   display: flex;
   justify-content: center;
-  margin: 15px 0;
+  align-items: center;
+  gap: 15px;
 }
 
 .date-field {
-  width: 200px;
-  position: relative;
+  display: flex;
+  gap: 10px;
+  align-items: center;
 }
 
 .date-input-wrapper {
   position: relative;
-  width: 100%;
-  cursor: pointer;
+  width: 200px;
   display: flex;
   align-items: center;
 }
 
 .date-input {
   width: 100%;
-  padding: 4px 30px 4px 4px;
-  border: 1px solid #ccc;
-  border-radius: 0;
-  font-size: 14px;
-  cursor: pointer;
+  padding: 8px 12px;
+  padding-right: 40px;
+  border: 2px solid #d12f7a;
+  border-radius: 5px;
+  font-size: 16px;
+  color: #333;
+  background: white;
+  transition: all 0.3s ease;
+}
+
+.date-input:focus {
+  outline: none;
+  border-color: #b82d67;
+  box-shadow: 0 0 5px rgba(209, 47, 122, 0.3);
 }
 
 .calendar-icon {
   position: absolute;
-  right: 5px;
+  right: 8px;
   top: 50%;
   transform: translateY(-50%);
-  pointer-events: none;
+  cursor: pointer;
+  z-index: 2;
+  width: 30px;
+  height: 30px;
   display: flex;
   align-items: center;
+  justify-content: center;
+  background: transparent;
+  border-radius: 4px;
+  transition: background-color 0.3s ease;
+}
+
+.calendar-icon:hover {
+  background-color: rgba(209, 47, 122, 0.1);
 }
 
 .calendar-icon img {
   width: 16px;
   height: 16px;
-  display: block;
+  opacity: 0.6;
+  transition: opacity 0.3s ease;
+  padding: 2px;
+}
+
+.calendar-icon:hover img {
+  opacity: 1;
+}
+
+.calendar-picker {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.calendar-picker::-webkit-calendar-picker-indicator {
+  display: none;
+}
+
+/* Dark mode adjustments */
+.dark-mode .date-input {
+  background: #2c2c2c;
+  color: #fff;
+  border-color: #d12f7a;
+}
+
+.dark-mode .calendar-icon img {
+  filter: invert(1);
+  opacity: 0.8;
+}
+
+.dark-mode .calendar-icon:hover img {
+  opacity: 1;
+}
+
+/* Media Queries */
+@media (max-width: 480px) {
+  .date-field {
+    flex-direction: column;
+    width: 100%;
+  }
+
+  .manual-date-input,
+  .date-input {
+    width: 100%;
+  }
+
+  .manual-date-input-wrapper,
+  .date-input-wrapper {
+    width: 100%;
+  }
 }
 
 /* Modal Styles */

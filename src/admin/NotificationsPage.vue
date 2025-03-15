@@ -95,7 +95,7 @@
             <div class="order-actions">
               <!-- Mark as Completed button -->
               <button 
-                @click="markAsCompleted(order.id, order.customer_name, order.items)" 
+                @click="showCompletionConfirmation(order.id)" 
                 class="mark-completed-btn small-btn"
                 :disabled="!orderReadyStatus[order.id]"
                 :class="{ 'disabled': !orderReadyStatus[order.id] }"
@@ -130,6 +130,18 @@
                   Cancel
                 </button>
               </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Completion Confirmation Popup -->
+        <div v-if="confirmCompleteOrderId" class="completion-confirmation-popup">
+          <div class="completion-confirmation-content">
+            <h3>Confirm Completion</h3>
+            <p>Are you sure Order ID: {{ confirmCompleteOrderId }} is completed?</p>
+            <div class="confirmation-buttons">
+              <button @click="confirmCompletion" class="confirm-yes-btn">Yes</button>
+              <button @click="cancelCompletion" class="confirm-no-btn">No</button>
             </div>
           </div>
         </div>
@@ -186,6 +198,7 @@ export default {
       showMenuEditor: false, // Control visibility of menu editor popup
       isSidebarOpen: localStorage.getItem('sidebarOpen') === 'true', // Control visibility of sidebar
       orderReadyStatus: {}, // Track which orders are ready
+      confirmCompleteOrderId: null, // Track which order is being confirmed for completion
     };
   },
   computed: {
@@ -541,6 +554,23 @@ export default {
           !event.target.closest('.menu-button')) {
         this.closeSidebar();
       }
+    },
+
+    // Add new methods for completion confirmation
+    showCompletionConfirmation(orderId) {
+      this.confirmCompleteOrderId = orderId;
+    },
+
+    confirmCompletion() {
+      const order = this.orders.find(o => o.id === this.confirmCompleteOrderId);
+      if (order) {
+        this.markAsCompleted(order.id, order.customer_name, order.items);
+      }
+      this.confirmCompleteOrderId = null;
+    },
+
+    cancelCompletion() {
+      this.confirmCompleteOrderId = null;
     },
   },
 
@@ -1291,6 +1321,98 @@ button.decline-btn:hover {
   
   .menu-editor-body {
     padding: 15px;
+  }
+}
+
+/* Completion Confirmation Popup Styles */
+.completion-confirmation-popup {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-color: rgba(0, 0, 0, 0.5);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 1002;
+}
+
+.completion-confirmation-content {
+  background-color: white;
+  padding: 25px;
+  border-radius: 10px;
+  box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
+  text-align: center;
+  max-width: 400px;
+  width: 90%;
+}
+
+.completion-confirmation-content h3 {
+  color: #d12f7a;
+  margin-top: 0;
+  margin-bottom: 15px;
+  font-size: 1.5em;
+}
+
+.completion-confirmation-content p {
+  margin-bottom: 20px;
+  font-size: 1.1em;
+  color: #333;
+}
+
+.confirmation-buttons {
+  display: flex;
+  justify-content: center;
+  gap: 15px;
+}
+
+.confirm-yes-btn,
+.confirm-no-btn {
+  padding: 10px 25px;
+  border: none;
+  border-radius: 5px;
+  font-size: 1.1em;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.confirm-yes-btn {
+  background-color: #d12f7a;
+  color: white;
+}
+
+.confirm-yes-btn:hover {
+  background-color: #b82d67;
+  transform: translateY(-2px);
+}
+
+.confirm-no-btn {
+  background-color: #f5a5a5;
+  color: white;
+}
+
+.confirm-no-btn:hover {
+  background-color: #f17b7b;
+  transform: translateY(-2px);
+}
+
+/* Media query adjustments for the confirmation popup */
+@media (max-width: 480px) {
+  .completion-confirmation-content {
+    padding: 20px;
+    width: 85%;
+  }
+
+  .confirmation-buttons {
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  .confirm-yes-btn,
+  .confirm-no-btn {
+    width: 100%;
+    padding: 12px;
   }
 }
 </style>
