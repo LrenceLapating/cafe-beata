@@ -174,7 +174,7 @@ def get_db_connection():
         "host": "127.0.0.1",  # Your MySQL host
         "user": "root",        # Your MySQL user
         "password": "Warweapons19",  # Your MySQL password
-        "database": "cafe_preorders",  # Your database name
+        "database": "cafe_preorderr",  # Your database name
     }
 
     try:
