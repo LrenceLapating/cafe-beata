@@ -43,65 +43,156 @@ os.makedirs(AVATARS_DIR, exist_ok=True)
 # Mount the uploads directory for static file serving
 app.mount("/uploads", StaticFiles(directory=UPLOAD_DIR), name="uploads")
 
-# Environment variables
 SMTP_SERVER = os.getenv("SMTP_SERVER")
 SMTP_PORT = os.getenv("SMTP_PORT")
 SMTP_USER = os.getenv("SMTP_USER")
 SMTP_PASSWORD = os.getenv("SMTP_PASSWORD")
 FROM_EMAIL = os.getenv("FROM_EMAIL")
 SECRET_KEY = os.getenv("SECRET_KEY")
-DATABASE_URL = os.getenv("DATABASE_URL", "mysql://root:@localhost/cafe_preorder")
-FRONTEND_URL = os.getenv("FRONTEND_URL", "http://localhost:8080")
 
-# Database configuration
-try:
-    # Parse DATABASE_URL
-    if DATABASE_URL.startswith('mysql://'):
-        db_parts = DATABASE_URL.replace('mysql://', '').split('/')
-        db_name = db_parts[1]
-        db_user_pass_host = db_parts[0].split('@')
-        db_host = db_user_pass_host[1] if len(db_user_pass_host) > 1 else 'localhost'
-        if '@' in DATABASE_URL:
-            db_user_pass = db_user_pass_host[0].split(':')
-            db_user = db_user_pass[0]
-            db_pass = db_user_pass[1] if len(db_user_pass) > 1 else ''
-        else:
-            db_user = 'root'
-            db_pass = ''
-    
-    db_config = {
-        'host': db_host,
-        'user': db_user,
-        'password': db_pass,
-        'database': db_name
-    }
-except Exception as e:
-    print(f"Error parsing DATABASE_URL: {e}")
-    # Fallback to default configuration
-    db_config = {
-        'host': 'localhost',
-        'user': 'root',
-        'password': '',
-        'database': 'cafe_preorder'
-    }
+# Debugging: print values to check if they are loaded correctly.
+print(f"SMTP_SERVER: {SMTP_SERVER}, SMTP_PORT: {SMTP_PORT}, SMTP_USER: {SMTP_USER}, FROM_EMAIL: {FROM_EMAIL}")
+ALGORITHM = "HS256"
+
+app = FastAPI()
 
 # CORS configuration
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[FRONTEND_URL],
+    allow_origins=["http://localhost:8080", "https://my-cafe-project.vercel.app/"],  # Add your deployed frontend URL
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
-# Debugging: print values to check if they are loaded correctly.
-print(f"SMTP_SERVER: {SMTP_SERVER}, SMTP_PORT: {SMTP_PORT}, SMTP_USER: {SMTP_USER}, FROM_EMAIL: {FROM_EMAIL}")
-print(f"Database Config: {db_config}")
-ALGORITHM = "HS256"
 
-app = FastAPI()
+class ResetPasswordRequest(BaseModel):
+    email: str
 
-# Create uploads directory and its subdirectories
+class ResetPassword(BaseModel):
+    newPassword: str
+
+
+def generate_reset_token(email: str):
+    expiration = datetime.utcnow() + timedelta(hours=1)
+    to_encode = {"exp": expiration, "sub": email}
+    encoded_jwt = jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
+    return encoded_jwt
+
+def send_reset_email(to_email, reset_url):
+    msg = MIMEMultipart()
+    msg['From'] = FROM_EMAIL
+    msg['To'] = to_email
+    msg['Subject'] = 'Password Reset Request'
+
+    body = f'Click the following link to reset your password: {reset_url}'
+    msg.attach(MIMEText(body, 'plain'))
+
+    try:
+        server = smtplib.SMTP(SMTP_SERVER, SMTP_PORT)
+        server.set_debuglevel(1)
+        server.connect(SMTP_SERVER, SMTP_PORT)
+        server.starttls()
+        server.login(SMTP_USER, SMTP_PASSWORD)
+        text = msg.as_string()
+        server.sendmail(FROM_EMAIL, to_email, text)
+        server.quit()
+    except Exception as e:
+        print(f"Error sending email: {e}")
+
+import mysql.connector
+
+@app.post("/request-password-reset")
+async def request_password_reset(request: ResetPasswordRequest, background_tasks: BackgroundTasks):
+    email = request.email
+
+    # Connect to the database and check if the email exists
+    connection = get_db_connection()
+    cursor = connection.cursor()
+    cursor.execute("SELECT email FROM users WHERE email = %s", (email,))
+    user = cursor.fetchone()
+
+    if user is None:
+        raise HTTPException(status_code=400, detail="Email not found")
+
+    # Generate reset token and reset URL
+    reset_token = generate_reset_token(email)
+    reset_url = f"http://127.0.0.1:8000/reset-password/{reset_token}"
+
+    # Add send_reset_email to background task
+    background_tasks.add_task(send_reset_email, email, reset_url)
+
+    # Respond immediately to the client
+    return {"message": "Password reset link sent to your email!"}
+
+@app.get("/reset-password/{token}")
+async def reset_password_page(token: str):
+    """Redirect to frontend reset password page"""
+    reset_url = f"http://localhost:8080/reset-password/{token}"  # Make sure this URL matches your frontend route
+    return RedirectResponse(url=reset_url)
+    
+
+@app.post("/reset-password/{token}")
+async def reset_password_with_token(token: str, reset_data: ResetPassword):
+    print(f"Received token: {token}")  # Debugging: print received token
+    
+    try:
+        # Decode the token to extract the email
+        decoded_token = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+        email = decoded_token.get("sub")
+
+        # If no email is found in the token, throw an error
+        if not email:
+            raise HTTPException(status_code=400, detail="Email not found in token")
+
+        # Check if the token is expired
+        if datetime.utcnow() > datetime.utcfromtimestamp(decoded_token["exp"]):
+            raise HTTPException(status_code=400, detail="Token expired")
+
+        # Proceed with updating the password in the database
+        hashed_new_password = bcrypt.hashpw(reset_data.newPassword.encode('utf-8'), bcrypt.gensalt())
+
+        connection = get_db_connection()
+        cursor = connection.cursor()
+        cursor.execute("UPDATE users SET password = %s WHERE email = %s", (hashed_new_password, email))
+        connection.commit()
+
+        return {"message": "Password reset successfully!"}
+
+    except jwt.ExpiredSignatureError:
+        raise HTTPException(status_code=400, detail="Token expired")
+    except jwt.PyJWTError as e:  # Correct exception name for PyJWT
+        print(f"Error decoding JWT: {str(e)}")
+        raise HTTPException(status_code=400, detail="Invalid token")
+
+
+
+
+# Database connection function
+def get_db_connection():
+    db_config = {
+        "host": "127.0.0.1",  # Your MySQL host
+        "user": "root",        # Your MySQL user
+        "password": "Warweapons19",  # Your MySQL password
+        "database": "cafe_preorders",  # Your database name
+    }
+
+    try:
+        connection = mysql.connector.connect(**db_config)
+        if connection.is_connected():
+            return connection
+    except Error as e:
+        print(f"Error: {e}")
+        return None
+
+@app.get("/")
+async def root():
+    return {"message": "FastAPI is running with CORS enabled!"}
+
+
+
+
+
 UPLOAD_DIR = "uploads/avatars"
 
 # Model for User registration and login (Only email and password for login)
@@ -728,17 +819,3 @@ async def update_category(
     except Exception as e:
         print(f"Error updating category: {e}")
         raise HTTPException(status_code=500, detail="Failed to update category")
-
-# Database connection function
-def get_db_connection():
-    try:
-        connection = mysql.connector.connect(**db_config)
-        if connection.is_connected():
-            return connection
-    except Error as e:
-        print(f"Error: {e}")
-        return None
-
-@app.get("/")
-async def root():
-    return {"message": "FastAPI is running with CORS enabled!"}
