@@ -70,7 +70,16 @@ export default {
       if (userName) {
         const userNotificationsKey = `user_notifications_${userName}`;
         const storedNotifications = JSON.parse(localStorage.getItem(userNotificationsKey)) || [];
-        this.notifications = storedNotifications.reverse();
+        
+        // Sort notifications by timestamp (newest first)
+        storedNotifications.sort((a, b) => {
+          const dateA = new Date(a.timestamp);
+          const dateB = new Date(b.timestamp);
+          return dateB - dateA;
+        });
+        
+        // Update the notifications array with the sorted list
+        this.notifications = storedNotifications;
         this.updateNotificationCount();
       } else {
         this.notifications = [];
@@ -82,18 +91,49 @@ export default {
       const userNotificationsKey = `user_notifications_${userName}`;
       let notifications = JSON.parse(localStorage.getItem(userNotificationsKey)) || [];
       
-      notifications.unshift(notification);
+      // Always ensure the notification has the current timestamp if not provided
+      if (!notification.timestamp) {
+        notification.timestamp = new Date().toISOString();
+      }
+      
+      // Check if a notification with the same order ID already exists
+      const existingIndex = notifications.findIndex(n => n.orderId === notification.orderId);
+      
+      if (existingIndex !== -1) {
+        // Instead of replacing, add as a new notification if the message is different
+        if (notifications[existingIndex].message !== notification.message) {
+          notifications.unshift(notification);
+        }
+      } else {
+        // Add the new notification
+        notifications.unshift(notification);
+      }
+      
+      // Sort notifications by timestamp (newest first)
+      notifications.sort((a, b) => {
+        const dateA = new Date(a.timestamp);
+        const dateB = new Date(b.timestamp);
+        return dateB - dateA;
+      });
+      
+      // Save the updated notifications to localStorage
       localStorage.setItem(userNotificationsKey, JSON.stringify(notifications));
 
-      // Update local notifications array
+      // Update the notifications in the component
       this.notifications = notifications;
+      
+      // Update notification count
       this.updateNotificationCount();
+      
+      // Dispatch event to notify other components
+      window.dispatchEvent(new Event("notificationUpdated"));
     },
 
     formatHighlightedMessage(message) {
+      // Enhanced message formatting to handle multiple order details sections
       return message.replace(
-        /(Order details:.*?Total:.*?)/,
-        `<br/><br/><span class="highlighted-order-details">$1</span>`  
+        /(Order details:.*?Total: ₱\d+(\.\d{2})?)/g,
+        `<br/><br/><span class="highlighted-order-details">$1</span>`
       );
     },
 
@@ -128,7 +168,7 @@ export default {
             if (data.order.customer_name === userName) {
               this.addNewNotification({
                 orderId: data.order.id,
-                message: `Your order has been received! Order details: ${this.formatItems(data.order.items)}. Total: ₱${this.calculateTotal(data.order.items)}`,
+                message: `Your order has been received! and is now being prepared. We will notify you as soon as it is ready for pickup.  Order details: ${this.formatItems(data.order.items)}. Total: ₱${this.calculateTotal(data.order.items)}`,
                 timestamp: data.order.created_at
               });
             }

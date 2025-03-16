@@ -540,14 +540,24 @@ beforeUnmount() {
         const data = await response.json();
         if (data.categories) {
           this.categories = data.categories;
+          
+          // If current category doesn't exist anymore, reset to a valid one
+          const allCategoryNames = [...this.drinkCategories, ...this.foodCategories];
+          if (!allCategoryNames.includes(this.currentCategory) && 
+              this.currentCategory !== 'All Drinks' && 
+              this.currentCategory !== 'All Food') {
+            this.currentCategory = this.drinkCategories.length > 0 ? 'All Drinks' : 
+                                  (this.foodCategories.length > 0 ? 'All Food' : 'All');
+            localStorage.setItem('lastViewedCategory', this.currentCategory);
+          }
         }
       } catch (error) {
         console.error('Error loading categories:', error);
       }
     },
     handleCategoriesUpdated() {
-      // Reload categories from the backend
       this.loadCategories();
+      this.fetchItems();
     },
     goToCart() {
       // Navigate to confirm order page to view cart
@@ -597,7 +607,6 @@ beforeUnmount() {
       localStorage.setItem('lastViewedCategory', this.currentCategory);
       
       this.closeItemModal();
-      alert('Item added to cart successfully!');
     },
     orderNow() {
       if (!this.selectedItem) return;
@@ -655,9 +664,12 @@ beforeUnmount() {
       this.ws.onopen = () => {
         console.log('WebSocket connected');
         this.wsConnected = true;
+        // Initial fetch of data when connection is established
+        this.fetchItems();
+        this.loadCategories();
       };
       
-      this.ws.onmessage = (event) => {
+      this.ws.onmessage = async (event) => {
         try {
           const data = JSON.parse(event.data);
           console.log('WebSocket message received:', data);
@@ -692,6 +704,30 @@ beforeUnmount() {
               }
               return item;
             });
+          } else if (data.type === 'menu_update') {
+            // Refresh items when menu changes
+            await this.fetchItems();
+            this.filterItems();
+          } else if (data.type === 'category_update') {
+            console.log('Category update received:', data);
+            // Refresh categories and items when categories change
+            await this.loadCategories();
+            await this.fetchItems();
+            this.filterItems();
+            
+            // If the current category was renamed, update the selection
+            if (data.action === 'update' && data.category.old_name === this.currentCategory) {
+              this.currentCategory = data.category.name;
+              localStorage.setItem('lastViewedCategory', this.currentCategory);
+            }
+            
+            // If the current category was deleted, reset to default
+            if (data.action === 'delete' && data.category_name === this.currentCategory) {
+              this.currentCategory = this.categories.length > 0 ? 
+                (this.drinkCategories.length > 0 ? 'All Drinks' : 
+                 (this.foodCategories.length > 0 ? this.foodCategories[0] : 'All')) : 'All';
+              localStorage.setItem('lastViewedCategory', this.currentCategory);
+            }
           }
         } catch (error) {
           console.error('Error processing WebSocket message:', error);

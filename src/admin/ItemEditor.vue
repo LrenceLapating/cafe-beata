@@ -280,7 +280,9 @@ export default {
       categories: [],
       selectedCategory: 'All',
       allItems: [],
-      hasImported: false
+      hasImported: false,
+      ws: null,
+      wsConnected: false,
     }
   },
   methods: {
@@ -368,26 +370,56 @@ export default {
           const result = await response.json();
           this.showNotification(this.isEditing ? 'Item updated successfully' : 'Item added successfully');
           
-          this.$emit('item-updated', {
-            action: this.isEditing ? 'updated' : 'added',
-            item: {
-              ...this.currentItem,
-              id: this.isEditing ? this.currentItem.id : result.id
+          // Update local state immediately
+          const newItem = {
+            ...this.currentItem,
+            id: this.isEditing ? this.currentItem.id : result.id,
+            image: result.image_path
+          };
+          
+          if (this.isEditing) {
+            const index = this.allItems.findIndex(item => item.id === newItem.id);
+            if (index !== -1) {
+              this.allItems = [
+                ...this.allItems.slice(0, index),
+                newItem,
+                ...this.allItems.slice(index + 1)
+              ];
             }
-          });
+          } else {
+            this.allItems = [...this.allItems, newItem];
+          }
           
-          await this.fetchItems();
+          // Create initial stock record for new item
+          if (!this.isEditing) {
+            try {
+              await fetch('http://localhost:8000/api/stocks', {
+                method: 'POST',
+                headers: {
+                  'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                  item_id: result.id,
+                  quantity: 0,
+                  min_stock_level: 0
+                })
+              });
+            } catch (error) {
+              console.error('Error creating initial stock record:', error);
+            }
+          }
           
-          const event = new CustomEvent('items-updated', { 
-            detail: { 
-              action: this.isEditing ? 'updated' : 'added',
-              category: this.currentItem.category
-            } 
-          });
-          window.dispatchEvent(event);
+          this.filterItemsByCategory();
+          
+          // Emit events for both menu and stock updates
+          this.$emit('item-updated');
+          window.dispatchEvent(new CustomEvent('stock-updated'));
           
           this.showForm = false;
           this.resetForm();
+          
+          // Refresh items to ensure everything is in sync
+          await this.fetchItems();
         } else {
           const error = await response.json();
           throw new Error(error.detail || 'Operation failed');
@@ -483,10 +515,11 @@ export default {
       if (this.selectedCategory === 'All') {
         this.items = [...this.allItems];
       } else {
-        this.items = this.allItems.filter(item => {
-          return item.category === this.selectedCategory;
-        });
+        this.items = this.allItems.filter(item => item.category === this.selectedCategory);
       }
+      
+      // Sort items by name for consistency
+      this.items.sort((a, b) => a.name.localeCompare(b.name));
     },
     showCategoryModal() {
       this.showCategoryForm = true;
@@ -539,51 +572,47 @@ export default {
         });
 
         if (!response.ok) {
-          let errorMessage = 'Failed to process category';
-          try {
-            const contentType = response.headers.get('content-type');
-            if (contentType && contentType.includes('application/json')) {
-              const errorData = await response.json();
-              errorMessage = errorData.detail || errorMessage;
-            } else {
-              errorMessage = await response.text() || errorMessage;
-            }
-          } catch (e) {
-            console.error('Error parsing error response:', e);
-          }
-          throw new Error(errorMessage);
+          throw new Error('Failed to process category');
         }
+
+        const result = await response.json();
 
         // Update local categories immediately
         if (this.editingCategoryId) {
-          const updatedCategory = {
-            id: this.editingCategoryId,
-            name: this.newCategoryName.trim(),
-            type: this.newCategoryType,
-            icon: this.newCategoryIcon
-          };
           const index = this.categories.findIndex(c => c.id === this.editingCategoryId);
           if (index !== -1) {
-            this.categories.splice(index, 1, updatedCategory);
+            this.categories = [
+              ...this.categories.slice(0, index),
+              {
+                id: this.editingCategoryId,
+                name: this.newCategoryName.trim(),
+                type: this.newCategoryType,
+                icon: this.newCategoryIcon
+              },
+              ...this.categories.slice(index + 1)
+            ];
           }
         } else {
-          const result = await response.json();
-          this.categories.push({
+          this.categories = [...this.categories, {
             id: result.id,
             name: this.newCategoryName.trim(),
             type: this.newCategoryType,
             icon: this.newCategoryIcon
-          });
+          }];
         }
 
-        // Refresh the categories from server
+        // Refresh categories and trigger updates
         await this.loadCategories();
+        window.dispatchEvent(new CustomEvent('categories-updated'));
+        window.dispatchEvent(new CustomEvent('stock-updated'));
         
         this.showNotification(
           this.editingCategoryId ? 'Category updated successfully' : 'Category added successfully'
         );
         this.resetCategoryForm();
-        window.dispatchEvent(new CustomEvent('categories-updated'));
+        
+        // Force refresh of items to ensure proper category assignment
+        await this.fetchItems();
       } catch (error) {
         console.error('Error with category:', error);
         this.showNotification(error.message, 'error');
@@ -662,7 +691,55 @@ export default {
     getCategoryType(categoryName) {
       const category = this.categories.find(cat => cat.name === categoryName);
       return category ? category.type : null;
-    }
+    },
+    initWebSocket() {
+      const wsUrl = `ws://${window.location.hostname}:8000/ws/orders`;
+      this.ws = new WebSocket(wsUrl);
+      
+      this.ws.onopen = () => {
+        console.log('WebSocket connected in ItemEditor');
+        this.wsConnected = true;
+        // Initial fetch of data when connection is established
+        this.fetchItems();
+        this.loadCategories();
+      };
+      
+      this.ws.onmessage = async (event) => {
+        try {
+          const data = JSON.parse(event.data);
+          console.log('WebSocket message received in ItemEditor:', data);
+
+          if (data.type === 'menu_update' || data.type === 'stock_update') {
+            // Refresh both items and categories for any menu or stock update
+            await this.fetchItems();
+            await this.loadCategories();
+            this.$emit('item-updated');
+            window.dispatchEvent(new CustomEvent('stock-updated'));
+          } else if (data.type === 'category_update') {
+            await this.loadCategories();
+            await this.fetchItems(); // Refresh items to ensure proper category assignment
+            window.dispatchEvent(new CustomEvent('categories-updated'));
+            window.dispatchEvent(new CustomEvent('stock-updated'));
+          }
+        } catch (error) {
+          console.error('Error processing WebSocket message in ItemEditor:', error);
+        }
+      };
+      
+      this.ws.onclose = () => {
+        console.log('WebSocket disconnected in ItemEditor');
+        this.wsConnected = false;
+        // Try to reconnect after 5 seconds
+        setTimeout(() => {
+          this.initWebSocket();
+        }, 5000);
+      };
+      
+      this.ws.onerror = (error) => {
+        console.error('WebSocket error in ItemEditor:', error);
+        this.wsConnected = false;
+      };
+    },
   },
   async mounted() {
     await this.loadCategories();
@@ -681,9 +758,14 @@ export default {
         this.showNotification('Error importing menu items', 'error');
       }
     }
+    // Initialize WebSocket connection
+    this.initWebSocket();
   },
   beforeUnmount() {
     window.removeEventListener('categories-updated', this.loadCategories);
+    if (this.ws) {
+      this.ws.close();
+    }
   }
 }
 </script>

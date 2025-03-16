@@ -441,7 +441,36 @@ export default {
         const response = await fetch("http://127.0.0.1:8000/orders");
         const data = await response.json();
         if (data.orders && Array.isArray(data.orders)) {
-          this.orders = data.orders.filter(order => order.status === "pending");
+          // Filter pending orders and sort them by ID in ascending order
+          this.orders = data.orders
+            .filter(order => order.status === "pending")
+            .sort((a, b) => {
+              // Convert order IDs to numbers for proper numerical sorting
+              const idA = parseInt(a.id);
+              const idB = parseInt(b.id);
+              return idA - idB; // Sort in ascending order (lower IDs first)
+            });
+          
+          // Check if any of the fetched orders have ready notifications
+          // This ensures the "Mark as Completed" button is enabled for orders that are ready
+          this.orders.forEach(order => {
+            // If the order is already marked as ready in localStorage, keep that status
+            if (this.orderReadyStatus[order.id]) {
+              return;
+            }
+            
+            // Check if there's a notification for this order
+            const userNotificationsKey = `user_notifications_${order.customer_name}`;
+            const notifications = JSON.parse(localStorage.getItem(userNotificationsKey)) || [];
+            const hasReadyNotification = notifications.some(n => n.orderId === order.id);
+            
+            if (hasReadyNotification) {
+              this.orderReadyStatus[order.id] = true;
+            }
+          });
+          
+          // Update localStorage with any changes
+          localStorage.setItem('orderReadyStatus', JSON.stringify(this.orderReadyStatus));
         } else {
           console.error("Invalid data format", data);
           this.orders = [];
@@ -486,6 +515,11 @@ export default {
         .then(() => {
           // Immediately remove from pending orders
           this.orders = this.orders.filter(order => order.id !== orderId);
+
+          // Remove from orderReadyStatus
+          delete this.orderReadyStatus[orderId];
+          // Update localStorage
+          localStorage.setItem('orderReadyStatus', JSON.stringify(this.orderReadyStatus));
 
           // Calculate the total price
           const total = items.reduce((sum, item) => sum + item.price * item.quantity, 0).toFixed(2);
@@ -544,6 +578,13 @@ export default {
           // Immediately remove from pending orders
           this.orders = this.orders.filter(order => order.id !== orderId);
 
+          // Remove from orderReadyStatus if it exists
+          if (this.orderReadyStatus[orderId]) {
+            delete this.orderReadyStatus[orderId];
+            // Update localStorage
+            localStorage.setItem('orderReadyStatus', JSON.stringify(this.orderReadyStatus));
+          }
+
           // Calculate the total price
           const total = items.reduce((sum, item) => sum + item.price * item.quantity, 0).toFixed(2);
 
@@ -599,13 +640,27 @@ export default {
       // Save the notification in localStorage for the specific user
       const userNotificationsKey = `user_notifications_${customerName}`;
       let notifications = JSON.parse(localStorage.getItem(userNotificationsKey)) || [];
-      notifications.push(notification);
+      
+      // Check if a notification with the same order ID already exists
+      const existingIndex = notifications.findIndex(n => n.orderId === orderId);
+      
+      if (existingIndex !== -1) {
+        // Replace the existing notification
+        notifications[existingIndex] = notification;
+      } else {
+        // Add the new notification
+        notifications.push(notification);
+      }
+      
       localStorage.setItem(userNotificationsKey, JSON.stringify(notifications));
 
       // Set order as ready using direct assignment
       this.orderReadyStatus[orderId] = true;
       // Force reactivity update
       this.orderReadyStatus = { ...this.orderReadyStatus };
+      
+      // Save orderReadyStatus to localStorage
+      localStorage.setItem('orderReadyStatus', JSON.stringify(this.orderReadyStatus));
 
       // Emit event to notify other components (optional)
       window.dispatchEvent(new Event("notificationUpdated"));
@@ -832,12 +887,27 @@ export default {
           if (data.type === 'new_order') {
             // Handle new order
             if (data.order.status === 'pending') {
-              this.orders.unshift(data.order);
+              // Add the new order to the orders array
+              this.orders.push(data.order);
+              
+              // Re-sort the orders array by ID in ascending order
+              this.orders.sort((a, b) => {
+                const idA = parseInt(a.id);
+                const idB = parseInt(b.id);
+                return idA - idB; // Sort in ascending order (lower IDs first)
+              });
             }
           } else if (data.type === 'order_status_update') {
             // Handle order status update
             if (data.status !== 'pending') {
               this.orders = this.orders.filter(order => order.id !== data.order_id);
+              
+              // Remove from orderReadyStatus if it exists
+              if (this.orderReadyStatus[data.order_id]) {
+                delete this.orderReadyStatus[data.order_id];
+                // Update localStorage
+                localStorage.setItem('orderReadyStatus', JSON.stringify(this.orderReadyStatus));
+              }
             }
           } else if (data.type === 'stock_update') {
             // Handle stock update
@@ -850,13 +920,41 @@ export default {
               if (!this.uniqueCategories.includes(data.category)) {
                 this.uniqueCategories.push(data.category);
               }
+            }
+            // Refresh stock items to ensure all data is up to date
+            await this.fetchStockItems();
+          } else if (data.type === 'menu_update') {
+            // Handle menu updates (new items, edited items, or deleted items)
+            await this.fetchStockItems(); // Refresh stock items when menu changes
+          } else if (data.type === 'category_update') {
+            // Handle category updates
+            await this.fetchStockItems(); // Refresh stock items when categories change
+            
+            // Update unique categories list
+            if (data.action === 'add' && data.category && data.category.name) {
+              if (!this.uniqueCategories.includes(data.category.name)) {
+                this.uniqueCategories.push(data.category.name);
+              }
+            } else if (data.action === 'update' && data.category) {
+              // Replace old category name with new one
+              const index = this.uniqueCategories.indexOf(data.category.old_name);
+              if (index !== -1) {
+                this.uniqueCategories[index] = data.category.name;
+              } else if (!this.uniqueCategories.includes(data.category.name)) {
+                this.uniqueCategories.push(data.category.name);
+              }
               
-              // Update filtered items if needed
-              if (this.selectedCategory === 'All' || this.selectedCategory === data.category) {
-                this.filteredStockItems = this.stockItems.filter(item =>
-                  (this.selectedCategory === 'All' || item.category === this.selectedCategory) &&
-                  (this.searchQuery === '' || item.name.toLowerCase().includes(this.searchQuery.toLowerCase()))
-                );
+              // Update selected category if it was renamed
+              if (this.selectedCategory === data.category.old_name) {
+                this.selectedCategory = data.category.name;
+              }
+            } else if (data.action === 'delete' && data.category_name) {
+              // Remove deleted category
+              this.uniqueCategories = this.uniqueCategories.filter(cat => cat !== data.category_name);
+              
+              // Reset selected category if it was deleted
+              if (this.selectedCategory === data.category_name) {
+                this.selectedCategory = '';
               }
             }
           }
@@ -885,6 +983,12 @@ export default {
     const savedCafeStatus = localStorage.getItem('isCafeOpen');
     if (savedCafeStatus !== null) {
       this.isCafeOpen = JSON.parse(savedCafeStatus);
+    }
+    
+    // Load orderReadyStatus from localStorage
+    const savedOrderReadyStatus = localStorage.getItem('orderReadyStatus');
+    if (savedOrderReadyStatus !== null) {
+      this.orderReadyStatus = JSON.parse(savedOrderReadyStatus);
     }
     
     // Initialize WebSocket first

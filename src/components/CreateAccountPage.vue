@@ -69,9 +69,22 @@
     </div>
 
     <!-- Success Popup -->
-    <div v-if="showSuccessPopup" class="success-popup">
-      <p>Successfully Created Account!</p>
-      <button @click="closePopup">Close</button>
+    <div v-if="showSuccessPopup" class="success-popup-overlay">
+      <div class="success-popup">
+        <div class="success-icon">
+          <i class="fas fa-check-circle"></i>
+        </div>
+        <h2>Account Created Successfully!</h2>
+        <p>Welcome to UIC Cafe Beàta, {{ name }}!</p>
+        <p class="redirect-message">You will be redirected to the login page shortly...</p>
+        <div class="progress-bar">
+          <div class="progress-fill"></div>
+        </div>
+        <button @click="closePopup" class="close-button">
+          <span>Continue</span>
+          <i class="fas fa-arrow-right"></i>
+        </button>
+      </div>
     </div>
   </div>
 </template>
@@ -163,6 +176,11 @@ export default {
     },
 
     goToLogin() {
+      this.$router.push({ name: "Login" });
+    },
+
+    closePopup() {
+      this.showSuccessPopup = false;
       this.$router.push({ name: "Login" });
     },
   },
@@ -341,28 +359,109 @@ input:focus, select:focus {
 }
 
 /* Success Popup */
-.success-popup {
-  position: absolute;
-  top: 20%;
-  left: 50%;
-  transform: translateX(-50%);
-  padding: 20px;
-  background-color: rgba(255, 0, 106, 0.7);
-  color: white;
-  border-radius: 10px;
-  font-size: 18px;
-  font-weight: bold;
-  text-align: center;
+.success-popup-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-color: rgba(0, 0, 0, 0.5);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 1000;
+  animation: fadeIn 0.3s ease-out;
 }
 
-.success-popup button {
-  margin-top: 10px;
-  padding: 10px 20px;
-  background-color: #d63384;
+.success-popup {
+  background: white;
+  border-radius: 15px;
+  padding: 30px;
+  width: 90%;
+  max-width: 400px;
+  text-align: center;
+  box-shadow: 0 5px 30px rgba(0, 0, 0, 0.3);
+  position: relative;
+  animation: slideIn 0.4s ease-out;
+}
+
+.success-icon {
+  font-size: 60px;
+  color: #4CAF50;
+  margin-bottom: 15px;
+}
+
+.success-popup h2 {
+  color: #333;
+  margin-bottom: 10px;
+  font-size: 24px;
+}
+
+.success-popup p {
+  color: #666;
+  margin-bottom: 15px;
+  font-size: 16px;
+}
+
+.redirect-message {
+  font-size: 14px;
+  color: #888;
+  font-style: italic;
+}
+
+.progress-bar {
+  height: 4px;
+  background-color: #f0f0f0;
+  border-radius: 2px;
+  margin: 15px 0;
+  overflow: hidden;
+}
+
+.progress-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #ff1493, #ff69b4);
+  width: 0%;
+  animation: progressFill 2s linear forwards;
+}
+
+.close-button {
+  background: linear-gradient(135deg, #ff1493, #ff69b4);
   color: white;
   border: none;
-  border-radius: 8px;
+  border-radius: 25px;
+  padding: 10px 25px;
+  font-size: 16px;
   cursor: pointer;
+  transition: all 0.3s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0 auto;
+}
+
+.close-button span {
+  margin-right: 8px;
+}
+
+.close-button:hover {
+  background: linear-gradient(135deg, #d63384, #ff1493);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 10px rgba(255, 20, 147, 0.4);
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes slideIn {
+  from { transform: translateY(-20px); opacity: 0; }
+  to { transform: translateY(0); opacity: 1; }
+}
+
+@keyframes progressFill {
+  from { width: 0%; }
+  to { width: 100%; }
 }
 
 /* Mobile Responsive Adjustments */

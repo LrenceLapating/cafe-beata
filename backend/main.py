@@ -676,9 +676,28 @@ async def add_item(name: str = Form(...), price: float = Form(...), category: st
         # Get the ID of the newly inserted item
         item_id = cursor.lastrowid
         
+        # Create initial stock record for the item
+        cursor.execute(
+            "INSERT INTO item_stocks (item_id, quantity, min_stock_level) VALUES (%s, %s, %s)",
+            (item_id, 0, 0)  # Default values: 0 quantity and 0 min_stock_level
+        )
+        
         connection.commit()
         cursor.close()
         connection.close()
+        
+        # Broadcast menu update
+        await manager.broadcast({
+            "type": "menu_update",
+            "action": "add",
+            "item": {
+                "id": item_id,
+                "name": name,
+                "price": price,
+                "category": category,
+                "image": image_path
+            }
+        })
         
         return {"message": "Item added successfully", "image_path": image_path, "id": item_id}
     except Exception as e:
@@ -730,6 +749,19 @@ async def update_item(
         cursor.close()
         connection.close()
         
+        # Broadcast menu update
+        await manager.broadcast({
+            "type": "menu_update",
+            "action": "update",
+            "item": {
+                "id": item_id,
+                "name": name,
+                "price": price,
+                "category": category,
+                "image": image_path if image else None
+            }
+        })
+        
         return {"message": "Item updated successfully"}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
@@ -750,10 +782,21 @@ async def delete_item(item_id: int):
             if os.path.exists(image_path):
                 os.remove(image_path)
         
+        # Delete the item's stock record first
+        cursor.execute("DELETE FROM item_stocks WHERE item_id = %s", (item_id,))
+        
+        # Then delete the item
         cursor.execute("DELETE FROM items WHERE id = %s", (item_id,))
         connection.commit()
         cursor.close()
         connection.close()
+        
+        # Broadcast menu update
+        await manager.broadcast({
+            "type": "menu_update",
+            "action": "delete",
+            "item_id": item_id
+        })
         
         return {"message": "Item deleted successfully"}
     except Exception as e:
@@ -805,6 +848,18 @@ async def add_category(
         new_category_id = cursor.lastrowid
         cursor.close()
         
+        # Broadcast category update via WebSocket
+        await manager.broadcast({
+            "type": "category_update",
+            "action": "add",
+            "category": {
+                "id": new_category_id,
+                "name": name,
+                "type": type,
+                "icon": icon
+            }
+        })
+        
         return {
             "id": new_category_id,
             "name": name,
@@ -825,13 +880,16 @@ async def delete_category(category_id: int):
         cursor = connection.cursor()
         
         # Check if category exists
-        cursor.execute("SELECT id FROM categories WHERE id = %s", (category_id,))
-        if not cursor.fetchone():
+        cursor.execute("SELECT name FROM categories WHERE id = %s", (category_id,))
+        category = cursor.fetchone()
+        if not category:
             cursor.close()
             raise HTTPException(status_code=404, detail="Category not found")
         
+        category_name = category[0]
+        
         # Check if category is in use
-        cursor.execute("SELECT id FROM items WHERE category = (SELECT name FROM categories WHERE id = %s)", (category_id,))
+        cursor.execute("SELECT id FROM items WHERE category = %s", (category_name,))
         if cursor.fetchone():
             cursor.close()
             raise HTTPException(status_code=400, detail="Cannot delete category that has items")
@@ -840,6 +898,14 @@ async def delete_category(category_id: int):
         cursor.execute("DELETE FROM categories WHERE id = %s", (category_id,))
         connection.commit()
         cursor.close()
+        
+        # Broadcast category update via WebSocket
+        await manager.broadcast({
+            "type": "category_update",
+            "action": "delete",
+            "category_id": category_id,
+            "category_name": category_name
+        })
         
         return {"message": "Category deleted successfully"}
     except HTTPException as he:
@@ -894,6 +960,19 @@ async def update_category(
         connection.commit()
         cursor.close()
         
+        # Broadcast category update via WebSocket
+        await manager.broadcast({
+            "type": "category_update",
+            "action": "update",
+            "category": {
+                "id": category_id,
+                "name": name,
+                "type": type,
+                "icon": icon,
+                "old_name": old_name
+            }
+        })
+        
         return {
             "id": category_id,
             "name": name,
@@ -931,6 +1010,50 @@ async def get_stocks():
         cursor.close()
         connection.close()
         return {"success": True, "items": stocks}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.post('/api/stocks')
+async def create_stock_record(request: dict):
+    try:
+        item_id = request.get("item_id")
+        quantity = request.get("quantity", 0)
+        min_stock_level = request.get("min_stock_level", 0)
+        
+        if not item_id:
+            raise HTTPException(status_code=400, detail="Item ID is required")
+            
+        connection = get_db_connection()
+        cursor = connection.cursor()
+        
+        # Check if stock record already exists
+        cursor.execute("SELECT item_id FROM item_stocks WHERE item_id = %s", (item_id,))
+        if cursor.fetchone():
+            cursor.close()
+            connection.close()
+            return {"success": False, "message": "Stock record already exists for this item"}
+        
+        # Create new stock record
+        cursor.execute(
+            "INSERT INTO item_stocks (item_id, quantity, min_stock_level) VALUES (%s, %s, %s)",
+            (item_id, quantity, min_stock_level)
+        )
+        
+        connection.commit()
+        cursor.close()
+        connection.close()
+        
+        # Broadcast stock update
+        await manager.broadcast({
+            "type": "stock_update",
+            "item_id": item_id,
+            "new_quantity": quantity,
+            "min_stock_level": min_stock_level
+        })
+        
+        return {"success": True, "message": "Stock record created successfully"}
+    except HTTPException as he:
+        raise he
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
