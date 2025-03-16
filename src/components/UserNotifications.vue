@@ -40,16 +40,16 @@ import { eventBus } from "@/utils/eventBus"; // Correct the path if needed
 export default {
   data() {
     return {
-      notifications: [],  // Will hold notifications fetched from localStorage
-      refreshInterval: null, // To store the interval ID for clearing later
-      isDarkMode: localStorage.getItem("darkMode") === "true", // Fetch dark mode setting from localStorage
+      notifications: [],
+      ws: null,
+      wsConnected: false,
+      isDarkMode: localStorage.getItem("darkMode") === "true",
     };
   },
   methods: {
-    // Method to get time ago in a human-readable format
     formatTimeAgo(timestamp) {
       const now = new Date();
-      const diff = now - new Date(timestamp); // Difference in milliseconds
+      const diff = now - new Date(timestamp);
       const minutes = Math.floor(diff / 1000 / 60);
       const hours = Math.floor(diff / 1000 / 60 / 60);
       const days = Math.floor(diff / 1000 / 60 / 60 / 24);
@@ -70,8 +70,8 @@ export default {
       if (userName) {
         const userNotificationsKey = `user_notifications_${userName}`;
         const storedNotifications = JSON.parse(localStorage.getItem(userNotificationsKey)) || [];
-        this.notifications = storedNotifications.reverse();  // Reverse the notifications array to display newest first
-        this.updateNotificationCount(); // Call to update the count
+        this.notifications = storedNotifications.reverse();
+        this.updateNotificationCount();
       } else {
         this.notifications = [];
       }
@@ -82,12 +82,12 @@ export default {
       const userNotificationsKey = `user_notifications_${userName}`;
       let notifications = JSON.parse(localStorage.getItem(userNotificationsKey)) || [];
       
-      // Add the new notification at the start of the array (newest first)
       notifications.unshift(notification);
       localStorage.setItem(userNotificationsKey, JSON.stringify(notifications));
 
-      // Emit event to update the Dashboard's notification count
-      window.dispatchEvent(new Event("notificationUpdated"));
+      // Update local notifications array
+      this.notifications = notifications;
+      this.updateNotificationCount();
     },
 
     formatHighlightedMessage(message) {
@@ -101,35 +101,86 @@ export default {
       const userName = localStorage.getItem("userName");
       if (userName) {
         const userNotificationsKey = `user_notifications_${userName}`;
-        localStorage.removeItem(userNotificationsKey);  // Clear notifications for this specific user
+        localStorage.removeItem(userNotificationsKey);
         this.notifications = [];
         localStorage.setItem("unread_notifications", 0);
-
-        // Emit event to update Dashboard's notification count
-        window.dispatchEvent(new Event("notificationUpdated"));
+        this.updateNotificationCount();
       }
     },
 
-    startAutoRefresh() {
-      this.refreshInterval = setInterval(() => {
-        this.fetchNotifications();
-      }, 5000); // 5000 ms = 5 seconds
+    initWebSocket() {
+      const wsUrl = `ws://${window.location.hostname}:8000/ws/orders`;
+      this.ws = new WebSocket(wsUrl);
+      
+      this.ws.onopen = () => {
+        console.log('WebSocket connected');
+        this.wsConnected = true;
+      };
+      
+      this.ws.onmessage = (event) => {
+        try {
+          const data = JSON.parse(event.data);
+          console.log('WebSocket message received:', data);
+          
+          if (data.type === 'new_order') {
+            // Handle new order notification
+            const userName = localStorage.getItem("userName");
+            if (data.order.customer_name === userName) {
+              this.addNewNotification({
+                orderId: data.order.id,
+                message: `Your order has been received! Order details: ${this.formatItems(data.order.items)}. Total: ₱${this.calculateTotal(data.order.items)}`,
+                timestamp: data.order.created_at
+              });
+            }
+          } else if (data.type === 'order_status_update') {
+            // Handle order status update notification
+            const userName = localStorage.getItem("userName");
+            if (data.customer_name === userName) {
+              this.addNewNotification({
+                orderId: data.order_id,
+                message: `Your order status has been updated to ${data.status}`,
+                timestamp: new Date().toISOString()
+              });
+            }
+          }
+        } catch (error) {
+          console.error('Error processing WebSocket message:', error);
+        }
+      };
+      
+      this.ws.onclose = () => {
+        console.log('WebSocket disconnected');
+        this.wsConnected = false;
+        // Try to reconnect after 5 seconds
+        setTimeout(() => {
+          this.initWebSocket();
+        }, 5000);
+      };
+      
+      this.ws.onerror = (error) => {
+        console.error('WebSocket error:', error);
+        this.wsConnected = false;
+      };
     },
 
-    stopAutoRefresh() {
-      if (this.refreshInterval) {
-        clearInterval(this.refreshInterval);
-      }
+    formatItems(items) {
+      return items.map(item => `${item.name} x${item.quantity}`).join(", ");
+    },
+
+    calculateTotal(items) {
+      return items.reduce((sum, item) => sum + (item.price * item.quantity), 0).toFixed(2);
     }
   },
   created() {
     this.fetchNotifications();
-    this.startAutoRefresh();
+    this.initWebSocket();
     window.addEventListener("notificationUpdated", this.fetchNotifications);
   },
   beforeUnmount() {
     window.removeEventListener("notificationUpdated", this.fetchNotifications);
-    this.stopAutoRefresh();
+    if (this.ws) {
+      this.ws.close();
+    }
   }
 };
 </script>

@@ -145,12 +145,15 @@
           v-for="item in filteredItems"
           :key="item.id || item.name"
           class="item"
-          @click="navigateToConfirmOrder(item)"
+          @click="checkAndNavigate(item)"
+          :class="{
+            'out-of-stock': !itemStocks[item.id]?.quantity
+          }"
         >
           <img :src="getImagePath(item.image)" :alt="item.name" />
           <div class="item-details">
             <span>{{ item.name }}</span>
-            <span class="item-price">₱{{ Number(item.price).toFixed(2) }}</span> <!-- Display price with Peso sign -->
+            <span class="item-price">₱{{ Number(item.price).toFixed(2) }}</span>
           </div>
         </div>
       </div>
@@ -189,7 +192,10 @@
 
 <script>
 import { eventBus } from "@/utils/eventBus"; // Correct the path if needed
+
 export default {
+  components: {
+  },
   data() {
     return {
       userName: '',
@@ -212,6 +218,9 @@ export default {
       cartItemCount: 0,
       cart: [], // Array to store cart items
       modalQuantity: 1,
+      itemStocks: {}, // Add back the itemStocks property
+      ws: null,
+      wsConnected: false,
     };
   },
 
@@ -221,7 +230,7 @@ export default {
       this.updateNotificationCount();
     window.addEventListener("notificationUpdated", this.updateNotificationCount); // Listen for changes
     window.addEventListener("items-updated", this.handleItemsUpdated); // Listen for item updates
-    this.startPollingForNewNotifications();
+    this.initWebSocket(); // Initialize WebSocket connection
   },
 beforeUnmount() {
       window.removeEventListener("notificationUpdated", this.updateNotificationCount);
@@ -230,6 +239,9 @@ beforeUnmount() {
       this.stopPollingForNewNotifications();
       this.stopPollingForItems();
       window.removeEventListener('storage', this.updateCartCount);
+      if (this.ws) {
+        this.ws.close();
+      }
   },
   
   async mounted() {
@@ -328,28 +340,36 @@ beforeUnmount() {
     
     // New method to fetch items from API
     async fetchItems() {
-      // Store the previous loading state
       const wasLoading = this.isLoading;
       
       try {
-        // Only show loading indicator on initial load, not during background refreshes
-        // For background refreshes (when wasLoading is false), don't change isLoading
+        const [itemsResponse, stocksResponse] = await Promise.all([
+          fetch('http://localhost:8000/api/items'),
+          fetch('http://localhost:8000/api/stocks')
+        ]);
         
-        const response = await fetch('http://localhost:8000/api/items');
-        const data = await response.json();
-        if (data.items) {
-          this.apiItems = data.items;
+        const itemsData = await itemsResponse.json();
+        const stocksData = await stocksResponse.json();
+        
+        if (itemsData.items) {
+          this.apiItems = itemsData.items;
           console.log('Fetched items from API:', this.apiItems);
-          
-          // After fetching, update the filtered items without showing loading state
-          if (!wasLoading) {
-            this.filterItems();
-          }
+        }
+        
+        if (stocksData.success) {
+          // Convert array to object for easier lookup
+          this.itemStocks = stocksData.items.reduce((acc, stock) => {
+            acc[stock.item_id] = stock;
+            return acc;
+          }, {});
+        }
+        
+        if (!wasLoading) {
+          this.filterItems();
         }
       } catch (error) {
-        console.error('Error fetching items:', error);
+        console.error('Error fetching items or stocks:', error);
       } finally {
-        // Only reset loading state if it was initially set to true
         if (wasLoading) {
           this.isLoading = false;
         }
@@ -483,8 +503,12 @@ beforeUnmount() {
       console.log(`Filtered ${this.filteredItems.length} items for category: ${this.currentCategory}`);
     },
 
-   navigateToConfirmOrder(item) {
-      // Always show modal first
+   checkAndNavigate(item) {
+      const stock = this.itemStocks[item.id];
+      if (!stock || stock.quantity === 0) {
+        alert('Sorry, this item is currently out of stock.');
+        return;
+      }
       this.showItemModal = true;
       this.selectedItem = item;
     },
@@ -534,20 +558,31 @@ beforeUnmount() {
       this.selectedItem = null;
       this.modalQuantity = 1; // Reset quantity when closing modal
     },
-    addToCart() {
+    async addToCart() {
       if (!this.selectedItem) return;
-
-      const userCartKey = `cart_${this.userName}`;
-      let cart = JSON.parse(localStorage.getItem(userCartKey)) || [];
+      
+      const stock = this.itemStocks[this.selectedItem.id];
+      if (!stock || stock.quantity < this.modalQuantity) {
+        alert('Sorry, not enough stock available.');
+        return;
+      }
       
       const imagePath = this.getImagePath(this.selectedItem.image);
+      const userCartKey = `cart_${this.userName}`;
+      let cart = JSON.parse(localStorage.getItem(userCartKey)) || [];
       
       const existingItemIndex = cart.findIndex(item => item.name === this.selectedItem.name);
       
       if (existingItemIndex !== -1) {
-        cart[existingItemIndex].quantity += this.modalQuantity;
+        const newQuantity = cart[existingItemIndex].quantity + this.modalQuantity;
+        if (newQuantity > stock.quantity) {
+          alert('Sorry, not enough stock available for the requested quantity.');
+          return;
+        }
+        cart[existingItemIndex].quantity = newQuantity;
       } else {
         cart.push({
+          id: this.selectedItem.id,
           name: this.selectedItem.name,
           price: this.selectedItem.price,
           image: imagePath,
@@ -562,19 +597,7 @@ beforeUnmount() {
       localStorage.setItem('lastViewedCategory', this.currentCategory);
       
       this.closeItemModal();
-      this.showAddedToCartNotification();
-    },
-    showAddedToCartNotification() {
-      // Create a temporary div for the notification
-      const notification = document.createElement('div');
-      notification.className = 'added-to-cart-notification';
-      notification.textContent = '+1 Added to Cart';
-      document.body.appendChild(notification);
-
-      // Remove the notification after animation
-      setTimeout(() => {
-        notification.remove();
-      }, 1000);
+      alert('Item added to cart successfully!');
     },
     orderNow() {
       if (!this.selectedItem) return;
@@ -618,7 +641,76 @@ beforeUnmount() {
       }
     },
     increaseModalQuantity() {
-      this.modalQuantity += 1;
+      const stock = this.itemStocks[this.selectedItem?.id];
+      if (stock && this.modalQuantity < stock.quantity) {
+        this.modalQuantity += 1;
+      } else {
+        alert('Maximum available stock reached.');
+      }
+    },
+    initWebSocket() {
+      const wsUrl = `ws://${window.location.hostname}:8000/ws/orders`;
+      this.ws = new WebSocket(wsUrl);
+      
+      this.ws.onopen = () => {
+        console.log('WebSocket connected');
+        this.wsConnected = true;
+      };
+      
+      this.ws.onmessage = (event) => {
+        try {
+          const data = JSON.parse(event.data);
+          console.log('WebSocket message received:', data);
+          
+          if (data.type === 'stock_update') {
+            // Update the itemStocks object with the new stock data
+            this.itemStocks[data.item_id] = {
+              quantity: data.new_quantity,
+              min_stock_level: data.min_stock_level
+            };
+            
+            // If the item is currently selected in the modal, update its stock info
+            if (this.selectedItem && this.selectedItem.id === data.item_id) {
+              this.selectedItem = {
+                ...this.selectedItem,
+                stock: data.new_quantity
+              };
+              
+              // If the item is out of stock, close the modal
+              if (data.new_quantity === 0) {
+                this.closeItemModal();
+              }
+            }
+            
+            // Update the filtered items if necessary
+            this.filteredItems = this.filteredItems.map(item => {
+              if (item.id === data.item_id) {
+                return {
+                  ...item,
+                  stock: data.new_quantity
+                };
+              }
+              return item;
+            });
+          }
+        } catch (error) {
+          console.error('Error processing WebSocket message:', error);
+        }
+      };
+      
+      this.ws.onclose = () => {
+        console.log('WebSocket disconnected');
+        this.wsConnected = false;
+        // Try to reconnect after 5 seconds
+        setTimeout(() => {
+          this.initWebSocket();
+        }, 5000);
+      };
+      
+      this.ws.onerror = (error) => {
+        console.error('WebSocket error:', error);
+        this.wsConnected = false;
+      };
     },
   },
   watch: {
@@ -1555,7 +1647,7 @@ html, body {
   border-radius: 15px;
   padding: 15px;
   cursor: pointer;
-  transition: transform 0.3s ease;
+  transition: transform 0.3s ease, opacity 0.3s ease;
   height: auto;
   display: flex;
   flex-direction: column;
@@ -1996,5 +2088,30 @@ html, body {
 
 .dark-mode .quantity-btn:hover {
   background-color: #555;
+}
+
+/* Remove all out-of-stock related styles */
+.item.out-of-stock {
+  opacity: 0.7;
+  pointer-events: none;
+  position: relative;
+}
+
+.item.out-of-stock::after {
+  content: "Out of Stock";
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  background-color: rgba(244, 67, 54, 0.9);
+  color: white;
+  padding: 8px 16px;
+  border-radius: 4px;
+  font-weight: bold;
+  z-index: 2;
+}
+
+.item.out-of-stock img {
+  filter: grayscale(1);
 }
 </style>

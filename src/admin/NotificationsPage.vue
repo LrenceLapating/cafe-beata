@@ -34,6 +34,11 @@
           <span>Menu Editor</span>
         </button>
 
+        <button @click="toggleStockManager" class="utility-button">
+          <i class="fa fa-boxes"></i>
+          <span>Stock Management</span>
+        </button>
+
         <button @click="logout" class="utility-button logout">
           <i class="fa fa-sign-out"></i>
           <span>Logout</span>
@@ -171,6 +176,102 @@
           </div>
         </div>
       </div>
+
+      <!-- Stock Management Modal -->
+      <div v-if="showStockManager" class="stock-manager-modal">
+        <div class="stock-manager-content">
+          <div class="stock-manager-header">
+            <h2>Stock Management</h2>
+            <button @click="toggleStockManager" class="close-modal-btn">
+              <i class="fa-solid fa-times"></i>
+            </button>
+          </div>
+          <div class="stock-manager-body">
+            <!-- Search Bar -->
+            <div class="stock-search-bar">
+              <div class="stock-filters">
+                <input 
+                  type="text" 
+                  v-model="stockSearchQuery" 
+                  placeholder="Search items..." 
+                  class="search-input"
+                />
+                <select v-model="selectedCategory" class="category-filter">
+                  <option value="">All Categories</option>
+                  <option v-for="category in uniqueCategories" :key="category" :value="category">
+                    {{ category }}
+                  </option>
+                </select>
+              </div>
+            </div>
+
+            <!-- Stock Items Table -->
+            <div class="stock-table-container">
+              <table class="stock-table">
+                <thead>
+                  <tr>
+                    <th>Item Name</th>
+                    <th>Category</th>
+                    <th>Current Stock</th>
+                    <th>Status</th>
+                    <th>Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr v-for="item in filteredStockItems" :key="item.id">
+                    <td>{{ item.name }}</td>
+                    <td>{{ item.category }}</td>
+                    <td>{{ item.quantity }}</td>
+                    <td :class="getStockStatusClass(item)">{{ getStockStatus(item) }}</td>
+                    <td>
+                      <button @click="openStockUpdateModal(item)" class="update-stock-btn">
+                        Update Stock
+                      </button>
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Stock Update Modal -->
+      <div v-if="showStockUpdateModal" class="stock-update-modal">
+        <div class="stock-update-content">
+          <h3>Update Stock: {{ selectedItem?.name }}</h3>
+          <div class="stock-update-form">
+            <div class="form-group">
+              <label>Current Stock: {{ selectedItem?.quantity }}</label>
+            </div>
+            <div class="form-group">
+              <label>Action:</label>
+              <select v-model="stockUpdateAction">
+                <option value="add">Add Stock</option>
+                <option value="subtract">Remove Stock</option>
+                <option value="set">Set Stock</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label>Quantity:</label>
+              <input 
+                type="number" 
+                v-model.number="stockUpdateQuantity" 
+                min="0"
+                :max="stockUpdateAction === 'subtract' ? selectedItem?.quantity : 99999"
+              />
+            </div>
+            <div class="form-group">
+              <label>Reason:</label>
+              <input type="text" v-model="stockUpdateReason" placeholder="Enter reason for update"/>
+            </div>
+            <div class="update-buttons">
+              <button @click="submitStockUpdate" class="confirm-btn">Update Stock</button>
+              <button @click="closeStockUpdateModal" class="cancel-btn">Cancel</button>
+            </div>
+          </div>
+        </div>
+      </div>
     </div>
   </div>
 </template>
@@ -186,7 +287,8 @@ export default {
     return {
       orders: [], // Store pending orders
       isLoading: false, // For loading state
-      refreshInterval: null, // Interval reference for auto-refresh
+      ws: null, // WebSocket connection
+      wsConnected: false,
       activeDeclineOrderId: null, // Track the order for which decline message is being customized
       customDeclineMessage: "", // Store the custom decline message
       notificationSent: false, // To track if the notification has been sent
@@ -199,6 +301,16 @@ export default {
       isSidebarOpen: localStorage.getItem('sidebarOpen') === 'true', // Control visibility of sidebar
       orderReadyStatus: {}, // Track which orders are ready
       confirmCompleteOrderId: null, // Track which order is being confirmed for completion
+      showStockManager: false,
+      showStockUpdateModal: false,
+      stockItems: [],
+      stockSearchQuery: '',
+      selectedItem: null,
+      stockUpdateAction: 'add',
+      stockUpdateQuantity: 0,
+      stockUpdateReason: '',
+      selectedCategory: '',
+      uniqueCategories: [],
     };
   },
   computed: {
@@ -213,6 +325,14 @@ export default {
           order.id.toString().includes(lowerCaseSearchQuery) || // Search by Order ID
           order.customer_name.toLowerCase().includes(lowerCaseSearchQuery) // Search by Customer Name
         );
+      });
+    },
+    filteredStockItems() {
+      return this.stockItems.filter(item => {
+        if (!item || !item.name) return false;
+        const matchesSearch = item.name.toLowerCase().includes((this.stockSearchQuery || '').toLowerCase());
+        const matchesCategory = !this.selectedCategory || item.category === this.selectedCategory;
+        return matchesSearch && matchesCategory;
       });
     }
   },
@@ -312,34 +432,25 @@ export default {
       this.$router.push({ name: "Login" });  // Redirect the user to the Login page (adjust the route as needed)
     },
 
-    // Fetch orders from API
-    fetchOrders(silent = false) {
-      // Save scroll position before refreshing
-      const scrollPosition = window.scrollY;
-
-      if (this.isLoading && !silent) return; // Prevent fetch if already loading
-      if (!silent) {
-        this.isLoading = true;
-      }
+    // Fetch orders only once at initial load
+    async fetchOrders() {
+      if (this.isLoading) return;
+      this.isLoading = true;
       
-      fetch("http://127.0.0.1:8000/orders")
-        .then(response => response.json())
-        .then((data) => {
-          if (data.orders && Array.isArray(data.orders)) {
-            this.orders = data.orders.filter(order => order.status === "pending");
-          } else {
-            console.error("Invalid data format", data);
-            this.orders = [];
-          }
-        })
-        .catch(error => console.error("Error fetching orders:", error))
-        .finally(() => {
-          if (!silent) {
-            this.isLoading = false;
-          }
-          // Restore scroll position after refreshing
-          setTimeout(() => window.scrollTo(0, scrollPosition), 100); // Use a small timeout for smoother scroll restoration
-        });
+      try {
+        const response = await fetch("http://127.0.0.1:8000/orders");
+        const data = await response.json();
+        if (data.orders && Array.isArray(data.orders)) {
+          this.orders = data.orders.filter(order => order.status === "pending");
+        } else {
+          console.error("Invalid data format", data);
+          this.orders = [];
+        }
+      } catch (error) {
+        console.error("Error fetching orders:", error);
+      } finally {
+        this.isLoading = false;
+      }
     },
 
     // Format ordered items for notification message
@@ -362,13 +473,15 @@ export default {
       fetch(`http://127.0.0.1:8000/orders/${orderId}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ status: "completed" }) // Properly formatted JSON
+        body: JSON.stringify({ status: "completed" })
       })
         .then(response => {
           if (!response.ok) {
-            throw new Error(`HTTP error! Status: ${response.status}`);
+            return response.json().then(data => {
+              throw new Error(data.detail || 'Failed to complete order');
+            });
           }
-          return response.json(); // Only handle the response JSON once here
+          return response.json();
         })
         .then(() => {
           // Immediately remove from pending orders
@@ -377,14 +490,14 @@ export default {
           // Calculate the total price
           const total = items.reduce((sum, item) => sum + item.price * item.quantity, 0).toFixed(2);
 
-          // Prepare the notification with highlighted order details (HTML added)
+          // Prepare the notification with highlighted order details
           const notification = {
             orderId,
             customerName,
             message: `Your order is completed! ✔️ Thank you for choosing Café Beata. Enjoy your food and drinks! 🥰. <span class="highlighted-order-details">Order details: ${this.formatItems(items)}. Total: ₱${total}</span>`,
             timestamp: new Date().toISOString(),
-            items,  // Include items in the notification
-            total,  // Include total in the notification
+            items,
+            total,
           };
 
           // Save the notification in localStorage for the specific user
@@ -393,12 +506,17 @@ export default {
           notifications.push(notification);
           localStorage.setItem(userNotificationsKey, JSON.stringify(notifications));
 
-          // Emit an event to notify other components (optional)
+          // Emit an event to notify other components
           window.dispatchEvent(new Event("notificationUpdated"));
 
           alert("Order marked as completed!");
         })
-        .catch(error => console.error("Error marking order as completed:", error));
+        .catch(error => {
+          console.error("Error marking order as completed:", error);
+          alert(error.message || "Error completing order. Please try again.");
+          // Refresh orders to ensure UI is in sync
+          this.fetchOrders();
+        });
     },
 
     // Open the custom decline message input for a specific order
@@ -462,22 +580,6 @@ export default {
     updateDeclineMessage() {
       if (this.activeDeclineOrderId !== null) {
         localStorage.setItem(`customDeclineMessage_${this.activeDeclineOrderId}`, this.customDeclineMessage);
-      }
-    },
-
-    // Start auto-refresh for pending orders every 5 seconds
-    startAutoRefresh() {
-      this.refreshInterval = setInterval(() => {
-        // Perform fetch silently
-        this.fetchOrders(true);  // Call silently without triggering loading state
-      }, 5000);  // Refresh every 5 seconds
-    },
-
-    // Stop auto-refresh
-    stopAutoRefresh() {
-      if (this.refreshInterval) {
-        clearInterval(this.refreshInterval);
-        this.refreshInterval = null;
       }
     },
 
@@ -572,6 +674,211 @@ export default {
     cancelCompletion() {
       this.confirmCompleteOrderId = null;
     },
+
+    toggleStockManager() {
+      this.showStockManager = !this.showStockManager;
+      if (this.showStockManager) {
+        this.fetchStockItems();
+      }
+    },
+
+    async fetchStockItems() {
+      try {
+        const response = await fetch('http://localhost:8000/api/stocks');
+        const data = await response.json();
+        console.log('Fetched stock data:', data); // Debug log
+        
+        if (data.success && Array.isArray(data.items)) {
+          // Map the items to include name and category from item_name
+          this.stockItems = data.items.map(item => ({
+            id: item.item_id, // Use item_id from the API response
+            name: item.item_name,
+            category: item.category,
+            quantity: item.quantity,
+            min_stock_level: item.min_stock_level
+          }));
+          
+          // Update unique categories
+          this.uniqueCategories = [...new Set(this.stockItems.map(item => item.category))];
+          console.log('Processed stock items:', this.stockItems); // Debug log
+        } else {
+          console.error('Invalid data format received:', data);
+        }
+      } catch (error) {
+        console.error('Error fetching stock items:', error);
+      }
+    },
+
+    getStockStatus(item) {
+      if (item.quantity === 0) return 'Out of Stock';
+      if (item.quantity <= item.min_stock_level) return 'Low Stock';
+      return 'In Stock';
+    },
+
+    getStockStatusClass(item) {
+      if (item.quantity === 0) return 'status-out';
+      if (item.quantity <= item.min_stock_level) return 'status-low';
+      return 'status-ok';
+    },
+
+    openStockUpdateModal(item) {
+      console.log('Opening modal for item:', item); // Debug log
+      this.selectedItem = item;
+      this.showStockUpdateModal = true;
+      this.stockUpdateQuantity = 0;
+      this.stockUpdateAction = 'add';
+      this.stockUpdateReason = '';
+    },
+
+    closeStockUpdateModal() {
+      this.showStockUpdateModal = false;
+      this.selectedItem = null;
+      this.stockUpdateQuantity = 0;
+      this.stockUpdateReason = '';
+    },
+
+    async updateMinStockLevel(item) {
+      try {
+        const response = await fetch(`http://localhost:8000/api/stocks/${item.item_id}/min-level`, {
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            min_stock_level: item.min_stock_level
+          })
+        });
+        
+        const data = await response.json();
+        if (!data.success) {
+          throw new Error(data.message);
+        }
+      } catch (error) {
+        console.error('Error updating minimum stock level:', error);
+        this.fetchStockItems();
+      }
+    },
+
+    async submitStockUpdate() {
+      // Validate required fields
+      if (!this.selectedItem || !this.selectedItem.id) {
+        alert('No item selected');
+        return;
+      }
+
+      if (!this.stockUpdateAction) {
+        alert('Please select an action');
+        return;
+      }
+
+      if (!this.stockUpdateQuantity || this.stockUpdateQuantity <= 0) {
+        alert('Please enter a valid quantity (greater than 0)');
+        return;
+      }
+
+      // Additional validation for subtract action
+      if (this.stockUpdateAction === 'subtract' && this.stockUpdateQuantity > this.selectedItem.quantity) {
+        alert('Cannot remove more than current stock');
+        return;
+      }
+
+      try {
+        const response = await fetch(`http://localhost:8000/api/stocks/${this.selectedItem.id}/update`, {
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            action: this.stockUpdateAction,
+            quantity: parseInt(this.stockUpdateQuantity),
+            reason: this.stockUpdateReason || 'Stock update'
+          })
+        });
+
+        const data = await response.json();
+        
+        if (!response.ok) {
+          throw new Error(data.detail || 'Failed to update stock');
+        }
+
+        if (data.success) {
+          alert('Stock updated successfully!');
+          this.closeStockUpdateModal();
+          await this.fetchStockItems(); // Refresh the stock list
+        } else {
+          throw new Error(data.message || 'Failed to update stock');
+        }
+      } catch (error) {
+        console.error('Error updating stock:', error);
+        alert(error.message || 'Failed to update stock. Please try again.');
+      }
+    },
+
+    initWebSocket() {
+      // Use the same host as the API
+      const wsUrl = `ws://${window.location.hostname}:8000/ws/orders`;
+      this.ws = new WebSocket(wsUrl);
+      
+      this.ws.onopen = () => {
+        console.log('WebSocket connected');
+        this.wsConnected = true;
+      };
+      
+      this.ws.onmessage = async (event) => {
+        try {
+          const data = JSON.parse(event.data);
+          console.log('WebSocket message received:', data);
+
+          if (data.type === 'new_order') {
+            // Handle new order
+            if (data.order.status === 'pending') {
+              this.orders.unshift(data.order);
+            }
+          } else if (data.type === 'order_status_update') {
+            // Handle order status update
+            if (data.status !== 'pending') {
+              this.orders = this.orders.filter(order => order.id !== data.order_id);
+            }
+          } else if (data.type === 'stock_update') {
+            // Handle stock update
+            const stockItem = this.stockItems.find(item => item.id === data.item_id);
+            if (stockItem) {
+              stockItem.quantity = data.new_quantity;
+              stockItem.min_stock_level = data.min_stock_level;
+              
+              // Update unique categories if needed
+              if (!this.uniqueCategories.includes(data.category)) {
+                this.uniqueCategories.push(data.category);
+              }
+              
+              // Update filtered items if needed
+              if (this.selectedCategory === 'All' || this.selectedCategory === data.category) {
+                this.filteredStockItems = this.stockItems.filter(item =>
+                  (this.selectedCategory === 'All' || item.category === this.selectedCategory) &&
+                  (this.searchQuery === '' || item.name.toLowerCase().includes(this.searchQuery.toLowerCase()))
+                );
+              }
+            }
+          }
+        } catch (error) {
+          console.error('Error processing WebSocket message:', error);
+        }
+      };
+      
+      this.ws.onclose = () => {
+        console.log('WebSocket disconnected');
+        this.wsConnected = false;
+        // Try to reconnect after 5 seconds
+        setTimeout(() => {
+          this.initWebSocket();
+        }, 5000);
+      };
+      
+      this.ws.onerror = (error) => {
+        console.error('WebSocket error:', error);
+        this.wsConnected = false;
+      };
+    },
   },
 
   mounted() {
@@ -580,15 +887,21 @@ export default {
       this.isCafeOpen = JSON.parse(savedCafeStatus);
     }
     
-    this.fetchOrders(); // Initial fetch when the page loads
-    this.startAutoRefresh(); // Start auto-fetching every 5 seconds
+    // Initialize WebSocket first
+    this.initWebSocket();
+    
+    // Then fetch initial orders
+    this.fetchOrders();
 
     // Add event listener for clicks outside sidebar
     document.addEventListener('click', this.handleOutsideClick);
   },
 
   beforeUnmount() {
-    this.stopAutoRefresh(); // Stop auto-fetching when leaving the page
+    // Close WebSocket connection
+    if (this.ws) {
+      this.ws.close();
+    }
     document.removeEventListener('click', this.handleOutsideClick);
   }
 };
@@ -1414,5 +1727,238 @@ button.decline-btn:hover {
     width: 100%;
     padding: 12px;
   }
+}
+
+/* Stock Management Modal Styles */
+.stock-manager-modal {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-color: rgba(0, 0, 0, 0.5);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 1001;
+}
+
+.stock-manager-content {
+  background-color: white;
+  width: 90%;
+  max-width: 1000px;
+  max-height: 90vh;
+  border-radius: 10px;
+  box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
+  display: flex;
+  flex-direction: column;
+}
+
+.stock-manager-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 15px 20px;
+  background-color: #f8d2e4;
+  border-top-left-radius: 10px;
+  border-top-right-radius: 10px;
+}
+
+.stock-manager-header h2 {
+  color: #d12f7a;
+  margin: 0;
+}
+
+.stock-manager-body {
+  padding: 20px;
+  overflow-y: auto;
+}
+
+.stock-search-bar {
+  margin-bottom: 20px;
+}
+
+.stock-table-container {
+  overflow-x: auto;
+}
+
+.stock-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 20px;
+}
+
+.stock-table th,
+.stock-table td {
+  padding: 12px;
+  text-align: left;
+  border-bottom: 1px solid #ddd;
+}
+
+.stock-table th {
+  background-color: #f8d2e4;
+  color: #d12f7a;
+}
+
+.status-out {
+  color: #f44336;
+  font-weight: bold;
+}
+
+.status-low {
+  color: #ff9800;
+  font-weight: bold;
+}
+
+.status-ok {
+  color: #4caf50;
+  font-weight: bold;
+}
+
+.action-buttons {
+  display: flex;
+  gap: 10px;
+}
+
+.update-stock-btn {
+  background-color: #d12f7a;
+  color: white;
+  border: none;
+  padding: 8px 16px;
+  border-radius: 20px;
+  cursor: pointer;
+  font-weight: 500;
+  transition: all 0.3s ease;
+  box-shadow: 0 2px 4px rgba(209, 47, 122, 0.2);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+
+.update-stock-btn::before {
+  content: '📦';
+  font-size: 16px;
+}
+
+.update-stock-btn:hover {
+  background-color: #b82d67;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 8px rgba(209, 47, 122, 0.3);
+}
+
+.update-stock-btn:active {
+  transform: translateY(0);
+  box-shadow: 0 2px 4px rgba(209, 47, 122, 0.2);
+}
+
+.stock-update-modal {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-color: rgba(0, 0, 0, 0.5);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 1002;
+}
+
+.stock-update-content {
+  background-color: white;
+  padding: 20px;
+  border-radius: 10px;
+  width: 90%;
+  max-width: 400px;
+}
+
+.stock-update-form {
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+}
+
+.form-group {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.form-group label {
+  font-weight: bold;
+}
+
+.form-group input,
+.form-group select {
+  padding: 8px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+}
+
+.update-buttons {
+  display: flex;
+  gap: 10px;
+  justify-content: flex-end;
+  margin-top: 20px;
+}
+
+.confirm-btn,
+.cancel-btn {
+  padding: 8px 16px;
+  border: none;
+  border-radius: 5px;
+  cursor: pointer;
+}
+
+.confirm-btn {
+  background-color: #d12f7a;
+  color: white;
+}
+
+.cancel-btn {
+  background-color: #f5a5a5;
+  color: white;
+}
+
+.low-stock {
+  color: #ff9800;
+  font-weight: bold;
+}
+
+.out-of-stock {
+  color: #f44336;
+  font-weight: bold;
+}
+
+.stock-filters {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 15px;
+  width: 100%;
+}
+
+.category-filter {
+  padding: 8px 12px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  font-size: 14px;
+  min-width: 150px;
+  background-color: white;
+  cursor: pointer;
+}
+
+.category-filter:hover {
+  border-color: #d12f7a;
+}
+
+.dark-mode .category-filter {
+  background-color: #333;
+  color: white;
+  border-color: #555;
+}
+
+.dark-mode .category-filter:hover {
+  border-color: #f8c6d0;
 }
 </style>

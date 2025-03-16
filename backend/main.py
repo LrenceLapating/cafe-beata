@@ -1,4 +1,4 @@
-from fastapi import FastAPI, HTTPException, File, UploadFile
+from fastapi import FastAPI, HTTPException, File, UploadFile, WebSocket, WebSocketDisconnect
 from pydantic import BaseModel
 from fastapi.middleware.cors import CORSMiddleware
 import mysql.connector
@@ -7,13 +7,12 @@ import bcrypt  # For password hashing
 import shutil
 import os
 from fastapi import Path, File
-from typing import Optional
+from typing import Optional, List
 from fastapi.staticfiles import StaticFiles
 app = FastAPI()
 from fastapi import Form
 from fastapi import Form, File, UploadFile
 from fastapi.responses import FileResponse
-from typing import List
 import json
 import sendgrid
 from fastapi import Depends
@@ -459,23 +458,96 @@ async def update_order_status(order_id: str, status_update: OrderStatusUpdate):
     if connection is None:
         raise HTTPException(status_code=500, detail="Database connection failed")
 
-    cursor = connection.cursor()
+    cursor = connection.cursor(dictionary=True)
 
-    # Check if the order exists
-    cursor.execute("SELECT * FROM orders WHERE id = %s", (order_id,))
-    order = cursor.fetchone()
-    if not order:
-        raise HTTPException(status_code=404, detail="Order not found")
+    try:
+        # Check if the order exists
+        cursor.execute("SELECT * FROM orders WHERE id = %s", (order_id,))
+        order = cursor.fetchone()
+        if not order:
+            raise HTTPException(status_code=404, detail="Order not found")
 
-    # Update the status
-    cursor.execute("UPDATE orders SET status = %s WHERE id = %s", (status_update.status, order_id))
-    connection.commit()
+        # Update the status
+        cursor.execute("UPDATE orders SET status = %s WHERE id = %s", (status_update.status, order_id))
 
-    cursor.close()
-    connection.close()
+        # If marking as completed, handle stock reduction
+        if status_update.status == "completed":
+            items = json.loads(order["items"]) if isinstance(order["items"], str) else order["items"]
+            for item in items:
+                cursor.execute("SELECT id FROM items WHERE name = %s", (item["name"],))
+                item_result = cursor.fetchone()
+                if item_result:
+                    item_id = item_result["id"]
+                    quantity_to_reduce = item["quantity"]
+                    cursor.execute(
+                        "UPDATE item_stocks SET quantity = quantity - %s WHERE item_id = %s",
+                        (quantity_to_reduce, item_id)
+                    )
 
-    return {"message": f"Order {order_id} marked as {status_update.status}"}
+        connection.commit()
 
+        # Broadcast the status update to all connected clients
+        await manager.broadcast({
+            "type": "order_status_update",
+            "order_id": order_id,
+            "status": status_update.status,
+            "timestamp": datetime.now().isoformat()
+        })
+
+        return {"message": f"Order {order_id} marked as {status_update.status}"}
+
+    except Exception as e:
+        connection.rollback()
+        print(f"Error updating order status: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+    finally:
+        cursor.close()
+        connection.close()
+
+
+# WebSocket Manager for handling multiple connections
+class ConnectionManager:
+    def __init__(self):
+        self.active_connections: List[WebSocket] = []
+
+    async def connect(self, websocket: WebSocket):
+        await websocket.accept()
+        self.active_connections.append(websocket)
+        print(f"New WebSocket connection. Total connections: {len(self.active_connections)}")
+
+    def disconnect(self, websocket: WebSocket):
+        self.active_connections.remove(websocket)
+        print(f"WebSocket disconnected. Remaining connections: {len(self.active_connections)}")
+
+    async def broadcast(self, message: dict):
+        disconnected = []
+        for connection in self.active_connections:
+            try:
+                await connection.send_json(message)
+            except WebSocketDisconnect:
+                disconnected.append(connection)
+            except Exception as e:
+                print(f"Error broadcasting message: {str(e)}")
+                disconnected.append(connection)
+        
+        # Clean up disconnected connections
+        for conn in disconnected:
+            self.disconnect(conn)
+
+manager = ConnectionManager()
+
+@app.websocket("/ws/orders")
+async def websocket_endpoint(websocket: WebSocket):
+    await manager.connect(websocket)
+    try:
+        while True:
+            # Keep the connection alive and wait for any messages
+            await websocket.receive_text()
+    except WebSocketDisconnect:
+        manager.disconnect(websocket)
+    except Exception as e:
+        print(f"WebSocket error: {str(e)}")
+        manager.disconnect(websocket)
 
 @app.post("/orders")
 async def create_order(order: Order):
@@ -494,9 +566,9 @@ async def create_order(order: Order):
         result = cursor.fetchone()
 
         last_order_id = result[0] if result[0] else 0
-        new_order_id = last_order_id + 1 if last_order_id < 999 else 1  # Reset to 1 when it reaches 999
+        new_order_id = last_order_id + 1 if last_order_id < 999 else 1
 
-        # Ensure the order ID is always 3 digits (001, 002, etc.)
+        # Ensure the order ID is always 3 digits
         formatted_order_id = f"{new_order_id:03d}"
 
         # Prepare the order items as JSON
@@ -505,12 +577,12 @@ async def create_order(order: Order):
                 "name": item.name,
                 "quantity": item.quantity,
                 "price": item.price,
-                "image": item.image if hasattr(item, 'image') else None  # Include image path if it exists
+                "image": item.image if hasattr(item, 'image') else None
             } for item in order.items])
         except Exception as e:
             raise HTTPException(status_code=400, detail="Error processing items: " + str(e))
 
-        # Insert the new order into the database
+        # Insert the new order
         cursor.execute(
             "INSERT INTO orders (id, customer_name, items, status) VALUES (%s, %s, %s, %s)",
             (formatted_order_id, order.customer_name, items_json, order.status)
@@ -519,16 +591,31 @@ async def create_order(order: Order):
         # Commit the transaction
         connection.commit()
 
+        # Create the order object for broadcasting
+        order_data = {
+            "id": formatted_order_id,
+            "customer_name": order.customer_name,
+            "items": [item.dict() for item in order.items],
+            "status": order.status,
+            "created_at": datetime.now().isoformat()
+        }
+
+        # Broadcast the new order to all connected clients
+        await manager.broadcast({
+            "type": "new_order",
+            "order": order_data
+        })
+
         return {"message": "Order created successfully", "order_id": formatted_order_id}
 
     except Exception as e:
-        # Rollback the transaction in case of an error
         connection.rollback()
         raise HTTPException(status_code=500, detail="Error creating order: " + str(e))
 
     finally:
         cursor.close()
         connection.close()
+
 @app.get("/orders/{order_id}")
 async def get_order_details(order_id: int):
     connection = get_db_connection()
@@ -819,3 +906,250 @@ async def update_category(
     except Exception as e:
         print(f"Error updating category: {e}")
         raise HTTPException(status_code=500, detail="Failed to update category")
+
+# Stock Management Models
+class StockUpdate(BaseModel):
+    action: str  # 'add', 'subtract', or 'set'
+    quantity: int
+    reason: str
+
+class MinStockLevel(BaseModel):
+    min_stock_level: int
+
+# Stock Management Endpoints
+@app.get('/api/stocks')
+async def get_stocks():
+    try:
+        connection = get_db_connection()
+        cursor = connection.cursor(dictionary=True)
+        cursor.execute("""
+            SELECT s.*, i.name as item_name, i.category 
+            FROM item_stocks s 
+            JOIN items i ON s.item_id = i.id
+        """)
+        stocks = cursor.fetchall()
+        cursor.close()
+        connection.close()
+        return {"success": True, "items": stocks}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.put('/api/stocks/{item_id}/update')
+async def update_stock(item_id: int, stock_update: StockUpdate):
+    connection = None
+    try:
+        connection = get_db_connection()
+        cursor = connection.cursor()
+
+        # First check if the tables exist
+        cursor.execute("""
+            SELECT COUNT(*) 
+            FROM information_schema.tables 
+            WHERE table_schema = 'cafe_preorderr' 
+            AND table_name IN ('item_stocks', 'stock_transactions', 'stock_alerts')
+        """)
+        tables_count = cursor.fetchone()[0]
+        if tables_count < 3:
+            raise HTTPException(status_code=500, detail="Required database tables are missing")
+
+        # First get current stock and item details
+        cursor.execute("""
+            SELECT s.quantity, s.min_stock_level, i.name as item_name, i.category 
+            FROM item_stocks s 
+            JOIN items i ON s.item_id = i.id 
+            WHERE s.item_id = %s
+        """, (item_id,))
+        stock_result = cursor.fetchone()
+        
+        if not stock_result:
+            raise HTTPException(status_code=404, detail=f"Stock record not found for item_id: {item_id}")
+        
+        current_quantity = stock_result[0]
+        min_stock_level = stock_result[1]
+        item_name = stock_result[2]
+        category = stock_result[3]
+        new_quantity = current_quantity
+
+        print(f"Processing stock update - Action: {stock_update.action}, Current: {current_quantity}, Update: {stock_update.quantity}")
+
+        # Calculate new quantity based on action
+        if stock_update.action == "add":
+            new_quantity = current_quantity + stock_update.quantity
+        elif stock_update.action == "subtract":
+            if current_quantity < stock_update.quantity:
+                raise HTTPException(status_code=400, detail="Not enough stock")
+            new_quantity = current_quantity - stock_update.quantity
+        elif stock_update.action == "set":
+            new_quantity = stock_update.quantity
+        else:
+            raise HTTPException(status_code=400, detail=f"Invalid action: {stock_update.action}")
+
+        print(f"New quantity calculated: {new_quantity}")
+
+        # Update stock
+        try:
+            cursor.execute(
+                "UPDATE item_stocks SET quantity = %s WHERE item_id = %s",
+                (new_quantity, item_id)
+            )
+            print(f"Stock updated successfully for item_id: {item_id}")
+        except Exception as e:
+            print(f"Error updating stock: {str(e)}")
+            raise
+
+        # Log transaction
+        try:
+            cursor.execute(
+                """INSERT INTO stock_transactions 
+                   (item_id, action, quantity, previous_quantity, new_quantity, reason) 
+                   VALUES (%s, %s, %s, %s, %s, %s)""",
+                (item_id, stock_update.action, stock_update.quantity, current_quantity, new_quantity, stock_update.reason)
+            )
+            print("Transaction logged successfully")
+        except Exception as e:
+            print(f"Error logging transaction: {str(e)}")
+            # Continue even if logging fails
+            pass
+
+        # Check if we need to create an alert
+        alert_type = None
+        try:
+            if new_quantity <= min_stock_level:
+                alert_type = "out_of_stock" if new_quantity == 0 else "low_stock"
+                cursor.execute(
+                    """INSERT INTO stock_alerts (item_id, alert_type, quantity) 
+                       VALUES (%s, %s, %s)
+                       ON DUPLICATE KEY UPDATE 
+                       alert_type = VALUES(alert_type),
+                       quantity = VALUES(quantity),
+                       created_at = CURRENT_TIMESTAMP""",
+                    (item_id, alert_type, new_quantity)
+                )
+                print(f"Stock alert created: {alert_type}")
+        except Exception as e:
+            print(f"Error handling stock alert: {str(e)}")
+            # Continue even if alert creation fails
+            pass
+
+        connection.commit()
+        print("Transaction committed successfully")
+
+        # Broadcast stock update via WebSocket
+        await manager.broadcast({
+            "type": "stock_update",
+            "item_id": item_id,
+            "item_name": item_name,
+            "category": category,
+            "new_quantity": new_quantity,
+            "min_stock_level": min_stock_level,
+            "alert_type": alert_type
+        })
+
+        return {"success": True, "new_quantity": new_quantity}
+    except HTTPException as he:
+        if connection:
+            connection.rollback()
+        raise he
+    except Exception as e:
+        if connection:
+            connection.rollback()
+        print(f"Unexpected error in stock update: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+    finally:
+        if connection:
+            cursor.close()
+            connection.close()
+            print("Database connection closed")
+
+@app.put('/api/stocks/{item_id}/min-level')
+async def update_min_stock_level(item_id: int, min_stock: MinStockLevel):
+    try:
+        connection = get_db_connection()
+        cursor = connection.cursor()
+        
+        cursor.execute(
+            "UPDATE item_stocks SET min_stock_level = %s WHERE item_id = %s",
+            (min_stock.min_stock_level, item_id)
+        )
+        
+        connection.commit()
+        cursor.close()
+        connection.close()
+        return {"success": True}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.get('/api/stocks/alerts')
+async def get_stock_alerts():
+    try:
+        connection = get_db_connection()
+        cursor = connection.cursor(dictionary=True)
+        cursor.execute("""
+            SELECT a.*, i.name as item_name, i.category 
+            FROM stock_alerts a 
+            JOIN items i ON a.item_id = i.id 
+            ORDER BY a.created_at DESC
+        """)
+        alerts = cursor.fetchall()
+        cursor.close()
+        connection.close()
+        return {"success": True, "alerts": alerts}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+def create_stock_tables():
+    connection = get_db_connection()
+    cursor = connection.cursor()
+    try:
+        # Create item_stocks table if it doesn't exist
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS item_stocks (
+                item_id INT PRIMARY KEY,
+                quantity INT NOT NULL DEFAULT 0,
+                min_stock_level INT NOT NULL DEFAULT 0,
+                FOREIGN KEY (item_id) REFERENCES items(id)
+            )
+        """)
+
+        # Create stock_transactions table if it doesn't exist
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS stock_transactions (
+                id INT AUTO_INCREMENT PRIMARY KEY,
+                item_id INT NOT NULL,
+                action VARCHAR(50) NOT NULL,
+                quantity INT NOT NULL,
+                previous_quantity INT NOT NULL,
+                new_quantity INT NOT NULL,
+                reason TEXT,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY (item_id) REFERENCES items(id)
+            )
+        """)
+
+        # Create stock_alerts table if it doesn't exist
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS stock_alerts (
+                id INT AUTO_INCREMENT PRIMARY KEY,
+                item_id INT NOT NULL,
+                alert_type VARCHAR(50) NOT NULL,
+                quantity INT NOT NULL,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY (item_id) REFERENCES items(id),
+                UNIQUE KEY unique_item_alert (item_id)
+            )
+        """)
+
+        connection.commit()
+        print("Stock management tables created successfully")
+    except Exception as e:
+        print(f"Error creating stock tables: {str(e)}")
+        connection.rollback()
+        raise
+    finally:
+        cursor.close()
+        connection.close()
+
+# Call create_stock_tables when the application starts
+@app.on_event("startup")
+async def startup_event():
+    create_stock_tables()
