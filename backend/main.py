@@ -58,7 +58,7 @@ app = FastAPI()
 # CORS configuration
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:8080", "https://my-cafe-project.vercel.app/"],  # Add your deployed frontend URL
+    allow_origins=["*"],  # Allow all origins in development, configure specific domains in production
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -170,10 +170,11 @@ async def reset_password_with_token(token: str, reset_data: ResetPassword):
 # Database connection function
 def get_db_connection():
     db_config = {
-        "host": "127.0.0.1",  # Your MySQL host
-        "user": "root",        # Your MySQL user
-        "password": "Warweapons19",  # Your MySQL password
-        "database": "cafe_preorderr",  # Your database name
+        "host": os.getenv("DB_HOST", "127.0.0.1"),
+        "user": os.getenv("DB_USER", "root"),
+        "password": os.getenv("DB_PASSWORD", "Warweapons19"),
+        "database": os.getenv("DB_NAME", "cafe_preorderr"),
+        "port": int(os.getenv("DB_PORT", "3306"))
     }
 
     try:
