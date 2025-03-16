@@ -98,7 +98,7 @@
             </div>
 
             <div class="order-actions">
-              <!-- Mark as Completed button -->
+              <!-- Mark as Completed Buttons -->
               <button 
                 @click="showCompletionConfirmation(order.id)" 
                 class="mark-completed-btn small-btn"
