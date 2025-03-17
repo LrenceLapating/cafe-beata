@@ -221,7 +221,7 @@
                   <tr v-for="item in filteredStockItems" :key="item.id">
                     <td>{{ item.name }}</td>
                     <td>{{ item.category }}</td>
-                    <td>{{ item.quantity }}</td>
+                    <td>{{ item.quantity >= 999999 ? 'Unlimited' : item.quantity }}</td>
                     <td :class="getStockStatusClass(item)">{{ getStockStatus(item) }}</td>
                     <td>
                       <button @click="openStockUpdateModal(item)" class="update-stock-btn">
@@ -242,7 +242,7 @@
           <h3>Update Stock: {{ selectedItem?.name }}</h3>
           <div class="stock-update-form">
             <div class="form-group">
-              <label>Current Stock: {{ selectedItem?.quantity }}</label>
+              <label>Current Stock: {{ selectedItem?.quantity >= 999999 ? 'Unlimited' : selectedItem?.quantity }}</label>
             </div>
             <div class="form-group">
               <label>Action:</label>
@@ -250,16 +250,25 @@
                 <option value="add">Add Stock</option>
                 <option value="subtract">Remove Stock</option>
                 <option value="set">Set Stock</option>
+                <option value="disabled">Disabled (Out of Stock)</option>
+                <option value="enabled">Enabled (Unlimited Orders)</option>
               </select>
             </div>
             <div class="form-group">
               <label>Quantity:</label>
               <input 
+                v-if="stockUpdateAction !== 'disabled' && stockUpdateAction !== 'enabled'"
                 type="number" 
                 v-model.number="stockUpdateQuantity" 
                 min="0"
-                :max="stockUpdateAction === 'subtract' ? selectedItem?.quantity : 99999"
+                :max="stockUpdateAction === 'subtract' ? selectedItem?.quantity : 999999"
               />
+              <span v-else-if="stockUpdateAction === 'disabled'">
+                Item will be marked as out of stock and cannot be ordered.
+              </span>
+              <span v-else-if="stockUpdateAction === 'enabled'">
+                Item will be available for unlimited orders regardless of quantity.
+              </span>
             </div>
             <div class="form-group">
               <label>Reason:</label>
@@ -765,13 +774,15 @@ export default {
     },
 
     getStockStatus(item) {
-      if (item.quantity === 0) return 'Out of Stock';
+      if (item.quantity === 0) return 'Disabled (Out of Stock)';
+      if (item.quantity >= 999999) return 'Enabled (Unlimited)';
       if (item.quantity <= item.min_stock_level) return 'Low Stock';
       return 'In Stock';
     },
 
     getStockStatusClass(item) {
-      if (item.quantity === 0) return 'status-out';
+      if (item.quantity === 0) return 'status-disabled';
+      if (item.quantity >= 999999) return 'status-enabled';
       if (item.quantity <= item.min_stock_level) return 'status-low';
       return 'status-ok';
     },
@@ -792,28 +803,6 @@ export default {
       this.stockUpdateReason = '';
     },
 
-    async updateMinStockLevel(item) {
-      try {
-        const response = await fetch(`http://localhost:8000/api/stocks/${item.item_id}/min-level`, {
-          method: 'PUT',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            min_stock_level: item.min_stock_level
-          })
-        });
-        
-        const data = await response.json();
-        if (!data.success) {
-          throw new Error(data.message);
-        }
-      } catch (error) {
-        console.error('Error updating minimum stock level:', error);
-        this.fetchStockItems();
-      }
-    },
-
     async submitStockUpdate() {
       // Validate required fields
       if (!this.selectedItem || !this.selectedItem.id) {
@@ -826,28 +815,52 @@ export default {
         return;
       }
 
-      if (!this.stockUpdateQuantity || this.stockUpdateQuantity <= 0) {
-        alert('Please enter a valid quantity (greater than 0)');
-        return;
-      }
-
-      // Additional validation for subtract action
-      if (this.stockUpdateAction === 'subtract' && this.stockUpdateQuantity > this.selectedItem.quantity) {
-        alert('Cannot remove more than current stock');
-        return;
-      }
-
       try {
+        let requestBody = {};
+        
+        // Handle different action types
+        if (this.stockUpdateAction === 'disabled') {
+          // For disabled, set quantity to 0 and use 'set' action
+          requestBody = {
+            action: 'set',
+            quantity: 0,
+            reason: this.stockUpdateReason || 'Disabled - Out of Stock'
+          };
+        } else if (this.stockUpdateAction === 'enabled') {
+          // For enabled, set a special value to indicate unlimited
+          requestBody = {
+            action: 'set',
+            quantity: 999999, // Very large number to represent unlimited
+            reason: this.stockUpdateReason || 'Enabled - Unlimited Orders'
+          };
+        } else {
+          // For regular actions (add, subtract, set)
+          if (!this.stockUpdateQuantity || this.stockUpdateQuantity <= 0) {
+            alert('Please enter a valid quantity (greater than 0)');
+            return;
+          }
+
+          // Additional validation for subtract action
+          if (this.stockUpdateAction === 'subtract' && this.stockUpdateQuantity > this.selectedItem.quantity) {
+            alert('Cannot remove more than current stock');
+            return;
+          }
+          
+          requestBody = {
+            action: this.stockUpdateAction,
+            quantity: parseInt(this.stockUpdateQuantity),
+            reason: this.stockUpdateReason || 'Stock update'
+          };
+        }
+
+        console.log('Sending request:', requestBody);
+
         const response = await fetch(`http://localhost:8000/api/stocks/${this.selectedItem.id}/update`, {
           method: 'PUT',
           headers: {
             'Content-Type': 'application/json',
           },
-          body: JSON.stringify({
-            action: this.stockUpdateAction,
-            quantity: parseInt(this.stockUpdateQuantity),
-            reason: this.stockUpdateReason || 'Stock update'
-          })
+          body: JSON.stringify(requestBody)
         });
 
         const data = await response.json();
@@ -1916,6 +1929,16 @@ button.decline-btn:hover {
 
 .status-ok {
   color: #4caf50;
+  font-weight: bold;
+}
+
+.status-disabled {
+  color: #9e9e9e;
+  font-weight: bold;
+}
+
+.status-enabled {
+  color: #2196f3;
   font-weight: bold;
 }
 

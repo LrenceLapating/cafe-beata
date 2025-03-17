@@ -48,7 +48,7 @@
       
       <p>By continuing to use this service, you acknowledge that you have read, understood, and agreed to these terms. Failure to comply will result in strict enforcement of the stated guidelines.</p>
       
-     <router-link to="/create-account" class="back-link">⇦Back</router-link>
+     <router-link to="/create-account" class="back-link" @click="goBackToCreateAccount">⇦Back</router-link>
 
     </div>
   </div>
@@ -57,6 +57,12 @@
 <script>
 export default {
   name: "PrivacyAndPolicy",
+  methods: {
+    goBackToCreateAccount() {
+      // No need to do anything special here as the data is already saved in localStorage
+      // and will be restored by the CreateAccountPage component
+    }
+  }
 };
 </script>
 

@@ -51,7 +51,7 @@
           <input type="checkbox" v-model="agreeToTerms" id="termsCheckbox" required />
           <label for="termsCheckbox">
             By continuing, you agree to UIC Cafe Beàta's 
-            <router-link to="/privacy-policy" class="terms-link">Privacy Policy</router-link>.
+            <router-link to="/privacy-policy" class="terms-link" @click="saveFormData">Privacy Policy</router-link>.
           </label>
         </div>
 
@@ -106,9 +106,30 @@ export default {
   created() {
     // Ensure dark mode is not applied on this page
     document.body.classList.remove("dark-mode");
+    
+    // Restore form data if available
+    this.restoreFormData();
   },
 
   methods: {
+    saveFormData() {
+      // Save form data to localStorage before navigating to privacy policy
+      localStorage.setItem('createAccount_name', this.name);
+      localStorage.setItem('createAccount_email', this.email);
+      localStorage.setItem('createAccount_password', this.password);
+    },
+    
+    restoreFormData() {
+      // Restore form data from localStorage if available
+      const savedName = localStorage.getItem('createAccount_name');
+      const savedEmail = localStorage.getItem('createAccount_email');
+      const savedPassword = localStorage.getItem('createAccount_password');
+      
+      if (savedName) this.name = savedName;
+      if (savedEmail) this.email = savedEmail;
+      if (savedPassword) this.password = savedPassword;
+    },
+    
     togglePassword() {
       this.showPassword = !this.showPassword;
     },
@@ -162,6 +183,8 @@ export default {
           this.showSuccessPopup = true;
           localStorage.setItem('userName', username);  
           localStorage.setItem('userEmail', this.email);
+          // Clear the form data from localStorage after successful signup
+          this.clearFormData();
           setTimeout(() => {
             this.$router.push({ name: "Login" });
           }, 2000);
@@ -176,6 +199,8 @@ export default {
     },
 
     goToLogin() {
+      // Clear form data when navigating to login
+      this.clearFormData();
       this.$router.push({ name: "Login" });
     },
 
@@ -183,6 +208,20 @@ export default {
       this.showSuccessPopup = false;
       this.$router.push({ name: "Login" });
     },
+    
+    clearFormData() {
+      // Remove form data from localStorage
+      localStorage.removeItem('createAccount_name');
+      localStorage.removeItem('createAccount_email');
+      localStorage.removeItem('createAccount_password');
+    },
+  },
+  
+  beforeUnmount() {
+    // Clean up localStorage when component is unmounted (except when going to privacy policy)
+    if (!this.$route || this.$route.path !== '/privacy-policy') {
+      this.clearFormData();
+    }
   },
 };
 </script>
