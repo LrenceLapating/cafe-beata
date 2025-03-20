@@ -468,23 +468,56 @@ async def update_order_status(order_id: str, status_update: OrderStatusUpdate):
         if not order:
             raise HTTPException(status_code=404, detail="Order not found")
 
+        # Debug logging
+        print(f"Updating order {order_id} to status: {status_update.status}")
+        print(f"Order data: {order}")
+        
         # Update the status
         cursor.execute("UPDATE orders SET status = %s WHERE id = %s", (status_update.status, order_id))
 
         # If marking as completed, handle stock reduction
         if status_update.status == "completed":
-            items = json.loads(order["items"]) if isinstance(order["items"], str) else order["items"]
-            for item in items:
-                cursor.execute("SELECT id FROM items WHERE name = %s", (item["name"],))
-                item_result = cursor.fetchone()
-                if item_result:
-                    item_id = item_result["id"]
-                    quantity_to_reduce = item["quantity"]
-                    cursor.execute(
-                        "UPDATE item_stocks SET quantity = quantity - %s WHERE item_id = %s",
-                        (quantity_to_reduce, item_id)
-                    )
-
+            try:
+                items = json.loads(order["items"]) if isinstance(order["items"], str) else order["items"]
+                print(f"Processing items for stock update: {items}")
+                
+                for item in items:
+                    try:
+                        print(f"Processing item: {item}")
+                        cursor.execute("SELECT id FROM items WHERE name = %s", (item["name"],))
+                        item_result = cursor.fetchone()
+                        
+                        if item_result:
+                            item_id = item_result["id"]
+                            quantity_to_reduce = item["quantity"]
+                            
+                            # Check if item stock exists
+                            cursor.execute("SELECT quantity FROM item_stocks WHERE item_id = %s", (item_id,))
+                            stock_result = cursor.fetchone()
+                            
+                            if stock_result:
+                                # Update existing stock
+                                cursor.execute(
+                                    "UPDATE item_stocks SET quantity = GREATEST(0, quantity - %s) WHERE item_id = %s",
+                                    (quantity_to_reduce, item_id)
+                                )
+                                print(f"Updated stock for item {item_id}, reduced by {quantity_to_reduce}")
+                            else:
+                                # Item exists but no stock record found - create one with 0 quantity
+                                print(f"No stock record found for item {item_id}, creating with 0 quantity")
+                                cursor.execute(
+                                    "INSERT INTO item_stocks (item_id, quantity, min_stock_level) VALUES (%s, 0, 1)",
+                                    (item_id,)
+                                )
+                        else:
+                            print(f"Item not found in database: {item['name']}")
+                    except Exception as item_error:
+                        print(f"Error processing item {item.get('name', 'unknown')}: {str(item_error)}")
+                        # Continue processing other items
+            except Exception as items_error:
+                print(f"Error processing order items: {str(items_error)}")
+                # Don't fail the order status update if stock update fails
+        
         connection.commit()
 
         # Broadcast the status update to all connected clients
@@ -500,6 +533,8 @@ async def update_order_status(order_id: str, status_update: OrderStatusUpdate):
     except Exception as e:
         connection.rollback()
         print(f"Error updating order status: {str(e)}")
+        import traceback
+        traceback.print_exc()
         raise HTTPException(status_code=500, detail=str(e))
     finally:
         cursor.close()

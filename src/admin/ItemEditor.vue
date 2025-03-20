@@ -3,7 +3,7 @@
     <div class="header">
       <h2><i class="fa fa-list"></i> Menu Item Editor</h2>
       <div class="header-buttons">
-        <button @click="showAddItemForm" class="add-item-button">
+        <button @click="toggleAddItemModal" class="add-item-button">
           <i class="fa fa-plus"></i> Add New Item
         </button>
         <button @click="showCategoryModal" class="add-category-button">
@@ -29,78 +29,87 @@
       </select>
     </div>
 
-    <!-- Add/Edit Item Form -->
-    <div v-if="showForm" class="item-form">
-      <h3><i :class="isEditing ? 'fa fa-edit' : 'fa fa-plus-circle'"></i> {{ isEditing ? 'Edit Item' : 'Add New Item' }}</h3>
-      <form @submit.prevent="saveItem" class="form-content">
-        <div class="form-group">
-          <label for="itemName">Item Name:</label>
-          <input 
-            type="text" 
-            id="itemName" 
-            v-model="currentItem.name" 
-            required 
-            class="form-input"
-          />
-        </div>
-
-        <div class="form-group">
-          <label for="itemPrice">Price (₱):</label>
-          <input 
-            type="number" 
-            id="itemPrice" 
-            v-model="currentItem.price" 
-            required 
-            step="0.01" 
-            min="0" 
-            class="form-input"
-          />
-        </div>
-
-        <div class="form-group">
-          <label for="itemCategory">Category:</label>
-          <select 
-            id="itemCategory" 
-            v-model="currentItem.category" 
-            class="form-input"
-            required
-          >
-            <option value="">-- Select Category --</option>
-            <option v-for="category in categories" :key="category.id" :value="category.name">
-              {{ category.name }} ({{ category.type }})
-            </option>
-          </select>
-          <small class="form-help">Category is required and determines where the item will appear in the menu.</small>
-        </div>
-
-        <div class="form-group">
-          <label for="itemImage">Image:</label>
-          <input 
-            type="file" 
-            id="itemImage" 
-            @change="handleImageUpload" 
-            accept="image/*" 
-            :required="!isEditing"
-            class="form-input"
-          />
-          <img 
-            v-if="imagePreview" 
-            :src="imagePreview" 
-            class="image-preview" 
-            alt="Item preview"
-          />
-        </div>
-
-        <div class="form-actions">
-          <button type="submit" class="save-button" :disabled="isSaving">
-            <i :class="isEditing ? 'fa fa-save' : 'fa fa-plus'"></i>
-            {{ isEditing ? (isSaving ? 'Updating...' : 'Update Item') : (isSaving ? 'Adding...' : 'Add Item') }}
-          </button>
-          <button type="button" @click="cancelEdit" class="cancel-button" :disabled="isSaving">
-            <i class="fa fa-times"></i> Cancel
+    <!-- Add/Edit Item Modal Popup -->
+    <div v-if="showForm" class="item-form-modal">
+      <div class="item-form-modal-content">
+        <div class="modal-header">
+          <h3><i :class="isEditing ? 'fa fa-edit' : 'fa fa-plus-circle'"></i> {{ isEditing ? 'Edit Item' : 'Add New Item' }}</h3>
+          <button @click="toggleAddItemModal" class="close-modal-btn">
+            <i class="fa fa-times"></i>
           </button>
         </div>
-      </form>
+        <div class="modal-body">
+          <form @submit.prevent="saveItem" class="form-content">
+            <div class="form-group">
+              <label for="itemName">Item Name:</label>
+              <input 
+                type="text" 
+                id="itemName" 
+                v-model="currentItem.name" 
+                required 
+                class="form-input"
+              />
+            </div>
+
+            <div class="form-group">
+              <label for="itemPrice">Price (₱):</label>
+              <input 
+                type="number" 
+                id="itemPrice" 
+                v-model="currentItem.price" 
+                required 
+                step="0.01" 
+                min="0" 
+                class="form-input"
+              />
+            </div>
+
+            <div class="form-group">
+              <label for="itemCategory">Category:</label>
+              <select 
+                id="itemCategory" 
+                v-model="currentItem.category" 
+                class="form-input"
+                required
+              >
+                <option value="">-- Select Category --</option>
+                <option v-for="category in categories" :key="category.id" :value="category.name">
+                  {{ category.name }} ({{ category.type }})
+                </option>
+              </select>
+              <small class="form-help">Category is required and determines where the item will appear in the menu.</small>
+            </div>
+
+            <div class="form-group">
+              <label for="itemImage">Image:</label>
+              <input 
+                type="file" 
+                id="itemImage" 
+                @change="handleImageUpload" 
+                accept="image/*" 
+                :required="!isEditing"
+                class="form-input"
+              />
+              <img 
+                v-if="imagePreview" 
+                :src="imagePreview" 
+                class="image-preview" 
+                alt="Item preview"
+              />
+            </div>
+
+            <div class="form-actions">
+              <button type="submit" class="save-button" :disabled="isSaving">
+                <i :class="isEditing ? 'fa fa-save' : 'fa fa-plus'"></i>
+                {{ isEditing ? (isSaving ? 'Updating...' : 'Update Item') : (isSaving ? 'Adding...' : 'Add Item') }}
+              </button>
+              <button type="button" @click="toggleAddItemModal" class="cancel-button" :disabled="isSaving">
+                <i class="fa fa-times"></i> Cancel
+              </button>
+            </div>
+          </form>
+        </div>
+      </div>
     </div>
 
     <!-- Category Management Modal -->
@@ -313,17 +322,27 @@ export default {
         this.isLoading = false;
       }
     },
-    showAddItemForm() {
-      this.currentItem = {
-        name: '',
-        price: '',
-        category: this.categories[0],
-        image: null
-      };
-      this.isEditing = false;
-      this.showForm = true;
+    toggleAddItemModal() {
+      if (!this.showForm) {
+        // Opening the form/modal
+        this.currentItem = {
+          name: '',
+          price: '',
+          category: '',
+          image: null
+        };
+        this.isEditing = false;
+      } else {
+        // Closing the form/modal - reset everything
+        this.resetForm();
+      }
+      this.showForm = !this.showForm;
+      if (!this.showForm) {
+        this.imagePreview = null;
+      }
     },
     editItem(item) {
+      // Set up editing mode first before opening the modal
       this.isEditing = true;
       this.currentItem = { 
         id: item.id,
@@ -333,6 +352,8 @@ export default {
         image: null
       };
       this.imagePreview = this.getImageUrl(item.image);
+      
+      // Then open the modal
       this.showForm = true;
     },
     async saveItem() {
@@ -415,6 +436,7 @@ export default {
           this.$emit('item-updated');
           window.dispatchEvent(new CustomEvent('stock-updated'));
           
+          // Close the modal
           this.showForm = false;
           this.resetForm();
           
@@ -884,101 +906,12 @@ export default {
 
 /* Item Form */
 .item-form {
-  background: #f8f8f8;
-  padding: 30px;
-  border-radius: 15px;
-  margin-bottom: 30px;
+  /* Remove or comment out the old item-form styles since we're now using a modal */
+  /* These styles can be safely removed or adjusted to work with our new modal */
+  display: none; /* Hide the old form style */
 }
 
-.item-form h3 {
-  color: #d12f7a;
-  font-size: 24px;
-  margin: 0 0 25px;
-}
-
-.form-group {
-  margin-bottom: 20px;
-}
-
-.form-group label {
-  display: block;
-  margin-bottom: 8px;
-  font-weight: 500;
-  color: #444;
-}
-
-.form-input {
-  width: 80%;
-  padding: 12px 15px;
-  border: 2px solid #e0e0e0;
-  border-radius: 10px;
-  font-size: 15px;
-  transition: all 0.3s ease;
-}
-
-.form-input:hover {
-  border-color: #d12f7a;
-}
-
-.form-input:focus {
-  outline: none;
-  border-color: #d12f7a;
-  box-shadow: 0 0 0 3px rgba(209, 47, 122, 0.1);
-}
-
-.form-help {
-  color: #666;
-  font-size: 13px;
-  margin-top: 5px;
-}
-
-/* Image Preview */
-.image-preview {
-  max-width: 200px;
-  max-height: 200px;
-  border-radius: 10px;
-  margin-top: 15px;
-  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-}
-
-/* Form Actions */
-.form-actions {
-  display: flex;
-  gap: 15px;
-  margin-top: 30px;
-}
-
-.save-button, .cancel-button {
-  padding: 12px 24px;
-  border: none;
-  border-radius: 10px;
-  font-size: 16px;
-  font-weight: 500;
-  cursor: pointer;
-  transition: all 0.3s ease;
-}
-
-.save-button {
-  background: #d12f7a;
-  color: white;
-  flex: 1;
-}
-
-.save-button:hover {
-  background: #b82d67;
-  transform: translateY(-2px);
-}
-
-.cancel-button {
-  background: #f0f0f0;
-  color: #666;
-  padding: 12px 30px;
-}
-
-.cancel-button:hover {
-  background: #e0e0e0;
-  transform: translateY(-2px);
-}
+/* Keep the rest of the styles for inputs, etc. */
 
 /* Items List */
 .items-list {
@@ -1323,5 +1256,175 @@ button:disabled {
 .add-category-form h4 {
   color: #d12f7a;
   margin-bottom: 20px;
+}
+
+/* Add/Edit Item Modal Styles */
+.item-form-modal {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(0, 0, 0, 0.5);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 1000;
+  backdrop-filter: blur(4px);
+}
+
+.item-form-modal-content {
+  background-color: white;
+  border-radius: 8px;
+  width: 90%;
+  max-width: 600px;
+  max-height: 90vh;
+  overflow-y: auto;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
+  animation: slideIn 0.3s ease;
+}
+
+.modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background-color: #d12f7a;
+  color: white;
+  padding: 15px 20px;
+  border-top-left-radius: 8px;
+  border-top-right-radius: 8px;
+}
+
+.modal-header h3 {
+  margin: 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.close-modal-btn {
+  background: none;
+  border: none;
+  color: white;
+  font-size: 18px;
+  cursor: pointer;
+  width: 30px;
+  height: 30px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  transition: background-color 0.2s;
+}
+
+.close-modal-btn:hover {
+  background-color: rgba(255, 255, 255, 0.2);
+}
+
+.modal-body {
+  padding: 20px;
+}
+
+@keyframes slideIn {
+  from {
+    transform: translateY(-20px);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+/* Adjust existing item-form styles to work with the modal */
+.form-content {
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+}
+
+/* Form styles for the modal */
+.form-group {
+  margin-bottom: 20px;
+}
+
+.form-group label {
+  display: block;
+  margin-bottom: 8px;
+  font-weight: 500;
+  color: #444;
+}
+
+.form-input {
+  width: 85%;
+  padding: 12px 15px;
+  border: 2px solid #e0e0e0;
+  border-radius: 10px;
+  font-size: 15px;
+  transition: all 0.3s ease;
+}
+
+.form-input:hover {
+  border-color: #d12f7a;
+}
+
+.form-input:focus {
+  outline: none;
+  border-color: #d12f7a;
+  box-shadow: 0 0 0 3px rgba(209, 47, 122, 0.1);
+}
+
+.form-help {
+  color: #666;
+  font-size: 13px;
+  margin-top: 5px;
+}
+
+/* Image Preview */
+.image-preview {
+  max-width: 200px;
+  max-height: 200px;
+  border-radius: 10px;
+  margin-top: 15px;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+}
+
+/* Form Actions */
+.form-actions {
+  display: flex;
+  gap: 15px;
+  margin-top: 30px;
+}
+
+.save-button, .cancel-button {
+  padding: 12px 24px;
+  border: none;
+  border-radius: 10px;
+  font-size: 16px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.save-button {
+  background: #d12f7a;
+  color: white;
+  flex: 1;
+}
+
+.save-button:hover {
+  background: #b82d67;
+  transform: translateY(-2px);
+}
+
+.cancel-button {
+  background: #f0f0f0;
+  color: #666;
+  padding: 12px 30px;
+}
+
+.cancel-button:hover {
+  background: #e0e0e0;
+  transform: translateY(-2px);
 }
 </style> 

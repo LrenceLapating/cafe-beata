@@ -101,16 +101,12 @@
     <div :class="['content', { 'close': isSidebarOpen }]" @click="closeSidebar">
       <!-- Top Bar -->
       <div class="top-bar">
-        <div class="logo-time-container">
+        <div class="centered-content">
           <div class="logo-container">
             <img src="@/assets/cafe-logo1.png" alt="University Logo" class="logo logo-light" />
+            <div class="cafe-title">Cafe Beata</div>
           </div>
-          <div class="live-time">
-            <p>{{ currentTime }}</p>
-          </div>
-        </div>
-
-        <div class="search-cart-container">
+          
           <div class="search-container">
             <input
               type="text"
@@ -119,15 +115,20 @@
               @input="filterItems"
             />
           </div>
-          <div class="cart-icon-container" @click="goToCart">
-            <i class="fas fa-shopping-cart"></i>
-            <span v-if="cartItemCount > 0" class="cart-badge">{{ cartItemCount }}</span>
-          </div>
+          
+          <div class="live-time">{{ currentTime }}</div>
         </div>
+      </div>
+      
+      <!-- Floating Cart Button -->
+      <div class="floating-cart" @click="goToCart">
+        <i class="fas fa-shopping-cart"></i>
+        <span v-if="cartItemCount > 0" class="floating-cart-badge">{{ cartItemCount }}</span>
       </div>
 
       <!-- Dashboard Title -->
-      <h1 class="dashboard-title">Cafe Beata</h1>
+      <h1 class="dashboard-title"></h1>
+      
 
       <!-- Display category title dynamically -->
       <div class="category-header">
@@ -151,6 +152,12 @@
           }"
         >
           <img :src="getImagePath(item.image)" :alt="item.name" />
+          <StockIndicator 
+            v-if="itemStocks[item.id]"
+            :itemId="item.id" 
+            :quantity="itemStocks[item.id]?.quantity || 0" 
+            :minStockLevel="10"
+          />
           <div class="item-details">
             <span>{{ item.name }}</span>
             <span class="item-price">₱{{ Number(item.price).toFixed(2) }}</span>
@@ -192,9 +199,11 @@
 
 <script>
 import { eventBus } from "@/utils/eventBus"; // Correct the path if needed
+import StockIndicator from './StockIndicator.vue';
 
 export default {
   components: {
+    StockIndicator
   },
   data() {
     return {
@@ -506,7 +515,7 @@ beforeUnmount() {
    checkAndNavigate(item) {
       const stock = this.itemStocks[item.id];
       if (!stock || stock.quantity === 0) {
-        alert('Sorry, this item is currently out of stock.');
+        alert('Sorry, this item is Temporarily Unavailable.');
         return;
       }
       this.showItemModal = true;
@@ -1007,15 +1016,18 @@ beforeUnmount() {
   .item-price {
     font-size: 18px;
     font-weight: bold;
-    color: #d12f7a; /* Pink color for the price */
-    transition: all 0.3s ease;
-    margin-top: 5px; /* Add some space between the name and price */
+    color: #d12f7a; 
+    background-color: #f8e1e6; 
+    padding: 5px 10px;
+    border-radius: 5px;
+    margin-top: 5px;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
   }
 
   /* Glowing effect on hover */
   .item-price:hover {
-    color: #fff; /* White text color on hover */
-    text-shadow: 0 0 10px rgba(209, 47, 122, 1), 0 0 20px rgba(209, 47, 122, 0.7); /* Glowing text effect */
+    background-color: #f8c6d0; 
+    cursor: pointer;
   }
 
   /* Glowing Button Styles */
@@ -1438,11 +1450,15 @@ html, body {
 
 /* Style the container for both logo and live time */
 .logo-time-container {
+  display: none;
+}
+
+.search-cart-container {
   display: flex;
   align-items: center;
-  justify-content: center;
-  gap: 10px;
-  width: 100%;
+  width: 80%;
+  max-width: 400px;
+  position: relative;
 }
 
 .search-container { 
@@ -1451,93 +1467,9 @@ html, body {
   padding: 10px;
   border-radius: 15px;
   width: 100%;
+  max-width: 300px;
 } 
 
-/* Style for the live time text */
-.live-time {
-  font-weight: bold;
-  font-size: 15px;
-  color: #333;
-  margin: 0;
-  padding: 0;
-  display: flex;
-  align-items: center;
-}
-
-.live-time p {
-  margin: 0;
-}
-
-/* Add other necessary styling if needed */
-.top-bar {
-  display: flex;
-  border-radius: 50px;
-  background-color: rgb(255, 239, 239);
-  flex-direction: column;
-  justify-content: center;
-  align-items: center;
-  padding: 15px 20px;
-  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
-  gap: 15px;
-}
-
-.logo-container {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.logo-container img {
-  width: 80px;
-  height: auto;
-}
-
-.search-cart-container {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  position: relative;
-  width: 100%;
-  max-width: 400px;
-}
-
-.search-container input {
-  width: 100%;
-  max-width: 300px;
-  padding: 10px 15px;
-  border-radius: 20px;
-  border: 1px solid #ccc;
-  font-size: 14px;
-}
-
-/* Live Time text styling */
-.live-time {
-  font-weight: bold;
-  font-size: 15px;
-  color: #333;
-  margin: 0;
-  padding: 0;
-  display: flex;
-  align-items: center;
-}
-
-.live-time p {
-  margin: 0;
-}
-
-/* Logo container */
-.logo-container {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.logo-container img {
-  width: 80px;
-  height: auto;
-}
-
-/* Cart icon positioning */
 .cart-icon-container {
   position: absolute;
   right: -40px;
@@ -1548,25 +1480,492 @@ html, body {
   transition: color 0.3s ease;
 }
 
-/* Responsive adjustments */
 @media (max-width: 768px) {
   .search-cart-container {
     width: 90%;
+    max-width: none;
+    position: relative;
+  }
+  
+  .search-container {
+    width: 100%;
+    max-width: none;
   }
   
   .cart-icon-container {
     right: -35px;
     font-size: 20px;
   }
+  
+  .search-container input {
+    width: 100%;
+    max-width: none;
+  }
 }
 
-@media (min-width: 769px) {
-  .top-bar {
+.cart-badge {
+  position: absolute;
+  top: -5px;
+  right: -5px;
+  background-color: red;
+  color: white;
+  border-radius: 50%;
+  padding: 2px 6px;
+  font-size: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.item-modal {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-color: rgba(0, 0, 0, 0.5);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 1000;
+}
+
+.modal-content {
+  background-color: #fce6e6;
+  padding: 30px;
+  border-radius: 15px;
+  text-align: center;
+  width: 90%;
+  max-width: 400px;
+  position: relative;
+}
+
+/* Update close button styles */
+.modal-content .close {
+  position: absolute;
+  top: 10px;
+  right: 15px;
+  font-size: 32px;
+  color: #333;
+  cursor: pointer;
+  width: 40px;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  transition: all 0.3s ease;
+  background: none;
+  border: none;
+  padding: 0;
+  line-height: 1;
+}
+
+.modal-content .close:hover {
+  color: #d12f7a;
+  transform: scale(1.1);
+}
+
+/* Dark mode styles for close button */
+.dark-mode .modal-content .close {
+  color: #fff;
+}
+
+.dark-mode .modal-content .close:hover {
+  color: #f8c6d0;
+}
+
+@media (max-width: 768px) {
+  .modal-content .close {
+    font-size: 28px;
+    width: 35px;
+    height: 35px;
+  }
+}
+
+.modal-item-details {
+  margin-bottom: 20px;
+}
+
+.modal-item-details img {
+  width: 150px;
+  height: 150px;
+  object-fit: contain;
+  margin-bottom: 15px;
+}
+
+.modal-item-details h3 {
+  color: #333;
+  margin: 10px 0;
+}
+
+.modal-item-details .price {
+  color: #d12f7a;
+  font-size: 20px;
+  font-weight: bold;
+}
+
+.modal-buttons {
+  display: flex;
+  justify-content: center;
+  gap: 15px;
+}
+
+.add-cart-btn, .order-now-btn {
+  padding: 10px 20px;
+  border: none;
+  border-radius: 5px;
+  cursor: pointer;
+  font-weight: bold;
+  transition: all 0.3s ease;
+}
+
+.add-cart-btn {
+  background-color: #333;
+  color: white;
+}
+
+.order-now-btn {
+  background-color: #d12f7a;
+  color: white;
+}
+
+.add-cart-btn:hover {
+  background-color: #444;
+}
+
+.order-now-btn:hover {
+  background-color: #b82d67;
+}
+
+/* Dark mode styles */
+.dark-mode .modal-content {
+  background-color: #333;
+  color: white;
+}
+
+.dark-mode .modal-item-details h3 {
+  color: white;
+}
+
+.dark-mode .cart-icon-container {
+  color: #f8c6d0;
+}
+
+.dark-mode .cart-icon-container:hover {
+  color: #f8a1b2;
+}
+
+@media (max-width: 768px) {
+  .search-cart-container {
+    max-width: 300px;
+  }
+  
+  .cart-icon-container {
+    font-size: 20px;
+  }
+  
+  .modal-content {
+    width: 85%;
     padding: 20px;
   }
   
+  .modal-item-details img {
+    width: 120px;
+    height: 120px;
+  }
+}
+
+/* Add this to your existing styles */
+.added-to-cart-notification {
+  position: fixed;
+  top: 20px;
+  right: 20px;
+  background-color: #4CAF50;
+  color: white;
+  padding: 10px 20px;
+  border-radius: 5px;
+  z-index: 2000;
+  animation: slideIn 0.3s ease-out, fadeOut 0.3s ease-out 0.7s;
+}
+
+@keyframes slideIn {
+  from {
+    transform: translateX(100%);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+
+@keyframes fadeOut {
+  from {
+    opacity: 1;
+  }
+  to {
+    opacity: 0;
+  }
+}
+
+/* Dark mode support */
+.dark-mode .added-to-cart-notification {
+  background-color: #45a049;
+}
+
+/* Modal Quantity Controls */
+.modal-quantity-controls {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 15px;
+  margin: 20px 0;
+}
+
+.quantity-btn {
+  width: 35px;
+  height: 35px;
+  border: none;
+  border-radius: 50%;
+  background-color: #d12f7a;
+  color: white;
+  font-size: 20px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.3s ease;
+}
+
+.quantity-btn:hover {
+  background-color: #b82d67;
+  transform: scale(1.1);
+}
+
+.quantity-display {
+  font-size: 24px;
+  font-weight: bold;
+  color: #333;
+  min-width: 40px;
+  text-align: center;
+}
+
+.total-price {
+  font-size: 20px;
+  font-weight: bold;
+  color: #d12f7a;
+  margin-top: 10px;
+}
+
+/* Dark mode styles for quantity controls */
+.dark-mode .quantity-display {
+  color: #fff;
+}
+
+.dark-mode .quantity-btn {
+  background-color: #444;
+}
+
+.dark-mode .quantity-btn:hover {
+  background-color: #555;
+}
+
+/* Remove all out-of-stock related styles */
+.item.out-of-stock {
+  opacity: 0.9;
+  position: relative;
+}
+
+.item.out-of-stock img {
+  filter: grayscale(0.7);
+}
+
+/* Top Bar */
+.top-bar {
+  display: flex;
+  align-items: center;
+  background-color: #fff9f9;
+  padding: 0 15px;
+  height: 60px;
+  width: 100%;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  position: sticky;
+  top: 0;
+  z-index: 100;
+}
+
+.centered-content {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-grow: 1;
+  gap: 20px;
+}
+
+.top-bar .menu-button {
+  position: static;
+  background: transparent;
+  box-shadow: none;
+  font-size: 24px;
+  padding: 5px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  z-index: 101;
+}
+
+.logo-container {
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
+}
+
+.logo-container img {
+  width: 30px;
+  height: 30px;
+  object-fit: contain;
+}
+
+.cafe-title {
+  color: #d12f7a;
+  font-weight: bold;
+  margin-left: 10px;
+  font-size: 18px;
+  white-space: nowrap;
+}
+
+.search-container {
+  flex-grow: 0;
+  width: 250px;
+}
+
+.search-container input {
+  width: 100%;
+  padding: 8px 15px;
+  border-radius: 20px;
+  border: 1px solid #ccc;
+  font-size: 14px;
+  background-color: white;
+}
+
+.time-cart-container {
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
+}
+
+.live-time {
+  font-weight: 500;
+  font-size: 14px;
+  color: #333;
+  white-space: nowrap;
+}
+
+.cart-icon-container {
+  cursor: pointer;
+  font-size: 22px;
+  color: #d12f7a;
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  background-color: #f8e1e6;
+  border-radius: 50%;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+  transition: all 0.3s ease;
+}
+
+.cart-icon-container:hover {
+  transform: scale(1.1);
+  background-color: #f8d1d1;
+}
+
+.cart-badge {
+  position: absolute;
+  top: -5px;
+  right: -5px;
+  background-color: red;
+  color: white;
+  border-radius: 50%;
+  font-size: 10px;
+  min-width: 18px;
+  height: 18px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: bold;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+}
+
+/* Dark mode styles for top bar */
+.dark-mode .top-bar {
+  background-color: #333;
+}
+
+.dark-mode .cafe-title {
+  color: #f8c6d0;
+}
+
+.dark-mode .live-time {
+  color: #fff;
+}
+
+.dark-mode .search-container input {
+  background-color: #444;
+  color: white;
+  border-color: #555;
+}
+
+/* Responsive adjustments for top bar */
+@media (max-width: 768px) {
+  .top-bar {
+    padding: 0 10px;
+  }
+  
+  .centered-content {
+    gap: 10px;
+  }
+  
   .search-container {
-    max-width: 400px;
+    width: 180px;
+  }
+  
+  .logo-container img {
+    width: 25px;
+    height: 25px;
+  }
+  
+  .cafe-title {
+    font-size: 16px;
+    margin-left: 5px;
+  }
+}
+
+@media (max-width: 480px) {
+  .top-bar {
+    padding: 0 5px;
+  }
+  
+  .centered-content {
+    gap: 5px;
+  }
+  
+  .search-container {
+    width: 120px;
+  }
+  
+  .cafe-title {
+    font-size: 14px;
+  }
+  
+  .cart-icon-container {
+    width: 36px;
+    height: 36px;
+    font-size: 20px;
   }
 }
 
@@ -2128,26 +2527,93 @@ html, body {
 
 /* Remove all out-of-stock related styles */
 .item.out-of-stock {
-  opacity: 0.7;
-  pointer-events: none;
+  opacity: 0.9;
   position: relative;
 }
 
-.item.out-of-stock::after {
-  content: "Out of Stock";
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
-  background-color: rgba(244, 67, 54, 0.9);
-  color: white;
-  padding: 8px 16px;
-  border-radius: 4px;
-  font-weight: bold;
-  z-index: 2;
+.item.out-of-stock img {
+  filter: grayscale(0.7);
 }
 
-.item.out-of-stock img {
-  filter: grayscale(1);
+/* Add floating cart styles */
+.floating-cart {
+  position: fixed;
+  bottom: 30px;
+  right: 30px;
+  width: 60px;
+  height: 60px;
+  background-color: #d12f7a;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: white;
+  font-size: 24px;
+  cursor: pointer;
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.3);
+  z-index: 1000;
+  transition: all 0.3s ease;
+}
+
+.floating-cart:hover {
+  transform: scale(1.1);
+  background-color: #b82d67;
+}
+
+.floating-cart-badge {
+  position: absolute;
+  top: -8px;
+  right: -8px;
+  background-color: red;
+  color: white;
+  border-radius: 50%;
+  font-size: 14px;
+  min-width: 24px;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: bold;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+}
+
+.dark-mode .floating-cart {
+  background-color: #444;
+}
+
+.dark-mode .floating-cart:hover {
+  background-color: #333;
+}
+
+@media (max-width: 768px) {
+  .floating-cart {
+    bottom: 20px;
+    right: 20px;
+    width: 55px;
+    height: 55px;
+  }
+}
+
+@media (max-width: 480px) {
+  .floating-cart {
+    bottom: 15px;
+    right: 15px;
+    width: 50px;
+    height: 50px;
+    font-size: 20px;
+  }
+  
+  .floating-cart-badge {
+    min-width: 20px;
+    height: 20px;
+    font-size: 12px;
+  }
+}
+
+/* Update time-cart-container to just show time */
+.time-cart-container {
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
 }
 </style>

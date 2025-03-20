@@ -7,7 +7,7 @@
       </div>
     </button>
 
-    <div v-if="isSidebarOpen" class="overlay" @click="closeSidebar"></div>
+    <div v-if="isSidebarOpen" class="overlay"></div>
     
     <!-- Sidebar -->
     <div :class="['sidebar', { 'open': isSidebarOpen }]" @click.stop>
@@ -307,7 +307,7 @@ export default {
       notificationClass: "", 
       notificationVisible: false,
       showMenuEditor: false, // Control visibility of menu editor popup
-      isSidebarOpen: localStorage.getItem('sidebarOpen') === 'true', // Control visibility of sidebar
+      isSidebarOpen: true, // Always open by default
       orderReadyStatus: {}, // Track which orders are ready
       confirmCompleteOrderId: null, // Track which order is being confirmed for completion
       showStockManager: false,
@@ -508,20 +508,50 @@ export default {
 
     // Mark an order as completed and send notification
     markAsCompleted(orderId, customerName, items) {
+      // Log for debugging
+      console.log(`Marking order ${orderId} as completed...`);
+      
+      // Ensure items is properly formatted
+      let processedItems = items;
+      if (typeof items === 'string') {
+        try {
+          processedItems = JSON.parse(items);
+        } catch (e) {
+          console.error("Failed to parse items:", e);
+          alert("Error processing order items. Please try again.");
+          return;
+        }
+      }
+      
       fetch(`http://127.0.0.1:8000/orders/${orderId}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ status: "completed" })
       })
         .then(response => {
+          // First check if the response is actually received
+          if (!response) {
+            throw new Error('No response received from server');
+          }
+          
+          // Then check if it's OK
           if (!response.ok) {
-            return response.json().then(data => {
-              throw new Error(data.detail || 'Failed to complete order');
+            return response.text().then(text => {
+              try {
+                // Try to parse as JSON
+                const data = JSON.parse(text);
+                throw new Error(data.detail || `Server error: ${response.status}`);
+              } catch (e) {
+                // If parsing fails, use the raw text
+                throw new Error(`Server error: ${response.status} - ${text || 'Unknown error'}`);
+              }
             });
           }
           return response.json();
         })
-        .then(() => {
+        .then((data) => {
+          console.log("Order completed successfully:", data);
+          
           // Immediately remove from pending orders
           this.orders = this.orders.filter(order => order.id !== orderId);
 
@@ -531,15 +561,15 @@ export default {
           localStorage.setItem('orderReadyStatus', JSON.stringify(this.orderReadyStatus));
 
           // Calculate the total price
-          const total = items.reduce((sum, item) => sum + item.price * item.quantity, 0).toFixed(2);
+          const total = processedItems.reduce((sum, item) => sum + item.price * item.quantity, 0).toFixed(2);
 
           // Prepare the notification with highlighted order details
           const notification = {
             orderId,
             customerName,
-            message: `Your order is completed! ✔️ Thank you for choosing Café Beata. Enjoy your food and drinks! 🥰. <span class="highlighted-order-details">Order details: ${this.formatItems(items)}. Total: ₱${total}</span>`,
+            message: `Your order is completed! ✔️ Thank you for choosing Café Beata. Enjoy your food and drinks! 🥰. <span class="highlighted-order-details">Order details: ${this.formatItems(processedItems)}. Total: ₱${total}</span>`,
             timestamp: new Date().toISOString(),
-            items,
+            items: processedItems,
             total,
           };
 
@@ -696,8 +726,6 @@ export default {
     // Toggle sidebar visibility
     toggleSidebar() {
       this.isSidebarOpen = !this.isSidebarOpen;
-      localStorage.setItem('sidebarOpen', this.isSidebarOpen.toString());
-      
       // When opening the sidebar, prevent scrolling on the body
       if (this.isSidebarOpen) {
         document.body.style.overflow = 'hidden';
@@ -706,20 +734,15 @@ export default {
       }
     },
 
-    // Close sidebar
+    // Close sidebar - only called when X button is clicked
     closeSidebar() {
       this.isSidebarOpen = false;
-      localStorage.setItem('sidebarOpen', this.isSidebarOpen.toString());
       document.body.style.overflow = '';
     },
 
-    // Handle clicks outside sidebar
-    handleOutsideClick(event) {
-      if (this.isSidebarOpen && 
-          !event.target.closest('.sidebar') && 
-          !event.target.closest('.menu-button')) {
-        this.closeSidebar();
-      }
+    // Handle clicks outside sidebar - removed to prevent auto-closing when clicking outside
+    handleOutsideClick() {
+      // Do nothing - sidebar should stay open
     },
 
     // Add new methods for completion confirmation
@@ -1009,9 +1032,6 @@ export default {
     
     // Then fetch initial orders
     this.fetchOrders();
-
-    // Add event listener for clicks outside sidebar
-    document.addEventListener('click', this.handleOutsideClick);
   },
 
   beforeUnmount() {
@@ -1019,7 +1039,6 @@ export default {
     if (this.ws) {
       this.ws.close();
     }
-    document.removeEventListener('click', this.handleOutsideClick);
   }
 };
 </script>

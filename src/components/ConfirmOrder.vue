@@ -31,49 +31,77 @@
       </div>
 
       <!-- Confirm Order Content -->
-      <h1>Confirm Your Order</h1>
+      <h1 class="cart-title">Your Cart ({{ cart.length }} items)</h1>
 
-      <div v-if="cart.length">
-        <h2>Your Order:</h2>
-        <ul>
-          <li v-for="(order, index) in cart" :key="index">
-            <img :src="getImagePath(order)" :alt="order.name" class="order-image"/>
-            <span>{{ order.name }} - ₱{{ order.price * order.quantity }}</span>
-
-            <!-- Quantity Controls -->
-            <div class="quantity-controls">
-              <button @click="decreaseQuantity(index)">-</button>
-              <span>{{ order.quantity }}</span>
-              <button @click="increaseQuantity(index)">+</button>
+      <div class="cart-container" v-if="cart.length">
+        <div class="cart-header">
+          <div class="header-item">Item</div>
+          <div class="header-price">Price</div>
+          <div class="header-quantity">Quantity</div>
+          <div class="header-total">Total</div>
+          <div class="header-actions"></div>
+        </div>
+        
+        <div class="cart-items">
+          <div v-for="(order, index) in cart" :key="index" class="cart-item">
+            <div class="item-details">
+              <img :src="getImagePath(order)" :alt="order.name" class="item-image"/>
+              <div class="item-info">
+                <h3 class="item-name">{{ order.name }}</h3>
+                <p v-if="order.name === 'Pi Pizza Oven'" class="estimated-ship">
+                  (Estimated Ship Date: June 6th)
+                </p>
+                <p v-if="order.name === 'Pi Pizza Oven'" class="item-source">
+                  Final Source: Wood Only
+                </p>
+                <p v-if="order.name === 'Grill Ultimate Bundle'" class="item-promotion">
+                  Add-in special promotion for $49.99
+                </p>
+                <a v-if="order.name === 'Pi Pizza Oven'" class="change-link" href="#">Change</a>
+              </div>
             </div>
+            <div class="item-price">₱{{ order.price.toFixed(2) }}</div>
+            <div class="item-quantity">
+              <div class="quantity-controls">
+                <button @click="decreaseQuantity(index)" class="quantity-btn">-</button>
+                <span class="quantity-value">{{ order.quantity }}</span>
+                <button @click="increaseQuantity(index)" class="quantity-btn">+</button>
+              </div>
+            </div>
+            <div class="item-total">₱{{ (order.price * order.quantity).toFixed(2) }}</div>
+            <div class="item-actions">
+              <button class="remove-btn" @click="removeFromCart(index)">×</button>
+            </div>
+          </div>
+        </div>
 
-            <button class="remove-btn" @click="removeFromCart(index)">Remove</button>
-          </li>
-        </ul>
+        <div class="cart-summary">
+          <div class="subtotal">
+            <span>Subtotal:</span>
+            <span>₱{{ totalPrice.toFixed(2) }}</span>
+          </div>
+          <div class="grand-total">
+            <span>Grand total:</span>
+            <span>₱{{ totalPrice.toFixed(2) }}</span>
+          </div>
+        </div>
 
-        <!-- Total Price -->
-        <h2>Total: ₱{{ totalPrice }}</h2>
+        <div class="cart-actions">
+          <button @click="addMoreOrder" class="continue-shopping">Continue Order</button>
+          <button @click="openModal" class="checkout-btn" :disabled="cart.length === 0 || isProcessingOrder || !isCafeOpen">
+            Check out
+          </button>
+        </div>
       </div>
 
       <!-- No items in cart -->
-      <p v-else>No items in cart. Add some from the dashboard.</p>
-
-      <!-- Separate Buttons -->
-      <div class="buttons">
-        <div class="add-more-button">
-          <button @click="addMoreOrder" class="glowing-btn">Add More Order</button>
-        </div>
-        <div class="confirm-button">
-          <button @click="openModal" class="glowing-btn" :disabled="cart.length === 0 || isProcessingOrder || !isCafeOpen">
-            Confirm Order
-          </button>
-        </div>
+      <div class="empty-cart" v-else>
+        <p>No items in cart. Add some from the dashboard.</p>
+        <button @click="addMoreOrder" class="continue-shopping">Start Order</button>
       </div>
     </div>
   </div>
 </template>
-
-
 
 <script>
 export default {
@@ -416,7 +444,7 @@ export default {
         this.$router.push({
           name: 'OrderIDPage',
           query: {
-            orderID: orderID,
+            orderID: orderID, 
             customerName: customerName,
             items: JSON.stringify(this.cart),
             totalPrice: this.totalPrice
@@ -492,148 +520,201 @@ export default {
 };
 </script>
 
-
-
-
-
 <style scoped>
-
-
-.closed-message {
-  background-color: rgba(0, 0, 0, 0.7); /* Semi-transparent background */
-  color: #fff; /* White text color */
-  padding: 20px;
-  border-radius: 10px;
-  text-align: center;
-  font-size: 24px; /* Larger text size */
-  font-family: 'Dancing Script', cursive; /* Match font family */
-  position: fixed;
-  top: 30%;
-  left: 50%;
-  transform: translateX(-50%); /* Center the popup */
-  width: 80%;
-  max-width: 600px; /* Limit the width */
-  z-index: 9999; /* Make sure it's on top of everything else */
-  box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3); /* Shadow for the popup */
-}
-
-.closed-message p {
+/* Reset basic elements */
+* {
+  box-sizing: border-box;
   margin: 0;
-  font-size: 22px; /* Larger font size for the message text */
-  font-weight: bold; /* Make the message text bold */
+  padding: 0;
 }
 
-.closed-message .close-btn {
-  background-color: #FF5C5C;
-  color: white;
-  padding: 10px 20px;
-  border-radius: 5px;
-  border: none;
-  cursor: pointer;
-  margin-top: 20px;
-  font-size: 18px;
-  transition: background-color 0.3s ease;
-}
-
-.closed-message .close-btn:hover {
-  background-color: #FF3B3B; /* Darker red on hover */
-}
-
-.wedding-text {
-  font-size: 36px; /* Larger size for emphasis */
+.cart-title {
+  font-size: 24px;
   font-weight: bold;
-  color: #d12f7a; /* Dark pink */
-  font-family: 'Dancing Script', cursive; /* Cursive font like in the image */
-  margin-bottom: 10px; /* Space below the Wedding text */
+  margin-bottom: 20px;
+  text-align: left;
+  padding: 0 10px;
 }
 
-/* Normal Loading Text */
-.loading-text {
-  font-size: 24px;  /* Adjust the size of the text */
-  font-weight: normal;  /* Regular weight for the text */
-  color: black;  /* White color to contrast with the background */
-  font-family: Arial, sans-serif; /* A simple font for "loading..." */
-  margin-top: 10px; /* Space between Wedding text and loading text */
-}
-
-/* Progress Bar Container with Dark Pink Background */
-.progress-bar-container {
-  margin-top: 20px;
-  width: 100%; /* Full width of container */
-  max-width: 400px;  /* Limit the max width of the progress bar */
-  height: 30px;
-  background-color: #d85d7f; /* Dark Pink background color */
-  border-radius: 20px;
-  overflow: hidden;
-}
-
-/* Striped Red Progress Bar */
-.progress-bar {
-  height: 100%;
-  background: repeating-linear-gradient(
-    45deg,
-    red 0%,
-    red 10%,
-    #d85d7f 10%,
-    #d85d7f 20%
-  );
-  border-radius: 20px;
-  animation: progressAnimation 3s linear infinite;
-}
-
-@keyframes progressAnimation {
-  0% { width: 0%; }
-  100% { width: 100%; }
-}
-
-.loading-spinner-container {
-  position: fixed;  /* Fixed position so it's always visible on the screen */
-  top: 50%;  /* Center vertically */
-  left: 50%;  /* Center horizontally */
-  transform: translate(-50%, -50%);  /* Adjust for perfect centering */
-  z-index: 1000;  /* Ensure it stays on top */
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  flex-direction: column;
-  text-align: center;
+.confirm-order {
   padding: 20px;
-  background-color:#f8d2e4; /* Dark Pink background */
-  border-radius: 35px;  /* Rounded corners */
-  width: 80%;  /* Ensure the container width is sufficient */
-  max-width: 600px;  /* Set a max width for the container */
-  min-height: 200px; /* Set a minimum height to ensure visibility */
-  margin: 0 auto;  /* Center the container */
-  overflow: visible;  /* Ensure nothing is clipped */
+  background-color: #fce6e6; /* Restored light pink background */
+  max-width: 1200px;
+  margin: 0 auto;
+  font-family: Arial, sans-serif;
 }
 
-/* Mobile adjustments */
-@media (max-width: 768px) {
-  .loading-spinner-container {
-    width: 80%;  /* Reduce width to 80% for smaller screens */
-    padding: 12px;  /* Reduce padding for a more compact container */
-    max-height: 250px;  /* Limit the height for medium-sized screens */
-    overflow: hidden;  /* Prevent overflow if content exceeds max height */
-  }
-  .progress-bar-container {
-    max-width: 250px;  /* Adjust progress bar width for smaller screens */
-  }
+.cart-container {
+  background-color: #ffffff;
+  border-radius: 8px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
 }
 
-@media (max-width: 480px) {
-  .loading-spinner-container {
-    width: 75%;  /* Reduce width to 75% for very small screens */
-    padding: 10px;  /* Further reduce padding */
-    max-height: 200px;  /* Set a smaller height for very small screens */
-    height: auto;  /* Allow height to adjust automatically */
-    overflow: hidden;  /* Prevent content from overflowing */
-  }
-  .progress-bar-container {
-    max-width: 220px;  /* Make the progress bar smaller for very small screens */
-  }
+.cart-header {
+  display: grid;
+  grid-template-columns: 3fr 1fr 1fr 1fr 0.5fr;
+  padding: 15px;
+  border-bottom: 1px solid #e0e0e0;
+  font-weight: bold;
+  color: #333;
 }
 
+.cart-items {
+  border-bottom: 1px solid #e0e0e0;
+}
 
+.cart-item {
+  display: grid;
+  grid-template-columns: 3fr 1fr 1fr 1fr 0.5fr;
+  padding: 20px 15px;
+  align-items: center;
+  border-bottom: 1px solid #f0f0f0;
+}
+
+.cart-item:last-child {
+  border-bottom: none;
+}
+
+.item-details {
+  display: flex;
+  align-items: center;
+}
+
+.item-image {
+  width: 60px;
+  height: 60px;
+  object-fit: cover;
+  margin-right: 15px;
+  border-radius: 4px;
+}
+
+.item-info {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  text-align: left;
+}
+
+.item-name {
+  font-size: 16px;
+  font-weight: bold;
+  margin-bottom: 4px;
+}
+
+.estimated-ship {
+  color: #ff6b00;
+  font-size: 14px;
+  margin-bottom: 4px;
+}
+
+.item-source, .item-promotion {
+  font-size: 12px;
+  color: #666;
+  margin-bottom: 4px;
+}
+
+.change-link {
+  color: #0066cc;
+  text-decoration: none;
+  font-size: 14px;
+}
+
+.item-price, .item-total {
+  font-size: 16px;
+  font-weight: bold;
+}
+
+.quantity-controls {
+  display: flex;
+  align-items: center;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  overflow: hidden;
+  width: fit-content;
+}
+
+.quantity-btn {
+  background-color: #f5f5f5;
+  border: none;
+  color: #333;
+  font-size: 16px;
+  width: 30px;
+  height: 30px;
+  cursor: pointer;
+}
+
+.quantity-value {
+  padding: 0 10px;
+  font-size: 14px;
+}
+
+.remove-btn {
+  background: none;
+  border: none;
+  color: #999;
+  font-size: 24px;
+  cursor: pointer;
+}
+
+.remove-btn:hover {
+  color: #333;
+}
+
+.cart-summary {
+  padding: 20px;
+  border-bottom: 1px solid #e0e0e0;
+}
+
+.subtotal, .grand-total {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 10px;
+}
+
+.grand-total {
+  font-size: 18px;
+  font-weight: bold;
+  margin-top: 15px;
+  margin-bottom: 15px;
+}
+
+.cart-actions {
+  display: flex;
+  justify-content: space-between;
+  padding: 20px;
+}
+
+.continue-shopping {
+  background-color: #ffffff;
+  border: 1px solid #333;
+  color: #333;
+  padding: 10px 20px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 14px;
+}
+
+.checkout-btn {
+  background-color: #000000;
+  color: white;
+  border: none;
+  padding: 10px 20px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 14px;
+}
+
+.empty-cart {
+  padding: 50px 20px;
+  text-align: center;
+}
+
+.empty-cart p {
+  margin-bottom: 20px;
+  font-size: 16px;
+}
+
+/* Modal Styles - Restored previous styling */
 .custom-modal {
   position: fixed;
   top: 0;
@@ -655,7 +736,6 @@ export default {
   width: 80%;
   max-width: 600px;
 }
-
 
 .close {
   position: absolute;
@@ -681,12 +761,12 @@ export default {
 }
 
 .yes-btn {
-  background-color:rgb(136, 132, 136);
+  background-color: rgb(136, 132, 136);
   color: white;
 }
 
 .no-btn {
-  background-color:rgb(255, 0, 128);
+  background-color: rgb(255, 0, 128);
   color: white;
 }
 
@@ -698,446 +778,64 @@ export default {
   background-color: #b82d67;
 }
 
-/* Dark Mode for the Loading Spinner Container */
-.dark-mode .loading-spinner-container {
-  background-color: #333;  /* Dark background color for dark mode */
-  color: #fff;  /* White text color for dark mode */
-  border-radius: 35px;  /* Keep the rounded corners */
-  box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3); /* Lighter shadow for dark mode */
+/* Processing Order Section */
+.loading-spinner-container {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  z-index: 1000;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  flex-direction: column;
+  text-align: center;
+  padding: 20px;
+  background-color: #f8d2e4;
+  border-radius: 35px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  width: 80%;
+  max-width: 400px;
 }
 
-.dark-mode .loading-text {
-  color: #fff;  /* White color for the loading text */
+.wedding-text {
+  font-size: 36px;
+  font-weight: bold;
+  color: #d12f7a;
+  font-family: 'Dancing Script', cursive;
+  margin-bottom: 10px;
 }
 
-.dark-mode .progress-bar-container {
-  background-color: #444;  /* Dark background for progress bar container */
+.loading-text {
+  font-size: 24px;
+  margin-bottom: 20px;
 }
 
-.dark-mode .progress-bar {
+.progress-bar-container {
+  width: 100%;
+  max-width: 400px;
+  height: 30px;
+  background-color: #d85d7f;
+  border-radius: 20px;
+  overflow: hidden;
+}
+
+.progress-bar {
+  height: 100%;
   background: repeating-linear-gradient(
     45deg,
-    #555 0%, 
-    #555 10%, 
-    #333 10%, 
-    #333 20%  /* Darker stripes for progress bar in dark mode */
+    red 0%,
+    red 10%,
+    #d85d7f 10%,
+    #d85d7f 20%
   );
+  border-radius: 20px;
   animation: progressAnimation 3s linear infinite;
 }
 
-.dark-mode .loading-spinner-container .progress-bar-container {
-  background-color: #555;  /* Slightly lighter background for the progress bar container */
-}
-
-.dark-mode .spinner {
-  border-top: 4px solid #3498db; /* Blue color for the spinner */
-  border-color: #555; /* Darker border for spinner */
-}
-
-/* Adjust the progress bar text color in dark mode */
-.dark-mode .loading-text {
-  color: #ddd;  /* Light gray for text in dark mode */
-}
-
-/* Optional: Apply shadow to make text and progress bar stand out more */
-.dark-mode .loading-spinner-container {
-  box-shadow: 0px 4px 8px rgba(0, 0, 0, 0.7);  /* Stronger shadow for dark mode */
-}
-
-
-
-.dark-mode .loading-spinner {
-  background-color: #333333; /* Dark background */
-  color: white; /* White text */
-  box-shadow: 0px 4px 6px rgba(255, 255, 255, 0.1); /* Lighter shadow */
-}
-
-/* Dark Mode for Spinner Circle */
-.dark-mode .spinner {
-  border-top: 4px solid #3498db; /* Keep blue color for spinner */
-  border-color: #555555; /* Darker border for spinner */
-}
-
-/* Dark Mode for Loading Bar */
-.dark-mode .loading-bar {
-  background-color: #444444; /* Darker background for loading bar */
-}
-
-.dark-mode .progress {
-  background-color: #2ecc71; /* Light green progress bar */
-}
-
-
-/* Dark Mode for Quantity Controls Button */
-.dark-mode .quantity-controls button {
-  background-color: #555555; /* Darker background for quantity buttons */
-  color: white; /* White text color */
-  border: 1px solid #777777; /* Darker border for quantity buttons */
-  border-radius: 50%; /* Keep the circular shape */
-  padding: 5px;
-  font-size: 18px;
-  cursor: pointer;
-  transition: background-color 0.3s ease;
-}
-
-/* Dark Mode Hover Effect for Quantity Controls Button */
-.dark-mode .quantity-controls button:hover {
-  background-color: #666666; /* Slightly lighter background on hover */
-}
-
-/* Dark Mode Active State for Quantity Controls Button */
-.dark-mode .quantity-controls button:active {
-  background-color: #777777; /* Darker background when active */
-}
-
-
-/* Dark Mode for Modal Content */
-.dark-mode .modal-content {
-  background-color: #222222; /* Dark background for modal content */
-  color: #ffffff; /* White text */
-  box-shadow: 0px 4px 6px rgba(255, 255, 255, 0.2); /* Lighter shadow for modal */
-  border-radius: 10px; /* Rounded corners */
-  padding: 30px;
-  width: 80%;
-  max-width: 600px;
-  text-align: center;
-}
-
-/* Dark Mode for Modal Buttons inside Modal */
-.dark-mode .modal-buttons button {
-  background-color: #444444; /* Dark buttons */
-  color: white; /* White text for buttons */
-  border: 1px solid #666666; /* Darker borders for buttons */
-}
-
-.dark-mode .modal-buttons button:hover {
-  background-color: #555555; /* Darker button on hover */
-}
-
-/* Dark Mode for Close Button inside Modal */
-.dark-mode .close {
-  color: #ffffff; /* White color for close button */
-}
-
-
-/* Dark Mode for "No" Button with Light Pink */
-.dark-mode .no-btn {
-  background-color: #f8c6d0 !important; /* Light pink color */
-  color: black !important; /* White text */
-  border: 1px solid #f8a1b2 !important; /* Lighter border for pink */
-}
-
-.dark-mode .no-btn:hover {
-  background-color: #f7a3b1 !important; /* Darker pink when hovered */
-}
-
-
-.dark-mode li {
-  background-color: #444444; /* Darker background for list items */
-  color: #ffffff; /* White text for list items */
-  border-radius: 10px; /* Optional: to match rounded corners */
-  padding: 10px; /* Add some padding for better spacing */
-  margin-bottom: 10px; /* Space between list items */
-}
-.dark-mode li h3,
-.dark-mode li span {
-  color: #ffffff; /* White text for headings and spans */
-}
-
-
-.dark-mode ul {
-  background-color: #333333; /* Dark background */
-  color: #ffffff; /* White text color */
-}
-.dark-mode li:hover {
-  background-color: #555555; /* Lighter background on hover */
-}
-
-/* 🕶 Dark Mode - Lighten Text */
-.dark-mode .confirm-order {
-  color: white;
-  background-color: #222; /* Dark background */
-}
-
-/* 🕶 Dark Mode - Cart Items */
-.dark-mode .cart-item {
-  background-color: #333; /* Darker container */
-    color: black !important; /* Ensure text is black */
-  border: 1px solid #555; /* Darker borders */
-}
-
-.dark-mode .cart-item span {
-  color: black !important;
-}
-
-/* 🕶 Dark Mode - Buttons */
-.dark-mode .cart-item button {
-  background-color: #444; /* Dark button */
-  color: white !important; /* Keep button text white */
-  border: 1px solid #666;
-}
-
-.dark-mode .cart-item button:hover {
-  background-color: #666;
-}
-
-/* 🕶 Dark Mode - Price Text */
-.dark-mode .total-price {
-  color: #ddd; /* Light gray for visibility */
-}
-
-
-
-/* Confirm Order Page */
-.confirm-order {
-  text-align: center;
-  padding: 20px;
-  background-color: #fce6e6;
-  border-radius: 15px;
-  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
-  height: 100vh; /* Auto height to fit the content */
-  max-height: 95vh; /* Maximum height to avoid overflowing */
-  overflow-y: auto; /* Enable scrolling if content exceeds the height */
-  transition: height 0.3s ease;  /* Smooth transition when height changes */
-}
-
-/* Order Image */
-.order-image {
-  width: 70px; /* Increased for better visibility */
-  height: 70px;
-  margin-right: 15px;
-  border-radius: 8px;
-  object-fit: cover;
-}
-
-ul {
-  list-style-type: none;
-  padding: 0;
-  
-   border-radius: 30px;
-}
-
-/* Order List Items */
-li {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  margin: 15px 0;
-  padding: 15px;
-  background-color: #f8d1d1;
-  border-radius: 30px;
-  flex-wrap: wrap; /* Ensures content wraps properly on small screens */
-  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-}
-
-/* Quantity Controls */
-.quantity-controls {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-}
-
-.quantity-controls button {
-  width: 40px;
-  height: 40px;
-  border: none;
-  border-radius: 50%;
-  cursor: pointer;
-  background-color:rgb(219, 144, 144);
-  color: white;
-  font-size: 18px;
-  transition: background 0.3s;
-}
-
-.quantity-controls button:hover {
-  background-color: #b82d67;
-}
-
-/* Remove Button */
-.remove-btn {
-  background-color: red;
-  color: white;
-  padding: 5px 5px;
-  font-size: 14px;
-  border: none;
-  border-radius: 5px;
-  cursor: pointer;
-  transition: background 0.3s;
-}
-
-.remove-btn:hover {
-  background-color: darkred;
-}
-@media (max-width: 480px) {
-    button[data-v-77d1959e] {
-        font-size: 13px;
-        padding: 8px;
-        max-width: 260px;
-    }
-}
-
-/* Buttons Container */
-.buttons {
-  margin-top: 30px;
-  display: flex;
-  justify-content: space-between;  /* Distribute buttons to far left and right */
-  width: 100%;  /* Ensure buttons take up the full width */
-}
-
-/* Glowing effect for the "Add More Order" and "Confirm Order" buttons */
-.glowing-btn {
-  padding: 8px 20px;  /* Smaller padding */
-  font-size: 12px;     /* Smaller font size */
-  background-color: #333; /* Black background */
-  color: #FFF;
-  border: 2px solid #d12f7a; /* Adjust border color */
-  cursor: pointer;
-  position: relative;
-  z-index: 0;
-  border-radius: 5px;
-  text-transform: uppercase;
-}
-
-.glowing-btn::after {
-  content: "";
-  z-index: -1;
-  position: absolute;
-  width: 100%;
-  height: 100%;
-  background-color: #333;
-  left: 0;
-  top: 0;
-  border-radius: 10px;
-}
-
-.glowing-btn::before {
-  content: "";
-  background: linear-gradient(
-    45deg,
-    #FF0000, #FF7300, #FFFB00, #48FF00,
-    #00FFD5, #002BFF, #FF00C8, #FF0000
-  );
-  position: absolute;
-  top: -2px;
-  left: -2px;
-  background-size: 600%;
-  z-index: -1;
-  width: calc(100% + 4px);
-  height: calc(100% + 4px);
-  filter: blur(8px);
-  animation: glowing 20s linear infinite;
-  transition: opacity .3s ease-in-out;
-  border-radius: 10px;
-  opacity: 0;
-}
-
-/* Hover effect for glowing */
-.glowing-btn:hover::before {
-  opacity: 1;
-}
-
-/* Active button state */
-.glowing-btn:active:after {
-  background: transparent;
-}
-
-.glowing-btn:active {
-  color: #000;
-  font-weight: bold;
-  background-color: #d12f7a; /* Active background color */
-  border-color: #d12f7a; /* Border color */
-}
-
-/* Glow Animation */
-@keyframes glowing {
-  0% {background-position: 0 0;}
-  50% {background-position: 400% 0;}
-  100% {background-position: 0 0;}
-}
-
-/* 📱 Mobile Responsive Adjustments */
-@media (max-width: 768px) {
-  .confirm-order {
-    padding: 15px;
-  }
-
-  .order-image {
-    width: 55px;
-    height: 55px;
-  }
-
-  li {
-    flex-direction: column; /* Stack items vertically */
-    align-items: center;
-    text-align: center;
-    padding: 20px;
-  }
-
-  .quantity-controls {
-    gap: 8px;
-    margin-top: 10px;
-  }
-
-  .quantity-controls button {
-    width: 35px;
-    height: 35px;
-    font-size: 16px;
-  }
-
-  .remove-btn {
-    font-size: 12px;
-    padding: 6px 10px;
-  }
-
-  button {
-    font-size: 14px;
-    padding: 12px;
-    max-width: 280px;
-  }
-}
-
-
-
-@media (max-width: 480px) {
-    .remove-btn[data-v-77d1959e] {
-        font-size: 12px;
-        padding: 5px 8px;
-        margin-top: 10px; /* Adjust this value to move the button down */
-    }
-} 
-
-@media (max-width: 768px) {
-    .remove-btn[data-v-77d1959e] {
-        font-size: 12px;
-        padding: 6px 10px;
-        margin-top: 12px; /* Adjust this value to move the button down */
-    }
-}
-
-
-/* Extra Small Screens (iPhone SE, very small phones) */
-@media (max-width: 480px) {
-  .order-image {
-    width: 45px;
-    height: 45px;
-  }
-
-  .quantity-controls button {
-    width: 32px;
-    height: 32px;
-    font-size: 14px;
-  }
-
-  .remove-btn {
-    font-size: 12px;
-    padding: 5px 8px;
-  }
-
-  button {
-    font-size: 13px;
-    padding: 10px;
-    max-width: 260px;
-  }
+@keyframes progressAnimation {
+  0% { width: 0%; }
+  100% { width: 100%; }
 }
 
 .close-processing {
@@ -1155,23 +853,232 @@ li {
   z-index: 1001;
 }
 
-@media (max-width: 768px) {
-  .close-processing {
-    font-size: 28px; /* Adjust size for mobile */
-  }
+/* Closed Message */
+.closed-message {
+  background-color: rgba(0, 0, 0, 0.7);
+  color: #fff;
+  padding: 20px;
+  border-radius: 10px;
+  text-align: center;
+  font-size: 24px;
+  font-family: 'Dancing Script', cursive;
+  position: fixed;
+  top: 30%;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 80%;
+  max-width: 600px;
+  z-index: 9999;
+  box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
 }
 
-@media (max-width: 480px) {
-  .close-processing {
-    font-size: 24px; /* Further adjust size for very small screens */
-  }
+.closed-message p {
+  margin: 0;
+  font-size: 22px;
+  font-weight: bold;
+}
+
+/* Dark Mode Styles */
+.dark-mode .confirm-order {
+  background-color: #222;
+  color: white;
+}
+
+.dark-mode .cart-container {
+  background-color: #333;
+  box-shadow: 0 1px 3px rgba(255, 255, 255, 0.1);
+}
+
+.dark-mode .cart-header {
+  border-bottom: 1px solid #444;
+  color: #fff;
+}
+
+.dark-mode .cart-items {
+  border-bottom: 1px solid #444;
+}
+
+.dark-mode .cart-item {
+  border-bottom: 1px solid #444;
+}
+
+.dark-mode .item-name {
+  color: #fff;
+}
+
+.dark-mode .item-source, .dark-mode .item-promotion {
+  color: #aaa;
+}
+
+.dark-mode .change-link {
+  color: #66b0ff;
+}
+
+.dark-mode .item-price, .dark-mode .item-total, 
+.dark-mode .quantity-value, .dark-mode .subtotal,
+.dark-mode .grand-total {
+  color: #fff;
+}
+
+.dark-mode .quantity-controls {
+  border: 1px solid #555;
+}
+
+.dark-mode .quantity-btn {
+  background-color: #444;
+  color: #fff;
+}
+
+.dark-mode .remove-btn {
+  color: #ccc;
+}
+
+.dark-mode .remove-btn:hover {
+  color: #fff;
+}
+
+.dark-mode .cart-summary {
+  border-bottom: 1px solid #444;
+}
+
+.dark-mode .continue-shopping {
+  background-color: #333;
+  border: 1px solid #666;
+  color: #fff;
+}
+
+.dark-mode .checkout-btn {
+  background-color: #d12f7a;
+}
+
+.dark-mode .empty-cart p {
+  color: #fff;
+}
+
+.dark-mode .modal-content {
+  background-color: #222;
+  color: #fff;
+}
+
+.dark-mode .close {
+  color: #fff;
+}
+
+.dark-mode .loading-spinner-container {
+  background-color: #333;
+  color: #fff;
+}
+
+.dark-mode .wedding-text {
+  color: #f8a1b2;
+}
+
+.dark-mode .loading-text {
+  color: #fff;
 }
 
 .dark-mode .close-processing {
   color: #fff;
 }
 
-.dark-mode .close-processing:hover {
-  background-color: rgba(255, 255, 255, 0.1);
+/* Responsive Design */
+@media (max-width: 768px) {
+  .cart-header {
+    display: none;
+  }
+  
+  .cart-item {
+    grid-template-columns: 1fr;
+    grid-gap: 10px;
+    padding: 15px;
+  }
+  
+  .item-details {
+    grid-column: 1;
+  }
+  
+  .item-price, .item-quantity, .item-total {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+  
+  .item-price::before {
+    content: "Price:";
+    font-weight: bold;
+  }
+  
+  .item-quantity::before {
+    content: "Quantity:";
+    font-weight: bold;
+  }
+  
+  .item-total::before {
+    content: "Total:";
+    font-weight: bold;
+  }
+  
+  .item-actions {
+    text-align: right;
+  }
+  
+  .cart-actions {
+    flex-direction: column;
+    gap: 10px;
+  }
+  
+  .continue-shopping, .checkout-btn {
+    width: 100%;
+  }
+
+  .loading-spinner-container {
+    width: 80%;
+    padding: 12px;
+    max-height: 250px;
+    overflow: hidden;
+  }
+  
+  .progress-bar-container {
+    max-width: 250px;
+  }
+  
+  .close-processing {
+    font-size: 28px;
+  }
+}
+
+@media (max-width: 480px) {
+  .item-image {
+    width: 50px;
+    height: 50px;
+  }
+  
+  .cart-title {
+    font-size: 20px;
+  }
+  
+  .item-name {
+    font-size: 14px;
+  }
+  
+  .estimated-ship, .item-source, .item-promotion {
+    font-size: 12px;
+  }
+  
+  .loading-spinner-container {
+    width: 75%;
+    padding: 10px;
+    max-height: 200px;
+    height: auto;
+    overflow: hidden;
+  }
+  
+  .progress-bar-container {
+    max-width: 220px;
+  }
+  
+  .close-processing {
+    font-size: 24px;
+  }
 }
 </style>
