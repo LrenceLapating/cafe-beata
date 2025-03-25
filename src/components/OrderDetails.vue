@@ -58,6 +58,28 @@
         <p>Items added to cart successfully!</p>
       </div>
     </div>
+
+    <!-- Unavailable Items Modal -->
+    <div v-if="showUnavailableModal" class="modal-overlay">
+      <div class="unavailable-modal">
+        <h2>Some Items Are Unavailable</h2>
+        <p>The following items from your order are currently unavailable:</p>
+        
+        <div class="unavailable-items-list">
+          <div v-for="(item, index) in unavailableItems" :key="index" class="unavailable-item">
+            <img :src="getImagePath(getItemByName(item))" :alt="item" class="small-item-image"/>
+            <span class="item-name">{{ item }}</span>
+            <span class="unavailable-badge">UNAVAILABLE</span>
+            <button @click="removeFromOrder(item)" class="remove-item-btn">Remove</button>
+          </div>
+        </div>
+        
+        <div class="modal-actions">
+          <button @click="closeUnavailableModal" class="cancel-btn">Cancel</button>
+          <button @click="proceedWithAvailable" class="proceed-btn">Proceed with Available Items</button>
+        </div>
+      </div>
+    </div>
   </div>
 </template>
 
@@ -69,7 +91,13 @@ export default {
       items: this.parseItems(this.$route.query.items),
       orderId: this.$route.query.orderId,
       customerName: this.$route.query.customerName,
-      showSuccessMessage: false
+      showSuccessMessage: false,
+      unavailableItems: [], // Track unavailable items
+      showUnavailableModal: false, // Control modal visibility
+      itemsToOrder: [], // Items to add to cart after filtering
+      itemMap: {}, // Store item details keyed by name
+      stockMap: {}, // Store stock details keyed by item ID
+      menuItems: [] // Store the complete menu items for lookup
     };
   },
   methods: {
@@ -122,15 +150,90 @@ export default {
       }
     },
 
-    orderAgain() {
+    // Get item object by name from the original items array
+    getItemByName(name) {
+      return this.items.find(item => item.name === name) || {};
+    },
+
+    // Remove an item from the unavailable items list and proceed
+    removeFromOrder(itemName) {
+      // Remove the item from the unavailable items array
+      this.unavailableItems = this.unavailableItems.filter(name => name !== itemName);
+      
+      // Find the corresponding original item to add to the order
+      const itemToAdd = this.items.find(item => item.name === itemName);
+      
+      if (itemToAdd) {
+        // Find the menu item to get its ID
+        const menuItem = this.findItemInMenu(itemToAdd.name);
+        
+        if (menuItem) {
+          // Get stock information
+          const stock = this.stockMap[menuItem.id];
+          
+          // Only add if there's actually some stock available
+          // (user might be removing from the modal but the item is still unavailable)
+          if (stock && stock.quantity > 0) {
+            // Use the available quantity if it's less than what was ordered
+            const quantityToAdd = Math.min(itemToAdd.quantity, stock.quantity);
+            
+            // Add it to the items to order
+            this.itemsToOrder.push({
+              id: menuItem.id,
+              name: itemToAdd.name,
+              price: itemToAdd.price,
+              image: itemToAdd.image,
+              quantity: quantityToAdd
+            });
+            
+            // If we couldn't add the full quantity, let the user know
+            if (quantityToAdd < itemToAdd.quantity) {
+              alert(`Only ${quantityToAdd} units of ${itemToAdd.name} are available.`);
+            }
+          } else {
+            // If still no stock, inform the user
+            alert(`${itemToAdd.name} is still unavailable.`);
+          }
+        }
+      }
+      
+      // If all unavailable items have been removed, close the modal and proceed
+      if (this.unavailableItems.length === 0) {
+        this.showUnavailableModal = false;
+        this.addItemsToCart();
+      }
+    },
+
+    // Close the unavailable items modal without proceeding
+    closeUnavailableModal() {
+      this.showUnavailableModal = false;
+    },
+
+    // Proceed with only available items
+    proceedWithAvailable() {
+      this.showUnavailableModal = false;
+      this.addItemsToCart();
+    },
+
+    // Add filtered items to cart and navigate to confirm order
+    addItemsToCart() {
       const userName = localStorage.getItem('userName') || 'Guest';
       const userCartKey = `cart_${userName}`;
       
       // Get existing cart from localStorage or initialize empty array
       let cart = JSON.parse(localStorage.getItem(userCartKey) || '[]');
       
-      // Add all items from this order to the cart
-      this.items.forEach(item => {
+      // Add only available items to cart
+      let addedItems = 0;
+      
+      // Process each item to order
+      this.itemsToOrder.forEach(item => {
+        // Skip if the item is in the unavailable list (it shouldn't be, but double-check)
+        if (this.unavailableItems.includes(item.name)) {
+          console.log(`Skipping unavailable item: ${item.name}`);
+          return;
+        }
+        
         // Check if item already exists in cart
         const existingItemIndex = cart.findIndex(cartItem => 
           cartItem.name === item.name && 
@@ -140,14 +243,24 @@ export default {
         if (existingItemIndex !== -1) {
           // If item exists, increase quantity
           cart[existingItemIndex].quantity += item.quantity;
+          console.log(`Updated quantity for item: ${item.name}`);
         } else {
           // If item doesn't exist, add it to cart
-          cart.push({...item});
+          cart.push(item);
+          console.log(`Added new item to cart: ${item.name}`);
         }
+        
+        addedItems++;
       });
+      
+      if (addedItems === 0) {
+        alert('No items could be added to cart.');
+        return;
+      }
       
       // Save updated cart to localStorage with user-specific key
       localStorage.setItem(userCartKey, JSON.stringify(cart));
+      console.log(`Saved ${addedItems} items to cart`);
       
       // Show success message
       this.showSuccessMessage = true;
@@ -158,6 +271,162 @@ export default {
         // Navigate to the ConfirmOrder page
         this.$router.push({ name: 'ConfirmOrder' });
       }, 1500);
+    },
+
+    async orderAgain() {
+      // First check if the items are available in stock
+      try {
+        // Fetch stock information from the backend
+        const response = await fetch('http://localhost:8000/api/stocks');
+        const stocksData = await response.json();
+        
+        if (!stocksData.success) {
+          console.error('Failed to fetch stock information');
+          alert('Unable to verify item availability. Please try again later.');
+          return;
+        }
+        
+        // Also need to fetch items to get their IDs
+        const itemsResponse = await fetch('http://localhost:8000/api/items');
+        const itemsData = await itemsResponse.json();
+        
+        if (!itemsData.items) {
+          console.error('Failed to fetch items');
+          alert('Unable to verify item availability. Please try again later.');
+          return;
+        }
+        
+        // Store the complete menu items for lookup
+        this.menuItems = itemsData.items;
+        
+        // Create lookup maps for easier access
+        this.stockMap = stocksData.items.reduce((map, stock) => {
+          map[stock.item_id] = stock;
+          return map;
+        }, {});
+        
+        // Clear previous data
+        this.unavailableItems = [];
+        this.itemsToOrder = [];
+        
+        console.log("Checking availability for items:", this.items);
+        console.log("Available menu items:", this.menuItems.map(i => i.name));
+        console.log("Stock data:", stocksData.items);
+        
+        // Check each item's availability and prepare data
+        for (const orderItem of this.items) {
+          // Case-insensitive lookup
+          const menuItem = this.findItemInMenu(orderItem.name);
+          
+          console.log(`Checking item: ${orderItem.name}, found in menu:`, menuItem);
+          
+          // If item doesn't exist in the menu anymore
+          if (!menuItem) {
+            console.log(`Item not found in menu: ${orderItem.name}`);
+            this.unavailableItems.push(orderItem.name);
+            continue;
+          }
+          
+          // Check if item is disabled in the database (if available property exists)
+          if (Object.prototype.hasOwnProperty.call(menuItem, 'available') && menuItem.available === false) {
+            console.log(`Item is disabled in menu: ${orderItem.name}`);
+            this.unavailableItems.push(orderItem.name);
+            continue;
+          }
+          
+          const stock = this.stockMap[menuItem.id];
+          console.log(`Stock for ${orderItem.name}:`, stock);
+          
+          // If item has no stock record or quantity is 0
+          if (!stock || stock.quantity === 0) {
+            console.log(`Item out of stock: ${orderItem.name}`);
+            this.unavailableItems.push(orderItem.name);
+            continue;
+          }
+          
+          // Check if stock is sufficient
+          if (stock.quantity < orderItem.quantity) {
+            console.log(`Not enough stock for ${orderItem.name}: required ${orderItem.quantity}, available ${stock.quantity}`);
+            this.unavailableItems.push(orderItem.name);
+            continue;
+          }
+          
+          // Item is available, add to items to order
+          console.log(`Item available: ${orderItem.name}`);
+          this.itemsToOrder.push({
+            id: menuItem.id,
+            name: orderItem.name,
+            price: orderItem.price,
+            image: orderItem.image,
+            quantity: orderItem.quantity
+          });
+        }
+        
+        // Double-check against any matching names that might be unavailable 
+        // in case our item lookup missed something
+        for (const item of this.items) {
+          // Check if this item already marked as unavailable
+          if (this.unavailableItems.includes(item.name)) {
+            continue;
+          }
+          
+          // Find exact match for Matcha Frappe and other items that might be problematic
+          const exactNameMatches = this.menuItems.filter(menuItem => 
+            menuItem.name.toLowerCase().trim() === item.name.toLowerCase().trim()
+          );
+          
+          // If matches exist, check if they're all unavailable
+          if (exactNameMatches.length > 0) {
+            const allUnavailable = exactNameMatches.every(menuItem => {
+              const stock = this.stockMap[menuItem.id];
+              return !stock || stock.quantity === 0 || 
+                    (Object.prototype.hasOwnProperty.call(menuItem, 'available') && menuItem.available === false);
+            });
+            
+            if (allUnavailable) {
+              console.log(`Found item exact match as unavailable: ${item.name}`);
+              this.unavailableItems.push(item.name);
+              // Remove from itemsToOrder if it was added
+              this.itemsToOrder = this.itemsToOrder.filter(i => i.name !== item.name);
+            }
+          }
+        }
+        
+        console.log("Unavailable items:", this.unavailableItems);
+        console.log("Items to order:", this.itemsToOrder);
+        
+        // If there are unavailable items, show the modal
+        if (this.unavailableItems.length > 0) {
+          // If all items are unavailable
+          if (this.unavailableItems.length === this.items.length) {
+            alert('All items in this order are currently unavailable.');
+            return;
+          }
+          
+          // Show modal with unavailable items
+          this.showUnavailableModal = true;
+        } else {
+          // If all items are available, add them to cart immediately
+          this.addItemsToCart();
+        }
+      } catch (error) {
+        console.error('Error checking item availability:', error);
+        alert('An error occurred while checking item availability. Please try again later.');
+      }
+    },
+    
+    // Helper function to find an item in the menu
+    findItemInMenu(itemName, items = null) {
+      const menuItems = items || this.menuItems;
+      if (!menuItems) return null;
+      
+      // Normalize the name for comparison (trim whitespace, lowercase)
+      const normalizedName = itemName.toLowerCase().trim();
+      
+      // Case insensitive search
+      return menuItems.find(item => 
+        item.name.toLowerCase().trim() === normalizedName
+      );
     }
   },
 };
@@ -338,6 +607,131 @@ h2 {
   animation: fadeIn 0.5s;
 }
 
+/* Modal styles */
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(0, 0, 0, 0.7);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 1000;
+  animation: fadeIn 0.3s;
+}
+
+.unavailable-modal {
+  background-color: #2a2a42;
+  border-radius: 15px;
+  padding: 25px;
+  width: 90%;
+  max-width: 600px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+  text-align: center;
+}
+
+.unavailable-modal h2 {
+  color: #ff5252;
+  text-align: center;
+  margin-bottom: 15px;
+}
+
+.unavailable-modal p {
+  color: #ddd;
+  margin-bottom: 20px;
+}
+
+.unavailable-items-list {
+  max-height: 300px;
+  overflow-y: auto;
+  margin-bottom: 20px;
+}
+
+.unavailable-item {
+  display: flex;
+  align-items: center;
+  padding: 10px;
+  background-color: rgba(255, 255, 255, 0.05);
+  margin-bottom: 10px;
+  border-radius: 8px;
+  position: relative;
+}
+
+.small-item-image {
+  width: 40px;
+  height: 40px;
+  border-radius: 6px;
+  margin-right: 12px;
+  object-fit: cover;
+}
+
+.item-name {
+  flex-grow: 1;
+  text-align: left;
+  margin-right: 10px;
+}
+
+.unavailable-badge {
+  background-color: #ff5252;
+  color: white;
+  font-size: 12px;
+  padding: 4px 8px;
+  border-radius: 4px;
+  margin-right: 10px;
+}
+
+.remove-item-btn {
+  background-color: transparent;
+  border: 1px solid #ff9800;
+  color: #ff9800;
+  padding: 5px 10px;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all 0.3s;
+}
+
+.remove-item-btn:hover {
+  background-color: #ff9800;
+  color: #000;
+}
+
+.modal-actions {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 20px;
+}
+
+.cancel-btn, .proceed-btn {
+  padding: 12px 20px;
+  border-radius: 8px;
+  font-weight: bold;
+  cursor: pointer;
+  transition: all 0.3s;
+  width: 48%;
+}
+
+.cancel-btn {
+  background-color: transparent;
+  border: 2px solid #aaa;
+  color: #ddd;
+}
+
+.cancel-btn:hover {
+  background-color: rgba(255, 255, 255, 0.1);
+}
+
+.proceed-btn {
+  background-color: #8e24aa;
+  border: none;
+  color: white;
+}
+
+.proceed-btn:hover {
+  background-color: #6a1b9a;
+}
+
 @keyframes fadeIn {
   from { opacity: 0; }
   to { opacity: 1; }
@@ -374,6 +768,20 @@ h2 {
   }
   
   .back-button, .order-again-button {
+    width: 100%;
+    margin-bottom: 10px;
+  }
+  
+  .unavailable-modal {
+    width: 95%;
+    padding: 15px;
+  }
+  
+  .modal-actions {
+    flex-direction: column;
+  }
+  
+  .cancel-btn, .proceed-btn {
     width: 100%;
     margin-bottom: 10px;
   }

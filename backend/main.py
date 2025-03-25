@@ -459,7 +459,7 @@ async def update_order_status(order_id: str, status_update: OrderStatusUpdate):
     if connection is None:
         raise HTTPException(status_code=500, detail="Database connection failed")
 
-    cursor = connection.cursor(dictionary=True)
+    cursor = connection.cursor(dictionary=True, buffered=True)
 
     try:
         # Check if the order exists
@@ -474,6 +474,7 @@ async def update_order_status(order_id: str, status_update: OrderStatusUpdate):
         
         # Update the status
         cursor.execute("UPDATE orders SET status = %s WHERE id = %s", (status_update.status, order_id))
+        # No need to fetch after UPDATE operations
 
         # If marking as completed, handle stock reduction
         if status_update.status == "completed":
@@ -496,7 +497,7 @@ async def update_order_status(order_id: str, status_update: OrderStatusUpdate):
                             stock_result = cursor.fetchone()
                             
                             if stock_result:
-                                # Update existing stock
+                                # Update existing stock - no result set to consume with UPDATE
                                 cursor.execute(
                                     "UPDATE item_stocks SET quantity = GREATEST(0, quantity - %s) WHERE item_id = %s",
                                     (quantity_to_reduce, item_id)
@@ -509,6 +510,7 @@ async def update_order_status(order_id: str, status_update: OrderStatusUpdate):
                                     "INSERT INTO item_stocks (item_id, quantity, min_stock_level) VALUES (%s, 0, 1)",
                                     (item_id,)
                                 )
+                                # No need to fetch after INSERT operations
                         else:
                             print(f"Item not found in database: {item['name']}")
                     except Exception as item_error:
