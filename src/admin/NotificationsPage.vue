@@ -680,16 +680,15 @@ export default {
       const userNotificationsKey = `user_notifications_${customerName}`;
       let notifications = JSON.parse(localStorage.getItem(userNotificationsKey)) || [];
       
-      // Check if a notification with the same order ID already exists
-      const existingIndex = notifications.findIndex(n => n.orderId === orderId);
+      // Add the notification without replacing existing ones
+      notifications.push(notification);
       
-      if (existingIndex !== -1) {
-        // Replace the existing notification
-        notifications[existingIndex] = notification;
-      } else {
-        // Add the new notification
-        notifications.push(notification);
-      }
+      // Sort notifications by timestamp (newest first)
+      notifications.sort((a, b) => {
+        const dateA = new Date(a.timestamp);
+        const dateB = new Date(b.timestamp);
+        return dateB - dateA;
+      });
       
       localStorage.setItem(userNotificationsKey, JSON.stringify(notifications));
 

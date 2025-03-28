@@ -57,6 +57,19 @@ export default {
   },
   created() {
     this.loadOrderItems();
+    
+    // Only add the notification if it doesn't already exist in localStorage
+    const userName = localStorage.getItem("userName");
+    const userNotificationsKey = `user_notifications_${userName}`;
+    const existingNotifications = JSON.parse(localStorage.getItem(userNotificationsKey)) || [];
+    
+    // Check if any notification for this order already exists
+    const hasExistingNotification = existingNotifications.some(n => n.orderId === this.orderID);
+    
+    // Only send the notification if none exists for this order
+    if (!hasExistingNotification) {
+      this.sendEstimatedTimeNotification();
+    }
   },
   methods: {
     loadOrderItems() {
@@ -67,6 +80,52 @@ export default {
         console.error("Error parsing order items:", error);
         this.orderItems = [];
       }
+    },
+
+    // New method to send estimated preparation time notification
+    sendEstimatedTimeNotification() {
+      // Calculate if the order has drinks only, food, or both
+      const hasDrinks = this.orderItems.some(item => 
+        item.category && 
+        (item.category.toLowerCase().includes('drink') || 
+         item.category === 'Juice Drinks' || 
+         item.category === 'Chocolate Drinks' ||
+         item.category === 'Coffee')
+      );
+      
+      const hasFood = this.orderItems.some(item => 
+        item.category && 
+        !item.category.toLowerCase().includes('drink') && 
+        item.category !== 'Juice Drinks' && 
+        item.category !== 'Chocolate Drinks' &&
+        item.category !== 'Coffee'
+      );
+      
+      // Determine estimated time based on order content
+      let estimatedTime;
+      if (hasDrinks && !hasFood) {
+        estimatedTime = "10-12 minutes";
+      } else if (hasFood || (hasDrinks && hasFood)) {
+        estimatedTime = "12-15 minutes";
+      } else {
+        estimatedTime = "10-15 minutes";
+      }
+      
+      // Create the notification message
+      const orderDetails = this.orderItems.map(item => `${item.name} x${item.quantity}`).join(", ");
+      
+      const message = `Your order #${this.orderID} has been received! Estimated preparation time: ${estimatedTime}. <span class="highlighted-order-details">Order details: ${orderDetails}. Total: ₱${this.total}</span>`;
+      
+      // Create the notification object
+      const notification = {
+        orderId: this.orderID,
+        customerName: this.customerName,
+        message: message,
+        timestamp: new Date().toISOString(),
+      };
+      
+      // Add the notification to localStorage
+      this.addNotificationToUserNotifications(notification);
     },
 
     // This method sends the notification to a specific user
@@ -97,8 +156,17 @@ export default {
     addNotificationToUserNotifications(notification) {
       const userNotificationsKey = `user_notifications_${this.customerName}`; // Use the customerName
       let notifications = JSON.parse(localStorage.getItem(userNotificationsKey)) || [];
-      notifications.push(notification);
-      localStorage.setItem(userNotificationsKey, JSON.stringify(notifications));
+      
+      // Check if a notification for this order ID with the same message already exists
+      const existingNotificationIndex = notifications.findIndex(
+        n => n.orderId === notification.orderId && n.message === notification.message
+      );
+      
+      // Only add the notification if it doesn't already exist
+      if (existingNotificationIndex === -1) {
+        notifications.push(notification);
+        localStorage.setItem(userNotificationsKey, JSON.stringify(notifications));
+      }
     },
 
     goBackToDashboard() {

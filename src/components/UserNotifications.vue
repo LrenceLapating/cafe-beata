@@ -8,8 +8,26 @@
     <!-- Title -->
     <h2 class="notifications-title">Notifications</h2>
 
-    <!-- Clear Notifications Button -->
-    <button class="clear-btn" @click="clearNotifications">Clear Notifications</button>
+    <!-- Buttons Container for Clear and Mark Read -->
+    <div class="notification-buttons">
+      <!-- Mark All as Read Button -->
+      <button class="mark-read-btn" @click="showMarkReadConfirmation = true">Mark All as Read</button>
+      
+      <!-- Clear Notifications Button -->
+      <button class="clear-btn" @click="clearNotifications">Clear Notifications</button>
+    </div>
+
+    <!-- Mark As Read Confirmation Popup -->
+    <div v-if="showMarkReadConfirmation" class="confirmation-popup">
+      <div class="confirmation-content">
+        <h3>Confirm Action</h3>
+        <p>Are you sure you want to mark all notifications as read?</p>
+        <div class="confirmation-buttons">
+          <button @click="markAllAsRead" class="confirm-yes-btn">Yes</button>
+          <button @click="showMarkReadConfirmation = false" class="confirm-no-btn">No</button>
+        </div>
+      </div>
+    </div>
 
     <!-- Notifications List -->
     <div class="notifications-list">
@@ -44,6 +62,7 @@ export default {
       ws: null,
       wsConnected: false,
       isDarkMode: localStorage.getItem("darkMode") === "true",
+      showMarkReadConfirmation: false,
     };
   },
   methods: {
@@ -62,24 +81,42 @@ export default {
 
     updateNotificationCount() {
       const unreadCount = this.notifications.filter(notification => !notification.read).length;
-      eventBus.notificationsCount = unreadCount; 
+      eventBus.notificationsCount = unreadCount;
+      localStorage.setItem("unread_notifications", unreadCount);
     },
 
     fetchNotifications() {
       const userName = localStorage.getItem("userName"); 
       if (userName) {
         const userNotificationsKey = `user_notifications_${userName}`;
-        const storedNotifications = JSON.parse(localStorage.getItem(userNotificationsKey)) || [];
+        let storedNotifications = JSON.parse(localStorage.getItem(userNotificationsKey)) || [];
+        
+        // Remove duplicate notifications (same order ID and same message)
+        const uniqueNotifications = [];
+        const seen = new Set();
+        
+        storedNotifications.forEach(notification => {
+          // Create a unique key using orderId and message
+          const uniqueKey = `${notification.orderId}-${notification.message}`;
+          
+          if (!seen.has(uniqueKey)) {
+            seen.add(uniqueKey);
+            uniqueNotifications.push(notification);
+          }
+        });
         
         // Sort notifications by timestamp (newest first)
-        storedNotifications.sort((a, b) => {
+        uniqueNotifications.sort((a, b) => {
           const dateA = new Date(a.timestamp);
           const dateB = new Date(b.timestamp);
           return dateB - dateA;
         });
         
-        // Update the notifications array with the sorted list
-        this.notifications = storedNotifications;
+        // Save the deduplicated notifications back to localStorage
+        localStorage.setItem(userNotificationsKey, JSON.stringify(uniqueNotifications));
+        
+        // Update the notifications array with the deduplicated list
+        this.notifications = uniqueNotifications;
         this.updateNotificationCount();
       } else {
         this.notifications = [];
@@ -96,37 +133,34 @@ export default {
         notification.timestamp = new Date().toISOString();
       }
       
-      // Check if a notification with the same order ID already exists
-      const existingIndex = notifications.findIndex(n => n.orderId === notification.orderId);
+      // Check if a notification with the same order ID and message already exists
+      const existingIndex = notifications.findIndex(n => 
+        n.orderId === notification.orderId && n.message === notification.message
+      );
       
-      if (existingIndex !== -1) {
-        // Instead of replacing, add as a new notification if the message is different
-        if (notifications[existingIndex].message !== notification.message) {
-          notifications.unshift(notification);
-        }
-      } else {
-        // Add the new notification
+      // Only add the notification if it doesn't already exist
+      if (existingIndex === -1) {
         notifications.unshift(notification);
-      }
-      
-      // Sort notifications by timestamp (newest first)
-      notifications.sort((a, b) => {
-        const dateA = new Date(a.timestamp);
-        const dateB = new Date(b.timestamp);
-        return dateB - dateA;
-      });
-      
-      // Save the updated notifications to localStorage
-      localStorage.setItem(userNotificationsKey, JSON.stringify(notifications));
+        
+        // Sort notifications by timestamp (newest first)
+        notifications.sort((a, b) => {
+          const dateA = new Date(a.timestamp);
+          const dateB = new Date(b.timestamp);
+          return dateB - dateA;
+        });
+        
+        // Save the updated notifications to localStorage
+        localStorage.setItem(userNotificationsKey, JSON.stringify(notifications));
 
-      // Update the notifications in the component
-      this.notifications = notifications;
-      
-      // Update notification count
-      this.updateNotificationCount();
-      
-      // Dispatch event to notify other components
-      window.dispatchEvent(new Event("notificationUpdated"));
+        // Update the notifications in the component
+        this.notifications = notifications;
+        
+        // Update notification count
+        this.updateNotificationCount();
+        
+        // Dispatch event to notify other components
+        window.dispatchEvent(new Event("notificationUpdated"));
+      }
     },
 
     formatHighlightedMessage(message) {
@@ -135,6 +169,36 @@ export default {
         /(Order details:.*?Total: ₱\d+(\.\d{2})?)/g,
         `<br/><br/><span class="highlighted-order-details">$1</span>`
       );
+    },
+
+    // Calculate estimated preparation time based on order items
+    calculateEstimatedTime(items) {
+      // Check if the order contains only drinks, only food, or both
+      const hasDrinks = items.some(item => 
+        item.category && 
+        (item.category.toLowerCase().includes('drink') || 
+         item.category === 'Juice Drinks' || 
+         item.category === 'Chocolate Drinks' ||
+         item.category === 'Coffee')
+      );
+      
+      const hasFood = items.some(item => 
+        item.category && 
+        !item.category.toLowerCase().includes('drink') && 
+        item.category !== 'Juice Drinks' && 
+        item.category !== 'Chocolate Drinks' &&
+        item.category !== 'Coffee'
+      );
+      
+      // Return the appropriate estimated time
+      if (hasDrinks && !hasFood) {
+        return "10-12 minutes";
+      } else if (hasFood || (hasDrinks && hasFood)) {
+        return "12-15 minutes";
+      } else {
+        // Default case if categories cannot be determined
+        return "10-15 minutes";
+      }
     },
 
     clearNotifications() {
@@ -162,25 +226,46 @@ export default {
           const data = JSON.parse(event.data);
           console.log('WebSocket message received:', data);
           
+          // Get existing notifications first
+          const userName = localStorage.getItem("userName");
+          if (!userName) return; // Exit if no username
+          
+          const userNotificationsKey = `user_notifications_${userName}`;
+          const existingNotifications = JSON.parse(localStorage.getItem(userNotificationsKey)) || [];
+          
           if (data.type === 'new_order') {
             // Handle new order notification
-            const userName = localStorage.getItem("userName");
             if (data.order.customer_name === userName) {
-              this.addNewNotification({
-                orderId: data.order.id,
-                message: `Your order has been received! and is now being prepared. We will notify you as soon as it is ready for pickup.  Order details: ${this.formatItems(data.order.items)}. Total: ₱${this.calculateTotal(data.order.items)}`,
-                timestamp: data.order.created_at
-              });
+              // Check if a notification for this order already exists
+              const orderExists = existingNotifications.some(n => n.orderId === data.order.id.toString());
+              
+              // Only add if no notification exists for this order
+              if (!orderExists) {
+                this.addNewNotification({
+                  orderId: data.order.id,
+                  message: `Your order has been received! and is now being prepared. We will notify you as soon as it is ready for pickup. Estimated time 8-12 minutes.  Order details: ${this.formatItems(data.order.items)}. Total: ₱${this.calculateTotal(data.order.items)}`,
+                  timestamp: data.order.created_at
+                });
+              }
             }
           } else if (data.type === 'order_status_update') {
             // Handle order status update notification
-            const userName = localStorage.getItem("userName");
             if (data.customer_name === userName) {
-              this.addNewNotification({
-                orderId: data.order_id,
-                message: `Your order status has been updated to ${data.status}`,
-                timestamp: new Date().toISOString()
-              });
+              const orderStatusMsg = `Your order status has been updated to ${data.status}`;
+              
+              // Check if a notification with this exact status update already exists
+              const statusExists = existingNotifications.some(
+                n => n.orderId === data.order_id.toString() && n.message.includes(orderStatusMsg)
+              );
+              
+              // Only add if this status notification doesn't already exist
+              if (!statusExists) {
+                this.addNewNotification({
+                  orderId: data.order_id,
+                  message: orderStatusMsg,
+                  timestamp: new Date().toISOString()
+                });
+              }
             }
           }
         } catch (error) {
@@ -209,6 +294,38 @@ export default {
 
     calculateTotal(items) {
       return items.reduce((sum, item) => sum + (item.price * item.quantity), 0).toFixed(2);
+    },
+
+    markAllAsRead() {
+      const userName = localStorage.getItem("userName");
+      if (userName) {
+        const userNotificationsKey = `user_notifications_${userName}`;
+        
+        // Get existing notifications
+        let notifications = JSON.parse(localStorage.getItem(userNotificationsKey)) || [];
+        
+        // Mark all notifications as read
+        notifications = notifications.map(notification => ({
+          ...notification,
+          read: true
+        }));
+        
+        // Save back to localStorage
+        localStorage.setItem(userNotificationsKey, JSON.stringify(notifications));
+        
+        // Update the notifications in the component
+        this.notifications = notifications;
+        
+        // Set unread count to 0
+        localStorage.setItem("unread_notifications", 0);
+        eventBus.notificationsCount = 0;
+        
+        // Close the confirmation popup
+        this.showMarkReadConfirmation = false;
+        
+        // Dispatch event to notify other components
+        window.dispatchEvent(new Event("notificationUpdated"));
+      }
     }
   },
   created() {
@@ -310,6 +427,28 @@ export default {
   text-align: center;
 }
 
+.notification-buttons {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  margin-bottom: 20px;
+  gap: 10px; /* Space between buttons */
+}
+
+.mark-read-btn {
+  background-color: #4a5568;
+  color: white;
+  padding: 8px 16px;
+  border: none;
+  font-size: 16px;
+  border-radius: 5px;
+  cursor: pointer;
+}
+
+.mark-read-btn:hover {
+  background-color: #2d3748;
+}
+
 .clear-btn {
   background-color: rgb(66, 47, 56);
   color: white;
@@ -318,8 +457,6 @@ export default {
   font-size: 16px;
   border-radius: 5px;
   cursor: pointer;
-  align-self: flex-end;
-  margin-bottom: 20px;
 }
 
 .clear-btn:hover {
@@ -371,5 +508,61 @@ hr {
   padding: 15px;
   border-radius: 5px;
   box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+}
+
+.confirmation-popup {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-color: rgba(0, 0, 0, 0.5);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.confirmation-content {
+  background-color: white;
+  padding: 20px;
+  border-radius: 10px;
+  width: 300px;
+  text-align: center;
+}
+
+.confirmation-buttons {
+  margin-top: 20px;
+}
+
+.confirm-yes-btn,
+.confirm-no-btn {
+  background-color: rgb(66, 47, 56);
+  color: white;
+  padding: 8px 16px;
+  border: none;
+  font-size: 16px;
+  border-radius: 5px;
+  cursor: pointer;
+  margin-right: 10px;
+}
+
+.confirm-yes-btn:hover,
+.confirm-no-btn:hover {
+  background-color: #b82d67;
+}
+
+.dark-mode .confirmation-content {
+  background-color: #444;
+  color: white;
+}
+
+.dark-mode .confirm-yes-btn,
+.dark-mode .confirm-no-btn {
+  background-color: #666;
+}
+
+.dark-mode .confirm-yes-btn:hover,
+.dark-mode .confirm-no-btn:hover {
+  background-color: #888;
 }
 </style>
